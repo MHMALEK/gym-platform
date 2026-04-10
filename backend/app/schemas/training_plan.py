@@ -14,6 +14,7 @@ class TrainingPlanCreate(BaseModel):
     name: str
     description: str | None = None
     venue_type: PlanVenue = "mixed"
+    workout_rich_html: str | None = None
 
 
 class TrainingPlanUpdate(BaseModel):

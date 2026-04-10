@@ -86,6 +86,7 @@ async def create_training_plan(body: TrainingPlanCreate, coach: CurrentCoach, db
         name=body.name,
         description=body.description,
         venue_type=body.venue_type,
+        workout_rich_html=body.workout_rich_html,
     )
     db.add(plan)
     await db.commit()

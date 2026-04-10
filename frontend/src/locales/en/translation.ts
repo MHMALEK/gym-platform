@@ -469,7 +469,13 @@ const translation = {
       buildWorkout: "Build workout",
       builderIntroTitle: "Workout builder",
       builderIntroBody:
-        "Open a plan (or use Build workout) to add exercises from the shared catalog or your own library, then set sets, reps, rest, and coaching tips. You can edit details here or on the plan’s view page.",
+        "Create opens the full builder: plan overview, rich workout notes, and the exercise list. For an existing plan, use Build workout to open the same editor; use View for a read-only summary.",
+    },
+    create: {
+      pageTitle: "Create training plan",
+      missingId: "The plan was created but no id was returned. Try refreshing the list.",
+      itemsSaveFailed:
+        "Plan was saved but exercises could not be saved. Open the plan with Build workout and save the workout again.",
     },
     form: {
       venue: "Program venue",

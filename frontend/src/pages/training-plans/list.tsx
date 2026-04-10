@@ -62,7 +62,7 @@ export function TrainingPlanList() {
           title={t("trainingPlans.list.actions")}
           render={(_, record: BaseRecord) => (
             <Space wrap>
-              <Link to={`/training-plans/show/${record.id}`}>
+              <Link to={`/training-plans/edit/${record.id}`}>
                 <Button type="primary" size="small">
                   {t("trainingPlans.list.buildWorkout")}
                 </Button>
