@@ -1,0 +1,32 @@
+body {
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* English: Inter for Latin UI; Persian glyphs still fall back to Vazirmatn when needed */
+html[lang="en"],
+html[lang="en"] body,
+html[lang="en"] #root {
+  font-family: "Inter", "Vazirmatn", system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-optical-sizing: auto;
+}
+
+/* Persian: Vazirmatn first for RTL and Arabic script */
+html[lang="fa"],
+html[lang="fa"] body,
+html[lang="fa"] #root {
+  font-family: "Vazirmatn", "Inter", "Tahoma", system-ui, sans-serif;
+}
+
+/* Ant Design lg breakpoint — keep the main nav fully open; hide collapse control */
+@media (min-width: 992px) {
+  .ant-layout > .ant-layout-sider .ant-layout-sider-trigger {
+    display: none;
+  }
+}
