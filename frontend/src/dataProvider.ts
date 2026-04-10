@@ -37,14 +37,25 @@ function isLogicalFilter(f: CrudFilter): f is LogicalFilter {
 }
 
 function appendListQueryParams(searchParams: URLSearchParams, resource: string, filters?: CrudFilter[]) {
-  if (resource !== "invoices" || !filters?.length) return;
-  for (const f of filters) {
-    if (!isLogicalFilter(f) || f.operator !== "eq") continue;
-    if (f.field === "client_id" && f.value != null && f.value !== "") {
-      searchParams.set("client_id", String(f.value));
+  if (!filters?.length) return;
+  if (resource === "invoices") {
+    for (const f of filters) {
+      if (!isLogicalFilter(f) || f.operator !== "eq") continue;
+      if (f.field === "client_id" && f.value != null && f.value !== "") {
+        searchParams.set("client_id", String(f.value));
+      }
+      if (f.field === "status" && f.value != null && f.value !== "") {
+        searchParams.set("status", String(f.value));
+      }
     }
-    if (f.field === "status" && f.value != null && f.value !== "") {
-      searchParams.set("status", String(f.value));
+    return;
+  }
+  if (resource === "exercises" || resource === "directory-exercises") {
+    for (const f of filters) {
+      if (!isLogicalFilter(f)) continue;
+      if (f.field !== "q" || f.value == null) continue;
+      const s = String(f.value).trim();
+      if (s) searchParams.set("q", s);
     }
   }
 }

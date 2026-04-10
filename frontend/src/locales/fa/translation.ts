@@ -400,8 +400,23 @@ const translation = {
     list: {
       name: "نام",
       category: "دسته",
+      muscles: "عضلات",
       equipment: "تجهیزات",
       actions: "اقدامات",
+      intro:
+        "حرکات اختصاصی شما. در صورت امکان از کاتالوگ مشترک کپی بگیرید؛ اگر نبود، حرکت سفارشی بسازید.",
+      searchPlaceholder: "جستجو با نام یا توضیح",
+      openCatalog: "مرور حرکات کاتالوگ",
+      empty: "هنوز حرکتی در کتابخانه شما نیست. از کاتالوگ کپی بگیرید یا حرکت جدید بسازید.",
+    },
+    form: {
+      name: "نام",
+      description: "توضیحات",
+      category: "دسته",
+      muscleGroups: "گروه‌های عضلانی",
+      muscleGroupsPh: "مثلاً پا، سینه",
+      equipment: "تجهیزات",
+      createHint: "در صورت امکان از کاتالوگ پلتفرم شروع کنید:",
     },
   },
   trainingPlans: {
@@ -420,8 +435,19 @@ const translation = {
     muscles: "عضلات",
     equipment: "تجهیزات",
     description: "توضیحات",
+    actions: "اقدامات",
     copyToMine: "کپی به برنامه‌های من",
     copied: "به «برنامه‌های تمرینی من» کپی شد",
+    catalogIntroTitle: "کاتالوگ مشترک حرکات",
+    catalogIntroBody:
+      "این حرکات برای همه مربی‌ها در اپ از قبل وجود دارد. برای ویرایش یا استفاده در برنامه، یک نسخه به کتابخانه خودتان کپی کنید. فقط وقتی اینجا نیست «حرکت جدید» بسازید.",
+    readOnlyHint: "نمی‌توانید ردیف کاتالوگ را مستقیم ویرایش کنید—از «کپی به حرکات من» استفاده کنید.",
+    searchCatalog: "جستجو در کاتالوگ با نام",
+    goToMyExercises: "حرکات من",
+    catalogEmpty: "حرکتی با این جستجو پیدا نشد.",
+    copyExerciseToMine: "کپی به حرکات من",
+    copyExerciseSuccess: "حرکت به کتابخانه شما کپی شد.",
+    copyExerciseError: "کپی حرکت انجام نشد.",
   },
   common: {
     dash: "—",

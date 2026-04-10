@@ -1,20 +1,95 @@
 import { List, useTable } from "@refinedev/antd";
-import { Table } from "antd";
+import { useInvalidate } from "@refinedev/core";
+import type { BaseRecord } from "@refinedev/core";
+import { Alert, App, Button, Input, Space, Table, Typography } from "antd";
+import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
+
+import { apiPrefix, authHeaders } from "../../lib/api";
 
 export function DirectoryExercisesPage() {
   const { t } = useTranslation();
-  const { tableProps } = useTable({ resource: "directory-exercises", syncWithLocation: true });
+  const { message } = App.useApp();
+  const invalidate = useInvalidate();
+  const [copyingId, setCopyingId] = useState<number | null>(null);
+  const { tableProps, setFilters } = useTable({
+    resource: "directory-exercises",
+    syncWithLocation: true,
+  });
+
+  const onSearch = (value: string) => {
+    const v = value.trim();
+    setFilters(v ? [{ field: "q", operator: "eq", value: v }] : [], "replace");
+  };
+
+  const copyToMine = useCallback(
+    async (id: number) => {
+      setCopyingId(id);
+      try {
+        const res = await fetch(`${apiPrefix}/exercises/from-directory/${id}`, {
+          method: "POST",
+          headers: authHeaders(),
+          body: "{}",
+        });
+        if (!res.ok) {
+          message.error((await res.text()) || t("library.copyExerciseError"));
+          return;
+        }
+        message.success(t("library.copyExerciseSuccess"));
+        await invalidate({ resource: "exercises", invalidates: ["list"] });
+      } catch {
+        message.error(t("library.copyExerciseError"));
+      } finally {
+        setCopyingId(null);
+      }
+    },
+    [invalidate, message, t],
+  );
 
   return (
     <List title={t("library.exercisesTitle")} breadcrumb={false}>
-      <Table {...tableProps} rowKey="id">
-        <Table.Column dataIndex="name" title={t("library.name")} />
-        <Table.Column dataIndex="category" title={t("library.category")} />
-        <Table.Column dataIndex="muscle_groups" title={t("library.muscles")} />
-        <Table.Column dataIndex="equipment" title={t("library.equipment")} />
-        <Table.Column dataIndex="description" title={t("library.description")} ellipsis />
-      </Table>
+      <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+        <Alert
+          type="info"
+          showIcon
+          message={t("library.catalogIntroTitle")}
+          description={t("library.catalogIntroBody")}
+        />
+        <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
+          {t("library.readOnlyHint")}
+        </Typography.Paragraph>
+        <Space wrap style={{ width: "100%", justifyContent: "space-between", alignItems: "center" }}>
+          <Input.Search
+            allowClear
+            placeholder={t("library.searchCatalog")}
+            onSearch={onSearch}
+            style={{ maxWidth: 360 }}
+          />
+          <Link to="/exercises">{t("library.goToMyExercises")}</Link>
+        </Space>
+        <Table {...tableProps} rowKey="id" locale={{ emptyText: t("library.catalogEmpty") }}>
+          <Table.Column dataIndex="name" title={t("library.name")} />
+          <Table.Column dataIndex="category" title={t("library.category")} />
+          <Table.Column dataIndex="muscle_groups" title={t("library.muscles")} />
+          <Table.Column dataIndex="equipment" title={t("library.equipment")} />
+          <Table.Column dataIndex="description" title={t("library.description")} ellipsis />
+          <Table.Column<BaseRecord>
+            title={t("library.actions")}
+            width={160}
+            render={(_, record: BaseRecord) => (
+              <Button
+                type="primary"
+                size="small"
+                loading={copyingId === Number(record.id)}
+                onClick={() => void copyToMine(Number(record.id))}
+              >
+                {t("library.copyExerciseToMine")}
+              </Button>
+            )}
+          />
+        </Table>
+      </Space>
     </List>
   );
 }

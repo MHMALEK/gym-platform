@@ -398,8 +398,23 @@ const translation = {
     list: {
       name: "Name",
       category: "Category",
+      muscles: "Muscles",
       equipment: "Equipment",
       actions: "Actions",
+      intro:
+        "Your private exercises. Copy from the shared catalog when you can, or create a custom one if the catalog does not have it.",
+      searchPlaceholder: "Search by name or description",
+      openCatalog: "Browse catalog exercises",
+      empty: "No exercises in your library yet. Open the catalog to copy some, or create one.",
+    },
+    form: {
+      name: "Name",
+      description: "Description",
+      category: "Category",
+      muscleGroups: "Muscle groups",
+      muscleGroupsPh: "e.g. legs, chest",
+      equipment: "Equipment",
+      createHint: "Prefer starting from the platform catalog when possible:",
     },
   },
   trainingPlans: {
@@ -418,8 +433,19 @@ const translation = {
     muscles: "Muscles",
     equipment: "Equipment",
     description: "Description",
+    actions: "Actions",
     copyToMine: "Copy to mine",
     copied: "Copied to My training plans",
+    catalogIntroTitle: "Shared exercise catalog",
+    catalogIntroBody:
+      "These exercises are already in the app for every coach. Copy one into your library to edit it or use it in programs. You only need “Create exercise” when something is missing here.",
+    readOnlyHint: "You cannot edit catalog rows directly—use Copy to my exercises.",
+    searchCatalog: "Search catalog by name",
+    goToMyExercises: "My exercises",
+    catalogEmpty: "No catalog exercises match your search.",
+    copyExerciseToMine: "Copy to my exercises",
+    copyExerciseSuccess: "Exercise copied to your library.",
+    copyExerciseError: "Could not copy exercise.",
   },
   common: {
     dash: "—",
