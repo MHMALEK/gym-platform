@@ -1,5 +1,6 @@
 backend/.venv/
 backend/dev.db
+backend/uploads/
 backend/**/__pycache__/
 *.pyc
 .env

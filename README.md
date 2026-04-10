@@ -33,9 +33,10 @@ Set `VITE_API_URL` only if the API is on another origin (empty uses same-origin 
 ## Firebase (production)
 
 1. Create a Firebase project; enable **Authentication** (e.g. email/password).
-2. Download a **service account** JSON and set `FIREBASE_CREDENTIALS_PATH` (or `GOOGLE_APPLICATION_CREDENTIALS`) on the API.
-3. Add the web app config to the frontend env (`VITE_FIREBASE_*`) and set `VITE_DEV_AUTH=false`.
-4. Deploy the SPA build to **Firebase Hosting** (`frontend/dist` after `npm run build`).
+2. Enable **Storage** in the Firebase console and deploy rules from this repo: `firebase deploy --only storage` (uses [`firebase/storage.rules`](firebase/storage.rules); install the [Firebase CLI](https://firebase.google.com/docs/cli) and run `firebase login` / `firebase use <projectId>` first).
+3. Download a **service account** JSON and set `FIREBASE_CREDENTIALS_PATH` (or `GOOGLE_APPLICATION_CREDENTIALS`) on the API.
+4. Copy [`frontend/.env.example`](frontend/.env.example) to `frontend/.env.production` (or your host’s env UI). Set `VITE_DEV_AUTH=false`, fill all `VITE_FIREBASE_*` values from **Project settings → Your apps → Web app**, and set **`VITE_FIREBASE_STORAGE_BUCKET`** (e.g. `your-project.appspot.com`). With a real Firebase sign-in, exercise media uploads go to **Firebase Storage** under `coaches/{uid}/media/…` and the API records them via `POST /media/register`. With `VITE_DEV_AUTH=true`, uploads keep using the API disk path (`POST /media/upload`).
+5. Deploy the SPA build to **Firebase Hosting** (`frontend/dist` after `npm run build`).
 
 ## Project layout
 
