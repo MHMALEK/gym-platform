@@ -22,6 +22,7 @@ from app.schemas.client import (
     ClientUpdate,
     ClientWorkoutItemRead,
     ClientWorkoutItemWrite,
+    DietMeal,
     LastInvoiceListSummary,
     MembershipListSummary,
     SubscriptionPlanSummary,
@@ -49,6 +50,26 @@ def _parse_coaching_workout_items_raw(raw: str | None) -> list[dict]:
     if not isinstance(data, list):
         return []
     return [x for x in data if isinstance(x, dict)]
+
+
+def _parse_diet_meals_raw(raw: str | None) -> list[DietMeal]:
+    if not raw or not str(raw).strip():
+        return []
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        return []
+    if not isinstance(data, list):
+        return []
+    out: list[DietMeal] = []
+    for x in data:
+        if not isinstance(x, dict):
+            continue
+        try:
+            out.append(DietMeal.model_validate(x))
+        except Exception:
+            continue
+    return out
 
 
 async def _enrich_client_workout_items(
@@ -395,15 +416,21 @@ async def get_coaching_plans(client_id: int, coach: CurrentCoach, db: DbSession)
         return ClientCoachingPlanRead(
             workout_plan=None,
             workout_rich_html=None,
+            program_venue="mixed",
             diet_plan=None,
+            diet_meals=[],
             workout_items=[],
             updated_at=None,
         )
     items = await _enrich_client_workout_items(db, row.workout_items_json)
+    diet_meals = _parse_diet_meals_raw(row.diet_meals_json)
+    pv = row.program_venue if row.program_venue in ("mixed", "home", "commercial_gym") else "mixed"
     return ClientCoachingPlanRead(
         workout_plan=row.workout_plan,
         workout_rich_html=row.workout_rich_html,
+        program_venue=pv,  # type: ignore[arg-type]
         diet_plan=row.diet_plan,
+        diet_meals=diet_meals,
         workout_items=items,
         updated_at=row.updated_at,
     )
@@ -427,8 +454,21 @@ async def upsert_coaching_plans(
         row.workout_plan = body.workout_plan
     if "workout_rich_html" in dump:
         row.workout_rich_html = body.workout_rich_html
+    if "program_venue" in dump and body.program_venue is not None:
+        row.program_venue = body.program_venue
     if "diet_plan" in dump:
         row.diet_plan = body.diet_plan
+    if "diet_meals" in dump:
+        meals = body.diet_meals
+        if meals is not None:
+            normalized: list[dict] = []
+            for idx, m in enumerate(sorted(meals, key=lambda z: z.sort_order)):
+                d = m.model_dump()
+                d["sort_order"] = idx
+                normalized.append(d)
+            row.diet_meals_json = json.dumps(normalized) if normalized else None
+        else:
+            row.diet_meals_json = None
     if "workout_items" in dump:
         items = body.workout_items
         if items is not None:
@@ -448,10 +488,14 @@ async def upsert_coaching_plans(
     await db.commit()
     await db.refresh(row)
     items_out = await _enrich_client_workout_items(db, row.workout_items_json)
+    diet_meals_out = _parse_diet_meals_raw(row.diet_meals_json)
+    pv = row.program_venue if row.program_venue in ("mixed", "home", "commercial_gym") else "mixed"
     return ClientCoachingPlanRead(
         workout_plan=row.workout_plan,
         workout_rich_html=row.workout_rich_html,
+        program_venue=pv,  # type: ignore[arg-type]
         diet_plan=row.diet_plan,
+        diet_meals=diet_meals_out,
         workout_items=items_out,
         updated_at=row.updated_at,
     )

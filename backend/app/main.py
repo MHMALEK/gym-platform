@@ -2,8 +2,21 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
-from app.api import auth, clients, dashboard, directory, exercises, invoices, me, plan_templates, training_plans
+from app.api import (
+    auth,
+    clients,
+    dashboard,
+    directory,
+    exercise_media,
+    exercises,
+    invoices,
+    me,
+    media,
+    plan_templates,
+    training_plans,
+)
 from app.core.config import settings
 from app.core.security import init_firebase
 
@@ -11,6 +24,7 @@ from app.core.security import init_firebase
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_firebase()
+    settings.media_upload_dir.mkdir(parents=True, exist_ok=True)
     yield
 
 
@@ -31,10 +45,18 @@ app.include_router(dashboard.router, prefix=v1)
 app.include_router(me.router, prefix=v1)
 app.include_router(directory.router, prefix=v1)
 app.include_router(exercises.router, prefix=v1)
+app.include_router(exercise_media.router, prefix=v1)
+app.include_router(media.router, prefix=v1)
 app.include_router(training_plans.router, prefix=v1)
 app.include_router(clients.router, prefix=v1)
 app.include_router(invoices.router, prefix=v1)
 app.include_router(plan_templates.router, prefix=v1)
+
+app.mount(
+    "/uploads",
+    StaticFiles(directory=str(settings.media_upload_dir.resolve())),
+    name="uploads",
+)
 
 
 @app.get("/health")

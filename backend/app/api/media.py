@@ -83,13 +83,15 @@ async def register_media(body: MediaRegister, coach: CurrentCoach, db: DbSession
     if not content_type_allowed(body.content_type):
         raise HTTPException(status_code=400, detail="Unsupported content type")
     url_str = str(body.public_url)
+    if len(url_str) > 512:
+        raise HTTPException(status_code=400, detail="URL too long")
     if not is_safe_public_url(url_str):
         raise HTTPException(status_code=400, detail="Invalid public URL")
 
     asset = MediaAsset(
         coach_id=coach.id,
         storage_provider=body.storage_provider,
-        storage_path=url_str[:512],
+        storage_path=url_str,
         content_type=body.content_type[:128],
         byte_size=body.byte_size,
         original_filename=body.original_filename,

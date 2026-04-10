@@ -5,7 +5,7 @@ from sqlalchemy.orm import selectinload
 from app.api.deps import CurrentCoach, DbSession
 from app.models.training_plan import TrainingPlan
 from app.models.training_plan_item import TrainingPlanItem
-from app.schemas.exercise import ExerciseRead
+from app.schemas.exercise import exercise_to_read
 from app.schemas.training_plan import (
     TrainingPlanCreate,
     TrainingPlanItemRead,
@@ -15,6 +15,7 @@ from app.schemas.training_plan import (
     TrainingPlanUpdate,
 )
 from app.services.exercise_access import exercise_ids_allowed_for_coach
+from app.services.exercise_muscles import EXERCISE_MUSCLE_LOADER
 from app.services.workout_blocks import strip_orphan_workout_blocks
 
 router = APIRouter(prefix="/training-plans", tags=["training-plans"])
@@ -23,7 +24,11 @@ router = APIRouter(prefix="/training-plans", tags=["training-plans"])
 async def _get_owned_plan(db, coach_id: int, plan_id: int) -> TrainingPlan | None:
     result = await db.execute(
         select(TrainingPlan)
-        .options(selectinload(TrainingPlan.items).selectinload(TrainingPlanItem.exercise))
+        .options(
+            selectinload(TrainingPlan.items)
+            .selectinload(TrainingPlanItem.exercise)
+            .options(EXERCISE_MUSCLE_LOADER)
+        )
         .where(TrainingPlan.id == plan_id, TrainingPlan.coach_id == coach_id)
     )
     return result.scalar_one_or_none()
@@ -32,7 +37,7 @@ async def _get_owned_plan(db, coach_id: int, plan_id: int) -> TrainingPlan | Non
 def _plan_to_read(plan: TrainingPlan) -> TrainingPlanRead:
     items_out = []
     for it in sorted(plan.items, key=lambda x: x.sort_order):
-        er = ExerciseRead.model_validate(it.exercise) if it.exercise else None
+        er = exercise_to_read(it.exercise) if it.exercise else None
         tir = TrainingPlanItemRead.model_validate(it).model_copy(update={"exercise": er})
         items_out.append(tir)
     return TrainingPlanRead(

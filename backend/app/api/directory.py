@@ -4,10 +4,13 @@ from sqlalchemy.orm import selectinload
 
 from app.api.deps import CurrentCoach, DbSession
 from app.models.exercise import Exercise
+from app.services.exercise_muscles import EXERCISE_MUSCLE_LOADER
 from app.models.goal_type import GoalType
+from app.models.muscle_group import MuscleGroup
 from app.models.training_plan import TrainingPlan
 from app.models.training_plan_item import TrainingPlanItem
-from app.schemas.exercise import ExerciseRead
+from app.schemas.exercise import exercise_to_read
+from app.schemas.muscle_group import MuscleGroupRead
 from app.schemas.goal_type import GoalTypeRead
 from app.schemas.training_plan import TrainingPlanItemRead, TrainingPlanRead, TrainingPlanSummary
 
@@ -36,6 +39,33 @@ async def list_goal_types(
         "items": [
             GoalTypeRead.model_validate(row, from_attributes=True).model_dump()
             for row in items
+        ],
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+    }
+
+
+@router.get("/muscle-groups", response_model=dict)
+async def list_muscle_groups(
+    coach: CurrentCoach,
+    db: DbSession,
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    include_inactive: bool = Query(False),
+):
+    count_stmt = select(func.count()).select_from(MuscleGroup)
+    stmt = select(MuscleGroup)
+    if not include_inactive:
+        count_stmt = count_stmt.where(MuscleGroup.is_active.is_(True))
+        stmt = stmt.where(MuscleGroup.is_active.is_(True))
+    total = (await db.execute(count_stmt)).scalar_one()
+    stmt = stmt.order_by(MuscleGroup.sort_order, MuscleGroup.label).offset(offset).limit(limit)
+    result = await db.execute(stmt)
+    items = result.scalars().all()
+    return {
+        "items": [
+            MuscleGroupRead.model_validate(row, from_attributes=True).model_dump() for row in items
         ],
         "total": total,
         "limit": limit,
@@ -78,11 +108,18 @@ async def list_directory_exercises(
     total = (
         await db.execute(select(func.count()).select_from(Exercise).where(*cond))
     ).scalar_one()
-    stmt = select(Exercise).where(*cond).order_by(Exercise.name).offset(offset).limit(limit)
+    stmt = (
+        select(Exercise)
+        .options(EXERCISE_MUSCLE_LOADER)
+        .where(*cond)
+        .order_by(Exercise.name)
+        .offset(offset)
+        .limit(limit)
+    )
     result = await db.execute(stmt)
     items = result.scalars().all()
     return {
-        "items": [ExerciseRead.model_validate(x) for x in items],
+        "items": [exercise_to_read(x) for x in items],
         "total": total,
         "limit": limit,
         "offset": offset,
@@ -129,7 +166,11 @@ async def get_catalog_training_plan(
 ):
     result = await db.execute(
         select(TrainingPlan)
-        .options(selectinload(TrainingPlan.items).selectinload(TrainingPlanItem.exercise))
+        .options(
+            selectinload(TrainingPlan.items).selectinload(TrainingPlanItem.exercise).options(
+                EXERCISE_MUSCLE_LOADER
+            )
+        )
         .where(TrainingPlan.id == plan_id, TrainingPlan.coach_id.is_(None))
     )
     plan = result.scalar_one_or_none()
@@ -137,7 +178,7 @@ async def get_catalog_training_plan(
         raise HTTPException(status_code=404, detail="Catalog plan not found")
     items_out = []
     for it in sorted(plan.items, key=lambda x: x.sort_order):
-        er = ExerciseRead.model_validate(it.exercise) if it.exercise else None
+        er = exercise_to_read(it.exercise) if it.exercise else None
         tir = TrainingPlanItemRead.model_validate(it).model_copy(update={"exercise": er})
         items_out.append(tir)
     return TrainingPlanRead(
