@@ -1,6 +1,12 @@
-import { useCreate, useInvalidate, useList } from "@refinedev/core";
+import {
+  CalendarOutlined,
+  FileTextOutlined,
+  IdcardOutlined,
+  UserOutlined,
+} from "@ant-design/icons";
+import { useCreate, useList } from "@refinedev/core";
 import type { BaseRecord, HttpError } from "@refinedev/core";
-import { App, Button, Card, Col, DatePicker, Form, Input, InputNumber, Row, Select, Space, Table, Typography } from "antd";
+import { App, Button, Card, DatePicker, Form, Input, InputNumber, Select, Space, Table, Tabs, Typography } from "antd";
 import dayjs from "dayjs";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -19,24 +25,26 @@ function clientMembership(c: BaseRecord): MembershipSummary | undefined {
   return x.membership_summary as MembershipSummary | undefined;
 }
 
+/** Backend caps `limit` (e.g. le=200 on list endpoints). */
+const LIST_PAGE_SIZE = 200;
+
 /**
  * Minimal coach workflow: add client, add invoice, assign plan, see due dates.
  */
 export function CoachDeskPage() {
   const { t, i18n } = useTranslation();
   const { message } = App.useApp();
-  const invalidate = useInvalidate();
   const [clientForm] = Form.useForm();
   const [invoiceForm] = Form.useForm();
   const [planClientId, setPlanClientId] = useState<number | null>(null);
 
   const { data: clientsData, isLoading: clientsLoading } = useList({
     resource: "clients",
-    pagination: { pageSize: 400, mode: "server" },
+    pagination: { pageSize: LIST_PAGE_SIZE, mode: "server" },
   });
   const { data: invoicesData, isLoading: invoicesLoading } = useList({
     resource: "invoices",
-    pagination: { pageSize: 300, mode: "server" },
+    pagination: { pageSize: LIST_PAGE_SIZE, mode: "server" },
   });
 
   const clients = clientsData?.data ?? [];
@@ -74,7 +82,6 @@ export function CoachDeskPage() {
         onSuccess: () => {
           message.success(t("coachDesk.clientAdded"));
           clientForm.resetFields();
-          void invalidate({ resource: "clients", invalidates: ["list"] });
         },
         onError: (e: HttpError) => {
           message.error(e?.message ?? t("coachDesk.saveError"));
@@ -104,7 +111,6 @@ export function CoachDeskPage() {
         onSuccess: () => {
           message.success(t("coachDesk.invoiceAdded"));
           invoiceForm.resetFields();
-          void invalidate({ resource: "invoices", invalidates: ["list"] });
         },
         onError: (e: HttpError) => {
           message.error(e?.message ?? t("coachDesk.saveError"));

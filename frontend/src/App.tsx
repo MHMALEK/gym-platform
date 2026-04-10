@@ -3,6 +3,7 @@ import {
   DashboardOutlined,
   FileTextOutlined,
   FireOutlined,
+  HomeOutlined,
   ReadOutlined,
   TeamOutlined,
   UnorderedListOutlined,
@@ -32,6 +33,7 @@ import { ClientEdit } from "./pages/clients/edit";
 import { ClientList } from "./pages/clients/list";
 import { ClientFinance } from "./pages/clients/finance";
 import { ClientShow } from "./pages/clients/show";
+import { CoachDeskPage } from "./pages/coach-desk";
 import { DashboardPage } from "./pages/dashboard";
 import { buildCoachTheme } from "./theme/antdCoachTheme";
 import { ExerciseCreate } from "./pages/exercises/create";
@@ -91,8 +93,13 @@ function RefineShell() {
   const resources = useMemo(
     () => [
       {
-        name: "dashboard",
+        name: "coach-desk",
         list: "/",
+        meta: { label: t("nav.coachDesk"), icon: <HomeOutlined /> },
+      },
+      {
+        name: "dashboard",
+        list: "/dashboard",
         meta: { label: t("nav.dashboard"), icon: <DashboardOutlined /> },
       },
       {
@@ -173,7 +180,8 @@ function RefineShell() {
             </Authenticated>
           }
         >
-          <Route index element={<DashboardPage />} />
+          <Route index element={<CoachDeskPage />} />
+          <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/clients" element={<ClientList />} />
           <Route path="/clients/create" element={<ClientCreate />} />
           <Route path="/clients/edit/:id" element={<ClientEdit />} />
