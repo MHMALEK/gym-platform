@@ -1,4 +1,4 @@
-import { Alert, Card, Col, Divider, Form, Input, InputNumber, Row, Select, Space, Typography } from "antd";
+import { Card, Col, Divider, Form, Input, InputNumber, Row, Select, Space, Typography } from "antd";
 import type { SelectProps } from "antd/es/select";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
@@ -10,7 +10,7 @@ type ClientFormSectionsProps = {
   planSelectProps: SelectProps;
   isCreate: boolean;
   /** Create wizard: show only one step at a time. Omit for edit (all sections visible). */
-  createWizardStep?: 0 | 1 | 2;
+  createWizardStep?: 0 | 1 | 2 | 3;
   /** Edit flow: link to workout & diet plans for this client */
   coachingPlansClientId?: number;
 };
@@ -37,7 +37,7 @@ export function ClientFormSections({
 }: ClientFormSectionsProps) {
   const { t } = useTranslation();
   const wizard = createWizardStep !== undefined;
-  const stepHidden = (s: 0 | 1 | 2) => Boolean(wizard && createWizardStep !== s);
+  const stepHidden = (s: 0 | 1 | 2 | 3) => Boolean(wizard && createWizardStep !== s);
   const unifiedLayout = !wizard;
 
   const statusOptions = useMemo(
@@ -338,16 +338,24 @@ export function ClientFormSections({
           </Form.Item>
         </Card>
       </div>
+
+      <div hidden={stepHidden(3)}>
+        <Card size="small" className={sectionCardClass} title={t("clients.plans.pageTitle")}>
+          <Typography.Paragraph
+            type="secondary"
+            style={{ marginTop: 0, marginBottom: 14, fontSize: 13, lineHeight: 1.5 }}
+          >
+            {t("clients.wizard.stepWorkoutDietHint")}
+          </Typography.Paragraph>
+          <Form.Item name="workout_plan" label={t("clients.plans.workoutLabel")}>
+            <Input.TextArea rows={8} placeholder={t("clients.plans.workoutPlaceholder")} />
+          </Form.Item>
+          <Form.Item name="diet_plan" label={t("clients.plans.dietLabel")} style={{ marginBottom: 0 }}>
+            <Input.TextArea rows={8} placeholder={t("clients.plans.dietPlaceholder")} />
+          </Form.Item>
+        </Card>
+      </div>
     </Space>
-    {isCreate ? (
-      <Alert
-        type="info"
-        showIcon
-        style={{ marginTop: 16, maxWidth: 840 }}
-        message={t("clients.plans.createFormTitle")}
-        description={t("clients.plans.createFormBody")}
-      />
-    ) : null}
     </>
   );
 }

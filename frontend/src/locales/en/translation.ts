@@ -194,12 +194,22 @@ const translation = {
       openView: "View profile",
     },
     wizard: {
-      intro: "Invoices and subscriptions are added after the client exists — you’ll land on edit with those tabs when you save.",
+      intro:
+        "Last step is optional: add workout and diet plans now or skip. After save you’ll open the client on edit — invoices and subscriptions use the tabs there.",
       stepContact: "Contact",
       stepBodyGoals: "Body & goals",
       stepPlanAccount: "Plan & account",
+      stepWorkoutDiet: "Workout & diet",
+      stepWorkoutDietHint:
+        "Optional. You can fill this now or skip and add plans later from the client profile or edit screen.",
       next: "Next",
       back: "Back",
+      skipPlans: "Skip for now",
+      saveClient: "Save client",
+      created: "Client created.",
+      createdWithPlans: "Client and plans saved.",
+      createFailed: "Could not create client.",
+      plansSaveFailed: "Client was created but workout/diet plans could not be saved. Add them from the client’s plans page.",
     },
     form: {
       contactTitle: "Contact & profile",
@@ -280,9 +290,6 @@ const translation = {
       loadError: "Could not load plans.",
       invalidClient: "Invalid client.",
       lastUpdated: "Last updated",
-      createFormTitle: "Workout & diet plans",
-      createFormBody:
-        "After you save this client, open their profile and use “Workout & diet plans” (or edit client) to add programs.",
     },
   },
   planTemplates: {
