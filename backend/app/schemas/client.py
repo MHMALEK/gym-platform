@@ -70,10 +70,50 @@ class ClientWorkoutItemRead(ClientWorkoutItemWrite):
     exercise_name: str | None = None
 
 
+class DietFoodLine(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    description: str = Field(default="", max_length=2000)
+    calories: float | None = Field(default=None, ge=0)
+    protein_g: float | None = Field(default=None, ge=0)
+    carbs_g: float | None = Field(default=None, ge=0)
+    fat_g: float | None = Field(default=None, ge=0)
+
+    @model_validator(mode="after")
+    def strip_description(self):
+        d = (self.description or "").strip()
+        object.__setattr__(self, "description", d)
+        return self
+
+
+class DietMeal(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    sort_order: int = 0
+    name: str = Field(default="", max_length=200)
+    notes: str | None = Field(default=None, max_length=8000)
+    foods: list[DietFoodLine] = Field(default_factory=list, max_length=200)
+
+    @model_validator(mode="after")
+    def strip_meal_fields(self):
+        n = (self.name or "").strip() or "Meal"
+        object.__setattr__(self, "name", n)
+        nt = self.notes
+        if nt is not None:
+            s = nt.strip()
+            object.__setattr__(self, "notes", s if s else None)
+        return self
+
+
+CoachingProgramVenue = Literal["mixed", "home", "commercial_gym"]
+
+
 class ClientCoachingPlanRead(BaseModel):
     workout_plan: str | None = None
     workout_rich_html: str | None = None
+    program_venue: CoachingProgramVenue = "mixed"
     diet_plan: str | None = None
+    diet_meals: list[DietMeal] = Field(default_factory=list)
     workout_items: list[ClientWorkoutItemRead] = Field(default_factory=list)
     updated_at: datetime | None = None
 
@@ -81,7 +121,9 @@ class ClientCoachingPlanRead(BaseModel):
 class ClientCoachingPlanUpsert(BaseModel):
     workout_plan: str | None = None
     workout_rich_html: str | None = None
+    program_venue: CoachingProgramVenue | None = None
     diet_plan: str | None = None
+    diet_meals: list[DietMeal] | None = Field(default=None, max_length=64)
     workout_items: list[ClientWorkoutItemWrite] | None = None
 
 

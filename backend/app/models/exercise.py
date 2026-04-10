@@ -15,7 +15,6 @@ class Exercise(Base, TimestampMixin):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     category: Mapped[str | None] = mapped_column(String(128), nullable=True)
-    muscle_groups: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON or comma-separated
     equipment: Mapped[str | None] = mapped_column(String(255), nullable=True)
     venue_type: Mapped[str] = mapped_column(String(32), nullable=False, default="both", server_default="both")
     tips: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -26,6 +25,12 @@ class Exercise(Base, TimestampMixin):
 
     coach = relationship("Coach", back_populates="exercises", foreign_keys=[coach_id])
     plan_items = relationship("TrainingPlanItem", back_populates="exercise")
+    muscle_links = relationship(
+        "ExerciseMuscleGroup",
+        back_populates="exercise",
+        cascade="all, delete-orphan",
+        order_by="ExerciseMuscleGroup.sort_order",
+    )
     media_links = relationship(
         "ExerciseMedia", back_populates="exercise", cascade="all, delete-orphan"
     )

@@ -43,10 +43,14 @@ class ExerciseMediaLinkCreate(BaseModel):
     sort_order: int | None = None
 
 
+class ExerciseMediaLinkPatch(BaseModel):
+    role: MediaRole
+
+
 class ExerciseMediaOrderUpdate(BaseModel):
     """ExerciseMedia row ids in desired display order (first = lowest sort_order)."""
 
-    ordered_link_ids: list[int] = Field(..., min_length=1)
+    ordered_link_ids: list[int] = Field(default_factory=list)
 
 
 class ExerciseMediaItemRead(ORMBase):
