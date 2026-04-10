@@ -144,11 +144,18 @@ const translation = {
       endGlue: "پایان",
       rosterField: "لیست",
       notesLabel: "یادداشت",
+      viewModeTitle: "پروفایل فقط‌خواندنی",
+      viewModeDescription:
+        "این صفحه برای مرور است. برای تغییر تماس، اهداف و یادداشت از «ویرایش» استفاده کنید. صورت‌حساب و عضویت هر کدام تب جدا دارند.",
+      goToEdit: "ویرایش مراجع",
     },
     edit: {
       tabProfile: "مراجع و پروفایل",
       tabInvoices: "صورت‌حساب‌ها",
       tabMembership: "عضویت",
+      profileEditHint:
+        "فیلدهای پروفایل با «ذخیره» در بالای صفحه اعمال می‌شوند. صورت‌حساب و عضویت در همان تب با ارسال ذخیره می‌شوند.",
+      openView: "مشاهده پروفایل",
     },
     wizard: {
       intro:

@@ -144,11 +144,18 @@ const translation = {
       endGlue: "ends",
       rosterField: "Roster",
       notesLabel: "Notes",
+      viewModeTitle: "Read-only profile",
+      viewModeDescription:
+        "This page is for reviewing. Use Edit to change contact details, goals, and notes. Invoices and membership each have their own tab.",
+      goToEdit: "Edit client",
     },
     edit: {
       tabProfile: "Client & profile",
       tabInvoices: "Invoices",
       tabMembership: "Membership",
+      profileEditHint:
+        "Profile fields use Save in the header. Invoices and membership tabs save when you submit there.",
+      openView: "View profile",
     },
     wizard: {
       intro: "Invoices and subscriptions are added after the client exists — you’ll land on edit with those tabs when you save.",

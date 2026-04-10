@@ -51,6 +51,7 @@ export function ClientInvoicesPanel({ clientId }: { clientId: number }) {
 
   return (
     <Card
+      className="client-feed-card"
       id="client-financial-invoices"
       title={
         <Space>
@@ -88,6 +89,7 @@ export function ClientInvoicesPanel({ clientId }: { clientId: number }) {
             const statusLabel = t(`invoices.status.${r.status}` as never);
             return (
               <Card
+                className="client-feed-card"
                 key={r.id}
                 size="small"
                 styles={{ body: { padding: "14px 16px" } }}
@@ -139,6 +141,7 @@ export function ClientMembershipPanel({ clientId }: { clientId: number }) {
   const { t } = useTranslation();
   return (
     <Card
+      className="client-feed-card"
       id="client-financial-membership"
       title={
         <Space>

@@ -20,7 +20,11 @@ export function LoginPage() {
         alignItems: "center",
         justifyContent: "center",
         padding: 24,
-        background: `linear-gradient(165deg, ${coachBrand.layoutBg} 0%, #ecfeff 38%, #f0fdf4 72%, ${coachBrand.layoutBg} 100%)`,
+        background: `
+          radial-gradient(ellipse 90% 55% at 50% -15%, rgba(20, 184, 166, 0.22) 0%, transparent 52%),
+          radial-gradient(ellipse 70% 40% at 100% 100%, rgba(56, 189, 248, 0.08) 0%, transparent 45%),
+          linear-gradient(180deg, ${coachBrand.layoutBg} 0%, #07090d 55%, ${coachBrand.layoutBg} 100%)
+        `,
       }}
     >
       <Card

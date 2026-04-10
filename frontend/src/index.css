@@ -1,24 +1,36 @@
+/* Mirrors theme/brand.ts — dark athletic shell */
+:root {
+  --app-layout-bg: #0b0e13;
+  --app-surface: #121826;
+  --app-surface-elevated: #1a2234;
+  --app-border: rgba(148, 163, 184, 0.16);
+  --app-border-strong: rgba(148, 163, 184, 0.22);
+  --app-accent: #14b8a6;
+  --app-text-heading: #f1f5f9;
+}
+
 body {
   margin: 0;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
-  background-color: #f0f4f3;
+  background-color: var(--app-layout-bg);
+  color: #e2e8f0;
 }
 
 #root {
   min-height: 100vh;
 }
 
-/* Shell: separate header from content (admin-dashboard clarity) */
+/* Shell: separate header from content */
 .ant-layout .ant-layout-header {
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--app-border);
   line-height: 56px;
 }
 
 /* Primary focus visibility (keyboard / a11y) */
 .ant-btn-primary:focus-visible {
-  outline: 2px solid rgba(13, 148, 136, 0.45);
+  outline: 2px solid rgba(45, 212, 191, 0.55);
   outline-offset: 2px;
 }
 
@@ -42,4 +54,95 @@ html[lang="fa"] #root {
   .ant-layout > .ant-layout-sider .ant-layout-sider-trigger {
     display: none;
   }
+}
+
+/* Client detail: readable width + view vs edit surfaces */
+.client-page-shell {
+  max-width: 1080px;
+  margin: 0 auto;
+}
+
+.client-section-card--readonly.ant-card {
+  border: 1px solid var(--app-border);
+  box-shadow: none;
+}
+
+.client-section-card--readonly .ant-card-head {
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid var(--app-border);
+}
+
+.client-section-card--editable.ant-card {
+  border: 1px solid var(--app-border);
+  border-inline-start: 3px solid var(--app-accent);
+  box-shadow: none;
+}
+
+.client-section-card--editable .ant-card-head {
+  background: rgba(20, 184, 166, 0.1);
+  border-bottom: 1px solid rgba(20, 184, 166, 0.22);
+}
+
+.client-feed-card.ant-card {
+  border: 1px solid var(--app-border);
+  box-shadow: none;
+}
+
+/* Single-surface profile editor (edit client) */
+.client-edit-profile-hint {
+  margin: 0 0 16px !important;
+  font-size: 13px;
+  line-height: 1.5;
+  max-width: 720px;
+}
+
+.client-form-unified {
+  width: 100%;
+  max-width: 720px;
+}
+
+.client-profile-editor-surface.ant-card {
+  border: 1px solid var(--app-border-strong);
+  border-radius: 12px;
+  background: var(--app-surface);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+
+.client-profile-editor-surface .ant-card-body {
+  padding: 20px 22px 22px;
+}
+
+.client-form-section {
+  scroll-margin-top: 12px;
+}
+
+.client-form-section__head {
+  margin-bottom: 14px;
+}
+
+.client-form-section__title.ant-typography {
+  margin: 0 0 6px !important;
+  font-size: 15px !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.01em;
+  color: var(--app-text-heading) !important;
+}
+
+.client-form-section__hint {
+  display: block;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.client-form-section-divider.ant-divider {
+  margin: 18px 0;
+  border-color: var(--app-border);
+}
+
+.client-profile-editor-surface .ant-form-item {
+  margin-bottom: 13px;
+}
+
+.client-profile-editor-surface .ant-form-item-with-help {
+  margin-bottom: 4px;
 }

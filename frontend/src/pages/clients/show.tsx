@@ -8,11 +8,11 @@ import {
   IdcardOutlined,
   UserOutlined,
 } from "@ant-design/icons";
-import { Button, Card, Col, Divider, Row, Space, Tabs, Tag, Typography } from "antd";
+import { Alert, Button, Card, Col, Divider, Row, Space, Tabs, Tag, Typography } from "antd";
 import dayjs from "dayjs";
 import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import { formatMoney } from "../../lib/money";
 import { ClientInvoicesPanel, ClientMembershipPanel } from "./finance";
@@ -161,9 +161,12 @@ export function ClientShow() {
       ? t(`clients.accountStatus.${ac}` as never)
       : ac ?? t("common.dash");
 
+  const readonlyCard = "client-section-card client-section-card--readonly";
+
   const profileTab = (
-    <Space direction="vertical" size="large" style={{ width: "100%" }}>
+    <Space direction="vertical" size={20} style={{ width: "100%" }}>
       <Card
+        className={readonlyCard}
         title={
           <Space>
             <ContactsOutlined />
@@ -185,6 +188,7 @@ export function ClientShow() {
       </Card>
 
       <Card
+        className={readonlyCard}
         title={
           <Space>
             <AimOutlined />
@@ -218,6 +222,7 @@ export function ClientShow() {
       </Card>
 
       <Card
+        className={readonlyCard}
         title={
           <Space>
             <DashboardOutlined />
@@ -233,7 +238,7 @@ export function ClientShow() {
         }
         styles={{ body: { paddingTop: 16 } }}
       >
-        <Typography.Paragraph type="secondary" style={{ marginTop: 0, marginBottom: 16 }}>
+        <Typography.Paragraph type="secondary" style={{ marginTop: 0, marginBottom: 16, fontSize: 13, lineHeight: 1.5 }}>
           {t("clients.show.snapshotHint")}
         </Typography.Paragraph>
         <Row gutter={[0, 20]}>
@@ -260,6 +265,7 @@ export function ClientShow() {
       </Card>
 
       <Card
+        className={readonlyCard}
         title={
           <Space>
             <UserOutlined />
@@ -293,52 +299,72 @@ export function ClientShow() {
 
   return (
     <Show isLoading={query?.isLoading}>
-      <Tabs
-        activeKey={activeTab}
-        onChange={onTabChange}
-        destroyInactiveTabPane={false}
-        items={[
-          {
-            key: "profile",
-            label: (
-              <span>
-                <UserOutlined /> {t("clients.show.tabProfile")}
-              </span>
-            ),
-            children: profileTab,
-          },
-          ...(clientId != null
-            ? [
-                {
-                  key: "invoices" as const,
-                  label: (
-                    <span>
-                      <FileTextOutlined /> {t("clients.show.tabInvoices")}
-                    </span>
-                  ),
-                  children: (
-                    <div id="client-tab-invoices" style={{ paddingTop: 4 }}>
-                      <ClientInvoicesPanel clientId={clientId} />
-                    </div>
-                  ),
-                },
-                {
-                  key: "membership" as const,
-                  label: (
-                    <span>
-                      <IdcardOutlined /> {t("clients.show.tabMembership")}
-                    </span>
-                  ),
-                  children: (
-                    <div id="client-tab-membership" style={{ paddingTop: 4 }}>
-                      <ClientMembershipPanel clientId={clientId} />
-                    </div>
-                  ),
-                },
-              ]
-            : []),
-        ]}
-      />
+      <div className="client-page-shell">
+        {record?.id != null && (
+          <Alert
+            type="info"
+            showIcon
+            style={{ marginBottom: 16 }}
+            message={t("clients.show.viewModeTitle")}
+            description={
+              <Space direction="vertical" size="small" style={{ width: "100%" }}>
+                <span>{t("clients.show.viewModeDescription")}</span>
+                <Link to={`/clients/edit/${record.id}`}>
+                  <Button type="primary" size="small">
+                    {t("clients.show.goToEdit")}
+                  </Button>
+                </Link>
+              </Space>
+            }
+          />
+        )}
+        <Tabs
+          activeKey={activeTab}
+          onChange={onTabChange}
+          destroyInactiveTabPane={false}
+          items={[
+            {
+              key: "profile",
+              label: (
+                <span>
+                  <UserOutlined /> {t("clients.show.tabProfile")}
+                </span>
+              ),
+              children: profileTab,
+            },
+            ...(clientId != null
+              ? [
+                  {
+                    key: "invoices" as const,
+                    label: (
+                      <span>
+                        <FileTextOutlined /> {t("clients.show.tabInvoices")}
+                      </span>
+                    ),
+                    children: (
+                      <div id="client-tab-invoices" style={{ paddingTop: 4 }}>
+                        <ClientInvoicesPanel clientId={clientId} />
+                      </div>
+                    ),
+                  },
+                  {
+                    key: "membership" as const,
+                    label: (
+                      <span>
+                        <IdcardOutlined /> {t("clients.show.tabMembership")}
+                      </span>
+                    ),
+                    children: (
+                      <div id="client-tab-membership" style={{ paddingTop: 4 }}>
+                        <ClientMembershipPanel clientId={clientId} />
+                      </div>
+                    ),
+                  },
+                ]
+              : []),
+          ]}
+        />
+      </div>
     </Show>
   );
 }

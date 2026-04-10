@@ -238,12 +238,16 @@ export function DashboardPage() {
             {summary.invoices_overdue > 0 ? (
               <Card
                 size="small"
-                style={{ marginTop: 8, borderColor: "#ffccc7", background: "#fff2f0" }}
+                style={{
+                  marginTop: 8,
+                  borderColor: "rgba(248, 113, 113, 0.45)",
+                  background: "rgba(248, 113, 113, 0.1)",
+                }}
               >
                 <Space align="start">
-                  <WarningOutlined style={{ color: "#cf1322", fontSize: 18, marginTop: 2 }} />
+                  <WarningOutlined style={{ color: "#fca5a5", fontSize: 18, marginTop: 2 }} />
                   <div>
-                    <Typography.Text strong style={{ color: "#cf1322" }}>
+                    <Typography.Text strong style={{ color: "#fecaca" }}>
                       {summary.invoices_overdue}{" "}
                       {summary.invoices_overdue === 1
                         ? t("dashboard.overdueInvoices")
