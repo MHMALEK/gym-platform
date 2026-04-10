@@ -1,0 +1,15 @@
+rules_version = '2';
+
+// Deploy: firebase deploy --only storage (from repo root; requires Firebase CLI and `firebase use <project>`).
+// Paths must match frontend uploads: coaches/{uid}/media/...
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /coaches/{userId}/media/{fileName=**} {
+      allow read: if true;
+      allow write: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.size < 50 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*|video/.*');
+    }
+  }
+}
