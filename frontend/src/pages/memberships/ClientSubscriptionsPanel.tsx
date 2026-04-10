@@ -3,14 +3,17 @@ import {
   Avatar,
   Button,
   Card,
+  Col,
   DatePicker,
   Form,
   Input,
   Modal,
+  Row,
   Select,
   Space,
+  Skeleton,
   Switch,
-  Table,
+  Tag,
   Typography,
   message,
 } from "antd";
@@ -203,81 +206,46 @@ export function ClientSubscriptionsPanel({ clientId, allowMutation, compactHeade
     }
   };
 
-  const columns = [
-      {
-        title: t("memberships.panel.plan"),
-        width: 280,
-        render: (_: unknown, r: Sub) => {
-          const pt = r.plan_template;
-          const cur = pt?.currency ?? "USD";
-          const showDisc = pt?.discount_price != null && pt.discount_price !== "";
-          return (
-            <Space align="start" size={12}>
-              <Avatar src={pt?.image_url || undefined} size={40} style={{ flexShrink: 0 }}>
-                {(pt?.name || "?").slice(0, 1).toUpperCase()}
-              </Avatar>
-              <Space direction="vertical" size={0}>
-                <Typography.Text strong>{pt?.name ?? t("common.dash")}</Typography.Text>
-                <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                  {t("memberships.panel.planId")} {r.plan_template_id}
-                  {pt?.code ? ` · ${pt.code}` : ""}
-                </Typography.Text>
-                {pt && (
-                  <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                    {showDisc ? (
-                      <Space size={4}>
-                        <span style={{ textDecoration: "line-through" }}>
-                          {formatMoney(pt.price, cur, loc)}
-                        </span>
-                        <span>{formatMoney(pt.discount_price, cur, loc)}</span>
-                      </Space>
-                    ) : (
-                      formatMoney(pt.price, cur, loc)
-                    )}
-                  </Typography.Text>
-                )}
-              </Space>
-            </Space>
-          );
-        },
-      },
-      { title: t("memberships.panel.starts"), width: 168, render: (_: unknown, r: Sub) => formatDt(r.starts_at) },
-      { title: t("memberships.panel.ends"), width: 168, render: (_: unknown, r: Sub) => formatDt(r.ends_at) },
-      { title: t("memberships.panel.status"), dataIndex: "status" as const, width: 88 },
-      ...(allowMutation
-        ? [
-            {
-              title: t("clients.actions"),
-              width: 200,
-              render: (_: unknown, r: Sub) => (
-                <Space wrap>
-                  <Button size="small" onClick={() => openEdit(r)}>
-                    {t("memberships.panel.editDates")}
-                  </Button>
-                  <Button
-                    size="small"
-                    onClick={async () => {
-                      const ends = dayjs(r.ends_at ?? undefined).add(30, "day");
-                      const res = await fetch(`${apiPrefix}/clients/${clientId}/subscriptions/${r.id}`, {
-                        method: "PATCH",
-                        headers: authHeaders(),
-                        body: JSON.stringify({ ends_at: ends.toISOString() }),
-                      });
-                      if (res.ok) {
-                        message.success(t("memberships.panel.extended"));
-                        loadSubs();
-                        refreshClientCaches();
-                      } else message.error(await res.text());
-                    }}
-                  >
-                    {t("memberships.panel.extend30")}
-                  </Button>
+  const subStatusColor = (s: string) => {
+    if (s === "active") return "success";
+    if (s === "cancelled" || s === "canceled") return "default";
+    if (s === "expired") return "warning";
+    return "processing";
+  };
+
+  const renderPlanBlock = (r: Sub) => {
+    const pt = r.plan_template;
+    const cur = pt?.currency ?? "USD";
+    const showDisc = pt?.discount_price != null && pt.discount_price !== "";
+    return (
+      <Space align="start" size={12}>
+        <Avatar src={pt?.image_url || undefined} size={44} style={{ flexShrink: 0 }}>
+          {(pt?.name || "?").slice(0, 1).toUpperCase()}
+        </Avatar>
+        <Space direction="vertical" size={2}>
+          <Typography.Text strong style={{ fontSize: 15 }}>
+            {pt?.name ?? t("common.dash")}
+          </Typography.Text>
+          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+            {t("memberships.panel.planId")} {r.plan_template_id}
+            {pt?.code ? ` · ${pt.code}` : ""}
+          </Typography.Text>
+          {pt ? (
+            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+              {showDisc ? (
+                <Space size={4}>
+                  <span style={{ textDecoration: "line-through" }}>{formatMoney(pt.price, cur, loc)}</span>
+                  <span>{formatMoney(pt.discount_price, cur, loc)}</span>
                 </Space>
-              ),
-            },
-          ]
-        : []),
-  ];
+              ) : (
+                formatMoney(pt.price, cur, loc)
+              )}
+            </Typography.Text>
+          ) : null}
+        </Space>
+      </Space>
+    );
+  };
 
   return (
     <section id="client-financial-subscriptions">
@@ -288,20 +256,77 @@ export function ClientSubscriptionsPanel({ clientId, allowMutation, compactHeade
           <Link to="/clients">{t("memberships.panel.readOnlyLink")}</Link>.
         </Typography.Paragraph>
       ) : null}
-      <Table<Sub>
-        loading={loadingSubs}
-        dataSource={subs}
-        rowKey="id"
-        pagination={false}
-        columns={columns}
-        scroll={{ x: 960 }}
-      />
+
+      {loadingSubs ? (
+        <Skeleton active paragraph={{ rows: 3 }} />
+      ) : subs.length === 0 ? (
+        <Typography.Paragraph type="secondary" style={{ marginBottom: 16 }}>
+          {t("memberships.panel.noSubscriptionsYet")}
+        </Typography.Paragraph>
+      ) : (
+        <Space direction="vertical" size="middle" style={{ width: "100%", marginBottom: 8 }}>
+          {subs.map((r) => (
+            <Card key={r.id} size="small" styles={{ body: { padding: "14px 16px" } }}>
+              <Row gutter={[16, 12]} align="top">
+                <Col xs={24} lg={10}>
+                  {renderPlanBlock(r)}
+                </Col>
+                <Col xs={12} sm={12} lg={6}>
+                  <Typography.Text type="secondary" style={{ fontSize: 12, display: "block" }}>
+                    {t("memberships.panel.starts")}
+                  </Typography.Text>
+                  <Typography.Text>{formatDt(r.starts_at)}</Typography.Text>
+                </Col>
+                <Col xs={12} sm={12} lg={6}>
+                  <Typography.Text type="secondary" style={{ fontSize: 12, display: "block" }}>
+                    {t("memberships.panel.ends")}
+                  </Typography.Text>
+                  <Typography.Text>{formatDt(r.ends_at)}</Typography.Text>
+                </Col>
+                <Col xs={24} lg={2} style={{ textAlign: "end" }}>
+                  <Tag color={subStatusColor(r.status)}>{r.status}</Tag>
+                </Col>
+                {allowMutation ? (
+                  <Col xs={24} style={{ borderTop: "1px solid rgba(0,0,0,0.06)", paddingTop: 12, marginTop: 4 }}>
+                    <Space wrap>
+                      <Button size="small" type="primary" ghost onClick={() => openEdit(r)}>
+                        {t("memberships.panel.editDates")}
+                      </Button>
+                      <Button
+                        size="small"
+                        onClick={async () => {
+                          const ends = dayjs(r.ends_at ?? undefined).add(30, "day");
+                          const res = await fetch(`${apiPrefix}/clients/${clientId}/subscriptions/${r.id}`, {
+                            method: "PATCH",
+                            headers: authHeaders(),
+                            body: JSON.stringify({ ends_at: ends.toISOString() }),
+                          });
+                          if (res.ok) {
+                            message.success(t("memberships.panel.extended"));
+                            loadSubs();
+                            refreshClientCaches();
+                          } else message.error(await res.text());
+                        }}
+                      >
+                        {t("memberships.panel.extend30")}
+                      </Button>
+                    </Space>
+                  </Col>
+                ) : null}
+              </Row>
+            </Card>
+          ))}
+        </Space>
+      )}
 
       {allowMutation ? (
         <>
-          <Typography.Title level={5} style={{ marginTop: 24 }}>
-            {t("memberships.panel.assignTitle")}
-          </Typography.Title>
+          <Card
+            size="small"
+            title={t("memberships.panel.assignTitle")}
+            style={{ marginTop: 16 }}
+            styles={{ body: { paddingBottom: 16 } }}
+          >
           <Form
             form={assignForm}
             layout="vertical"
@@ -389,6 +414,7 @@ export function ClientSubscriptionsPanel({ clientId, allowMutation, compactHeade
               {t("memberships.panel.assign")}
             </Button>
           </Form>
+          </Card>
 
           <Modal
             title={t("memberships.panel.modalTitle")}

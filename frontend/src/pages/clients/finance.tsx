@@ -1,11 +1,12 @@
 import { DeleteButton, EditButton, useTable } from "@refinedev/antd";
 import { useOne } from "@refinedev/core";
 import { ArrowLeftOutlined, FileTextOutlined, IdcardOutlined } from "@ant-design/icons";
-import { Breadcrumb, Button, Card, Space, Table, Typography } from "antd";
+import { Breadcrumb, Button, Card, Col, Empty, Row, Skeleton, Space, Tag, Typography } from "antd";
 import dayjs from "dayjs";
 import { useTranslation } from "react-i18next";
 import { Link, useParams } from "react-router-dom";
 
+import { formatMoney } from "../../lib/money";
 import { ClientSubscriptionsPanel } from "../memberships/ClientSubscriptionsPanel";
 
 type InvoiceRow = {
@@ -18,16 +19,35 @@ type InvoiceRow = {
   status: string;
 };
 
-/** Invoice list + actions for one client (embeddable in tabs or standalone pages). */
+function invoiceStatusColor(status: string): string {
+  switch (status) {
+    case "paid":
+      return "success";
+    case "overdue":
+      return "error";
+    case "sent":
+    case "draft":
+      return "warning";
+    default:
+      return "default";
+  }
+}
+
+/** Invoice list as cards (embeddable in tabs or standalone). */
 export function ClientInvoicesPanel({ clientId }: { clientId: number }) {
-  const { t } = useTranslation();
-  const { tableProps: invoiceTableProps } = useTable<InvoiceRow>({
+  const { t, i18n } = useTranslation();
+  const { tableProps } = useTable<InvoiceRow>({
     resource: "invoices",
     syncWithLocation: false,
     filters: {
       permanent: [{ field: "client_id", operator: "eq", value: clientId }],
     },
+    pagination: { pageSize: 100, mode: "server" },
   });
+
+  const rows = tableProps.dataSource ?? [];
+  const loading = tableProps.loading;
+  const loc = i18n.language;
 
   return (
     <Card
@@ -47,46 +67,69 @@ export function ClientInvoicesPanel({ clientId }: { clientId: number }) {
       <Typography.Paragraph type="secondary" style={{ marginTop: 0 }}>
         {t("clients.finance.invoicesCardIntro")}
       </Typography.Paragraph>
-      <Space style={{ marginBottom: 12 }} wrap>
+      <Space style={{ marginBottom: 16 }} wrap>
         <Link to={`/invoices/create?client_id=${clientId}`}>
           <Button type="primary">{t("clients.finance.addInvoice")}</Button>
         </Link>
       </Space>
-      <Table<InvoiceRow>
-        {...invoiceTableProps}
-        rowKey="id"
-        scroll={{ x: 640 }}
-        columns={[
-          {
-            title: t("clients.finance.reference"),
-            dataIndex: "reference",
-            render: (v: string | null) => v ?? t("common.dash"),
-          },
-          {
-            title: t("clients.finance.amount"),
-            render: (_, r) => (r.amount != null ? `${r.amount} ${r.currency}` : t("common.dash")),
-          },
-          {
-            title: t("clients.finance.due"),
-            dataIndex: "due_date",
-            render: (v: string | null) => (v ? dayjs(v).format("MMM D, YYYY") : t("common.dash")),
-          },
-          {
-            title: t("clients.finance.status"),
-            dataIndex: "status",
-            render: (v: string) => t(`invoices.status.${v}` as never),
-          },
-          {
-            title: t("clients.actions"),
-            render: (_, r) => (
-              <Space>
-                <EditButton resource="invoices" hideText size="small" recordItemId={r.id} />
-                <DeleteButton resource="invoices" hideText size="small" recordItemId={r.id} />
-              </Space>
-            ),
-          },
-        ]}
-      />
+
+      {loading ? (
+        <Skeleton active paragraph={{ rows: 3 }} />
+      ) : rows.length === 0 ? (
+        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("clients.finance.noInvoicesYet")} />
+      ) : (
+        <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+          {rows.map((r) => {
+            const cur = r.currency ?? "USD";
+            const amountLabel =
+              r.amount != null && r.amount !== ""
+                ? formatMoney(r.amount, cur, loc)
+                : t("common.dash");
+            const statusLabel = t(`invoices.status.${r.status}` as never);
+            return (
+              <Card
+                key={r.id}
+                size="small"
+                styles={{ body: { padding: "14px 16px" } }}
+              >
+                <Row gutter={[16, 12]} align="middle" wrap>
+                  <Col xs={24} sm={12} md={10} lg={11}>
+                    <Space direction="vertical" size={4} style={{ width: "100%" }}>
+                      <Space wrap align="center">
+                        <Typography.Text strong style={{ fontSize: 15 }}>
+                          {r.reference?.trim() ? r.reference : t("clients.finance.noReference")}
+                        </Typography.Text>
+                        <Tag color={invoiceStatusColor(r.status)}>{statusLabel}</Tag>
+                      </Space>
+                      <Typography.Text type="secondary" style={{ fontSize: 13 }}>
+                        {r.due_date
+                          ? `${t("clients.finance.due")} ${dayjs(r.due_date).format("MMM D, YYYY")}`
+                          : t("clients.finance.noDueInCard")}
+                      </Typography.Text>
+                    </Space>
+                  </Col>
+                  <Col xs={24} sm={8} md={8} lg={7}>
+                    <Typography.Text strong style={{ fontSize: 16 }}>
+                      {amountLabel}
+                    </Typography.Text>
+                    <Typography.Text type="secondary" style={{ fontSize: 12, marginInlineStart: 8 }}>
+                      {cur}
+                    </Typography.Text>
+                  </Col>
+                  <Col xs={24} sm={4} md={6} lg={6} style={{ textAlign: "end" }}>
+                    <Space wrap>
+                      <EditButton resource="invoices" size="small" recordItemId={r.id}>
+                        {t("clients.finance.editInvoice")}
+                      </EditButton>
+                      <DeleteButton resource="invoices" size="small" recordItemId={r.id} />
+                    </Space>
+                  </Col>
+                </Row>
+              </Card>
+            );
+          })}
+        </Space>
+      )}
     </Card>
   );
 }

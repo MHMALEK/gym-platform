@@ -8,9 +8,9 @@ import {
   IdcardOutlined,
   UserOutlined,
 } from "@ant-design/icons";
-import { Button, Card, Descriptions, Space, Tabs, Tag, Typography } from "antd";
+import { Button, Card, Col, Divider, Row, Space, Tabs, Tag, Typography } from "antd";
 import dayjs from "dayjs";
-import { useCallback, useEffect, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate } from "react-router-dom";
 
@@ -91,6 +91,23 @@ function hashForTab(tab: ClientShowTab): string {
   return tab;
 }
 
+const profileGrid = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
+  gap: "18px 28px",
+} as const;
+
+function ProfileField({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div>
+      <Typography.Text type="secondary" style={{ fontSize: 12, display: "block", marginBottom: 6 }}>
+        {label}
+      </Typography.Text>
+      <div style={{ fontSize: 15, lineHeight: 1.5 }}>{children}</div>
+    </div>
+  );
+}
+
 export function ClientShow() {
   const { t } = useTranslation();
   const { query } = useShow({ resource: "clients" });
@@ -153,15 +170,18 @@ export function ClientShow() {
             {t("clients.show.cardContact")}
           </Space>
         }
+        styles={{ body: { paddingTop: 20 } }}
       >
-        <Descriptions bordered size="small" column={{ xs: 1, sm: 2 }} style={{ marginBottom: 0 }}>
-          <Descriptions.Item label={t("clients.show.name")}>{record?.name}</Descriptions.Item>
-          <Descriptions.Item label={t("clients.show.email")}>{record?.email ?? t("common.dash")}</Descriptions.Item>
-          <Descriptions.Item label={t("clients.show.phone")}>{record?.phone ?? t("common.dash")}</Descriptions.Item>
-          <Descriptions.Item label={t("clients.show.registrationDate")}>
+        <div style={profileGrid}>
+          <ProfileField label={t("clients.show.name")}>
+            <Typography.Text strong>{record?.name ?? t("common.dash")}</Typography.Text>
+          </ProfileField>
+          <ProfileField label={t("clients.show.email")}>{record?.email ?? t("common.dash")}</ProfileField>
+          <ProfileField label={t("clients.show.phone")}>{record?.phone ?? t("common.dash")}</ProfileField>
+          <ProfileField label={t("clients.show.registrationDate")}>
             {reg ? dayjs(reg).format("MMM D, YYYY") : t("common.dash")}
-          </Descriptions.Item>
-        </Descriptions>
+          </ProfileField>
+        </div>
       </Card>
 
       <Card
@@ -171,21 +191,30 @@ export function ClientShow() {
             {t("clients.show.cardBodyGoals")}
           </Space>
         }
+        styles={{ body: { paddingTop: 20 } }}
       >
-        <Descriptions bordered size="small" column={{ xs: 1, sm: 2 }} style={{ marginBottom: 0 }}>
-          <Descriptions.Item label={t("clients.show.weight")}>{record?.weight_kg ?? t("common.dash")}</Descriptions.Item>
-          <Descriptions.Item label={t("clients.show.height")}>{record?.height_cm ?? t("common.dash")}</Descriptions.Item>
-          <Descriptions.Item label={t("clients.show.goal")}>{goalTypeLabel(record?.goal_type)}</Descriptions.Item>
-          <Descriptions.Item label={t("clients.show.membershipPlanProfile")}>
+        <div style={profileGrid}>
+          <ProfileField label={t("clients.show.weight")}>{record?.weight_kg ?? t("common.dash")}</ProfileField>
+          <ProfileField label={t("clients.show.height")}>{record?.height_cm ?? t("common.dash")}</ProfileField>
+          <ProfileField label={t("clients.show.goal")}>{goalTypeLabel(record?.goal_type)}</ProfileField>
+          <ProfileField label={t("clients.show.membershipPlanProfile")}>
             {record?.subscription_plan_template?.name ?? t("common.dash")}
-          </Descriptions.Item>
-          <Descriptions.Item label={t("clients.show.goalDescription")} span={2}>
-            {record?.goal?.trim() ? record.goal : t("common.dash")}
-          </Descriptions.Item>
-          <Descriptions.Item label={t("clients.show.subscriptionEffective")}>
+          </ProfileField>
+          <ProfileField label={t("clients.show.subscriptionEffective")}>
             {record?.subscription_type ?? t("common.dash")}
-          </Descriptions.Item>
-        </Descriptions>
+          </ProfileField>
+          <div style={{ gridColumn: "1 / -1" }}>
+            <ProfileField label={t("clients.show.goalDescription")}>
+              {record?.goal?.trim() ? (
+                <Typography.Paragraph style={{ marginBottom: 0, whiteSpace: "pre-wrap" }}>
+                  {record.goal}
+                </Typography.Paragraph>
+              ) : (
+                t("common.dash")
+              )}
+            </ProfileField>
+          </div>
+        </div>
       </Card>
 
       <Card
@@ -202,26 +231,32 @@ export function ClientShow() {
             </Button>
           ) : null
         }
+        styles={{ body: { paddingTop: 16 } }}
       >
-        <Typography.Paragraph type="secondary" style={{ marginTop: 0 }}>
+        <Typography.Paragraph type="secondary" style={{ marginTop: 0, marginBottom: 16 }}>
           {t("clients.show.snapshotHint")}
         </Typography.Paragraph>
-        <Descriptions bordered size="small" column={1} style={{ marginBottom: 0 }}>
-          <Descriptions.Item label={t("clients.show.currentMembership")}>
-            {record?.membership_summary ? (
-              <MembershipSnapshotBlock summary={record.membership_summary as MembershipSnap} />
-            ) : (
-              t("common.dash")
-            )}
-          </Descriptions.Item>
-          <Descriptions.Item label={t("clients.show.latestInvoice")}>
-            {record?.last_invoice_summary ? (
-              <LastInvoiceSnapshotBlock inv={record.last_invoice_summary as LastInvSnap} />
-            ) : (
-              t("common.dash")
-            )}
-          </Descriptions.Item>
-        </Descriptions>
+        <Row gutter={[0, 20]}>
+          <Col span={24}>
+            <ProfileField label={t("clients.show.currentMembership")}>
+              {record?.membership_summary ? (
+                <MembershipSnapshotBlock summary={record.membership_summary as MembershipSnap} />
+              ) : (
+                t("common.dash")
+              )}
+            </ProfileField>
+          </Col>
+          <Col span={24}>
+            <Divider style={{ margin: "4px 0" }} />
+            <ProfileField label={t("clients.show.latestInvoice")}>
+              {record?.last_invoice_summary ? (
+                <LastInvoiceSnapshotBlock inv={record.last_invoice_summary as LastInvSnap} />
+              ) : (
+                t("common.dash")
+              )}
+            </ProfileField>
+          </Col>
+        </Row>
       </Card>
 
       <Card
@@ -231,14 +266,27 @@ export function ClientShow() {
             {t("clients.show.cardAccount")}
           </Space>
         }
+        styles={{ body: { paddingTop: 20 } }}
       >
-        <Descriptions bordered size="small" column={{ xs: 1, sm: 2 }} style={{ marginBottom: 0 }}>
-          <Descriptions.Item label={t("clients.show.rosterField")}>{rosterLabel}</Descriptions.Item>
-          <Descriptions.Item label={t("clients.show.clientStatus")}>{acLabel}</Descriptions.Item>
-          <Descriptions.Item label={t("clients.show.notesLabel")} span={2}>
-            {record?.notes ?? t("common.dash")}
-          </Descriptions.Item>
-        </Descriptions>
+        <div style={profileGrid}>
+          <ProfileField label={t("clients.show.rosterField")}>
+            <Tag>{rosterLabel}</Tag>
+          </ProfileField>
+          <ProfileField label={t("clients.show.clientStatus")}>
+            <Tag color="blue">{acLabel}</Tag>
+          </ProfileField>
+          <div style={{ gridColumn: "1 / -1" }}>
+            <ProfileField label={t("clients.show.notesLabel")}>
+              {record?.notes?.trim() ? (
+                <Typography.Paragraph style={{ marginBottom: 0, whiteSpace: "pre-wrap" }}>
+                  {record.notes}
+                </Typography.Paragraph>
+              ) : (
+                t("common.dash")
+              )}
+            </ProfileField>
+          </div>
+        </div>
       </Card>
     </Space>
   );

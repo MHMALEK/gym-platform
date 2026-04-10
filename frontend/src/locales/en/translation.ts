@@ -212,6 +212,10 @@ const translation = {
       amount: "Amount",
       due: "Due",
       status: "Status",
+      noInvoicesYet: "No invoices for this client yet.",
+      noReference: "No reference",
+      noDueInCard: "No due date",
+      editInvoice: "Edit",
     },
   },
   planTemplates: {
@@ -267,6 +271,7 @@ const translation = {
       starts: "Starts",
       ends: "Ends",
       status: "Status",
+      noSubscriptionsYet: "No subscription rows yet — assign a plan below when you’re ready.",
       extend: "Extend",
       extend30: "+30d",
       editDates: "Edit dates",

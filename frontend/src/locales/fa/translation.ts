@@ -213,6 +213,10 @@ const translation = {
       amount: "مبلغ",
       due: "سررسید",
       status: "وضعیت",
+      noInvoicesYet: "هنوز صورت‌حسابی برای این مراجع ثبت نشده.",
+      noReference: "بدون شماره مرجع",
+      noDueInCard: "بدون سررسید",
+      editInvoice: "ویرایش",
     },
   },
   planTemplates: {
@@ -268,6 +272,7 @@ const translation = {
       starts: "شروع",
       ends: "پایان",
       status: "وضعیت",
+      noSubscriptionsYet: "هنوز اشتراکی ثبت نشده — در صورت نیاز از بخش زیر پلن تخصیص دهید.",
       extend: "تمدید",
       extend30: "+۳۰ روز",
       editDates: "ویرایش تاریخ‌ها",
