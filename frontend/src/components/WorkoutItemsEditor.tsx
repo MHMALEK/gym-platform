@@ -569,6 +569,7 @@ export function workoutLinesFromApiItems(
     block_id?: string | null;
     block_type?: string | null;
     exercise?: { name?: string };
+    exercise_name?: string | null;
   }>,
 ): WorkoutLine[] {
   return [...raw]
@@ -582,7 +583,7 @@ export function workoutLinesFromApiItems(
       duration_sec: row.duration_sec ?? null,
       rest_sec: row.rest_sec ?? null,
       notes: row.notes ?? null,
-      exercise_name: row.exercise?.name,
+      exercise_name: row.exercise?.name ?? row.exercise_name ?? undefined,
       block_id: row.block_id?.trim() ? row.block_id.trim() : null,
       block_type: (row.block_type as WorkoutBlockType) || null,
     }));

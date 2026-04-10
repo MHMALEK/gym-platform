@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
 import { WorkoutItemsEditor, workoutLinesFromApiItems } from "../../components/WorkoutItemsEditor";
+import { WorkoutRichEditor } from "../../components/WorkoutRichEditor";
 
 type Item = {
   id: number;

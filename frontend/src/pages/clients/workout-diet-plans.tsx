@@ -92,10 +92,12 @@ export function ClientWorkoutDietPlansPage() {
     if (!valid) return;
     setSaving(true);
     try {
-      const rich = values.workout_rich_html?.replace(/<p><br><\/p>/g, "").trim() ?? "";
+      const htmlRaw = (values.workout_rich_html ?? "").trim();
+      const workoutRich =
+        htmlRaw && htmlRaw !== "<p><br></p>" && htmlRaw !== "<p></p>" ? htmlRaw : null;
       const body = {
         workout_plan: values.workout_plan?.trim() ? values.workout_plan.trim() : null,
-        workout_rich_html: rich && rich !== "<p><br></p>" ? values.workout_rich_html ?? null : null,
+        workout_rich_html: workoutRich,
         diet_plan: values.diet_plan?.trim() ? values.diet_plan.trim() : null,
         workout_items: normalizeWorkoutItemsForApi(lines),
       };
@@ -110,7 +112,7 @@ export function ClientWorkoutDietPlansPage() {
       }
       const data = (await res.json()) as CoachingPayload;
       setUpdatedAt(data.updated_at);
-      setLines(mapApiItemsToLines(data.workout_items));
+      setLines(workoutLinesFromApiItems(data.workout_items ?? []));
       message.success(t("clients.plans.saved"));
     } catch {
       message.error(t("clients.plans.saveError"));
@@ -175,6 +177,14 @@ export function ClientWorkoutDietPlansPage() {
             <Typography.Paragraph type="secondary">{t("clients.plans.notesSectionHint")}</Typography.Paragraph>
 
             <Form form={form} layout="vertical" onFinish={(v) => void onFinish(v)}>
+              <Form.Item
+                name="workout_rich_html"
+                label={t("clients.plans.workoutRichLabel")}
+                valuePropName="value"
+                getValueFromEvent={(v: string) => v}
+              >
+                <WorkoutRichEditor placeholder={t("clients.plans.workoutRichPlaceholder")} />
+              </Form.Item>
               <Form.Item name="workout_plan" label={t("clients.plans.workoutNotesLabel")}>
                 <Input.TextArea
                   rows={6}

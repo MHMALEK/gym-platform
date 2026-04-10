@@ -22,6 +22,7 @@ type PlanRecord = {
   id?: number;
   name?: string;
   description?: string;
+  workout_rich_html?: string | null;
   venue_type?: string;
   items?: Item[];
 };
@@ -43,6 +44,16 @@ export function TrainingPlanShow() {
       <Typography.Text type="secondary" style={{ display: "block", marginBottom: 16 }}>
         {t("workouts.planVenueLabel")}: {t(`workouts.venue.${record?.venue_type ?? "mixed"}`)}
       </Typography.Text>
+
+      {record?.workout_rich_html ? (
+        <div style={{ marginBottom: 20 }}>
+          <Typography.Title level={5}>{t("workouts.richSectionTitle")}</Typography.Title>
+          <div
+            className="workout-rich-preview"
+            dangerouslySetInnerHTML={{ __html: record.workout_rich_html }}
+          />
+        </div>
+      ) : null}
 
       {record?.id ? (
         <WorkoutItemsEditor
