@@ -1,13 +1,31 @@
-import { ArrowDownOutlined, ArrowUpOutlined, DeleteOutlined, PlusOutlined } from "@ant-design/icons";
+import { DeleteOutlined, HolderOutlined, LinkOutlined, PlusOutlined } from "@ant-design/icons";
+import {
+  DndContext,
+  type DragEndEvent,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { useInvalidate } from "@refinedev/core";
-import { App, Button, Input, InputNumber, Modal, Select, Space, Table, Typography } from "antd";
-import type { ColumnsType } from "antd/es/table";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { App, Button, Input, InputNumber, Modal, Select, Space, Typography } from "antd";
+import { type CSSProperties, useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { apiPrefix, authHeaders } from "../lib/api";
 
+export type WorkoutBlockType = "superset" | "circuit" | "tri_set" | "giant_set" | "dropset";
+
 export type WorkoutLine = {
+  localId: string;
   exercise_id: number;
   sort_order: number;
   sets: number | null;
@@ -16,12 +34,64 @@ export type WorkoutLine = {
   rest_sec: number | null;
   notes: string | null;
   exercise_name?: string;
+  block_id: string | null;
+  block_type: WorkoutBlockType | null;
 };
 
 type ExerciseOpt = { id: number; name: string; source: "catalog" | "mine" };
 
+function newLocalId() {
+  return crypto.randomUUID();
+}
+
+function contiguousBlockRange(items: WorkoutLine[], index: number): [number, number] {
+  const bid = items[index]?.block_id;
+  if (!bid) return [index, index];
+  let lo = index;
+  while (lo > 0 && items[lo - 1]?.block_id === bid) lo--;
+  let hi = index;
+  while (hi < items.length - 1 && items[hi + 1]?.block_id === bid) hi++;
+  return [lo, hi];
+}
+
+export function reorderWithBlocks(items: WorkoutLine[], activeIndex: number, overIndex: number): WorkoutLine[] {
+  if (activeIndex === overIndex) return items;
+  const [lo, hi] = contiguousBlockRange(items, activeIndex);
+  if (overIndex >= lo && overIndex <= hi) return items;
+  const chunk = items.slice(lo, hi + 1);
+  const rest = [...items.slice(0, lo), ...items.slice(hi + 1)];
+  let insertBefore = overIndex;
+  if (overIndex > hi) insertBefore = overIndex - chunk.length;
+  else if (overIndex < lo) insertBefore = overIndex;
+  insertBefore = Math.max(0, Math.min(insertBefore, rest.length));
+  return [...rest.slice(0, insertBefore), ...chunk, ...rest.slice(insertBefore)].map((row, i) => ({
+    ...row,
+    sort_order: i,
+  }));
+}
+
+function stripOrphanBlocks(items: WorkoutLine[]): WorkoutLine[] {
+  const counts = new Map<string, number>();
+  for (const it of items) {
+    if (it.block_id) counts.set(it.block_id, (counts.get(it.block_id) ?? 0) + 1);
+  }
+  return items.map((it) => {
+    if (it.block_id && (counts.get(it.block_id) ?? 0) < 2) {
+      return { ...it, block_id: null, block_type: null };
+    }
+    return it;
+  });
+}
+
+function blockAccent(blockId: string): string {
+  let h = 0;
+  for (let i = 0; i < blockId.length; i++) h = (h * 31 + blockId.charCodeAt(i)) >>> 0;
+  return `hsl(${h % 360} 58% 52%)`;
+}
+
 export function normalizeWorkoutItemsForApi(items: WorkoutLine[]) {
-  return items.map((it, index) => ({
+  const stripped = stripOrphanBlocks(items);
+  return stripped.map((it, index) => ({
     exercise_id: it.exercise_id,
     sort_order: index,
     sets: it.sets ?? null,
@@ -29,6 +99,8 @@ export function normalizeWorkoutItemsForApi(items: WorkoutLine[]) {
     duration_sec: it.duration_sec ?? null,
     rest_sec: it.rest_sec ?? null,
     notes: it.notes?.trim() ? it.notes.trim() : null,
+    block_id: it.block_id?.trim() ? it.block_id.trim() : null,
+    block_type: it.block_id?.trim() ? it.block_type ?? "superset" : null,
   }));
 }
 
@@ -64,6 +136,139 @@ export type WorkoutItemsEditorProps = {
   onChange?: (items: WorkoutLine[]) => void;
 };
 
+const BLOCK_OPTIONS: { value: WorkoutBlockType; labelKey: string }[] = [
+  { value: "superset", labelKey: "workouts.block.superset" },
+  { value: "circuit", labelKey: "workouts.block.circuit" },
+  { value: "tri_set", labelKey: "workouts.block.tri_set" },
+  { value: "giant_set", labelKey: "workouts.block.giant_set" },
+  { value: "dropset", labelKey: "workouts.block.dropset" },
+];
+
+function SortableRow({
+  row,
+  index,
+  itemsLen,
+  t,
+  updateAt,
+  removeAt,
+  pairWithNext,
+  joinPrevious,
+  leaveGroup,
+  updateBlockType,
+}: {
+  row: WorkoutLine;
+  index: number;
+  itemsLen: number;
+  t: (k: string) => string;
+  updateAt: (i: number, patch: Partial<WorkoutLine>) => void;
+  removeAt: (i: number) => void;
+  pairWithNext: (i: number) => void;
+  joinPrevious: (i: number) => void;
+  leaveGroup: (i: number) => void;
+  updateBlockType: (blockId: string, bt: WorkoutBlockType) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: row.localId,
+  });
+  const style: CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.75 : 1,
+    borderLeft: row.block_id ? `4px solid ${blockAccent(row.block_id)}` : "4px solid transparent",
+    paddingLeft: 10,
+    paddingRight: 8,
+    paddingTop: 10,
+    paddingBottom: 10,
+    marginBottom: 8,
+    background: "var(--app-surface-elevated, #1a2234)",
+    borderRadius: 8,
+    border: "1px solid var(--app-border, rgba(148,163,184,0.16))",
+  };
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      <Space wrap align="start" style={{ width: "100%" }} size={[8, 8]}>
+        <Button type="text" size="small" icon={<HolderOutlined />} {...attributes} {...listeners} />
+        <div style={{ minWidth: 128 }}>
+          <Typography.Text type="secondary" style={{ fontSize: 11, display: "block" }}>
+            {t("workouts.colBlock")}
+          </Typography.Text>
+          {row.block_id ? (
+            <Select<WorkoutBlockType>
+              size="small"
+              style={{ width: "100%" }}
+              value={row.block_type ?? "superset"}
+              options={BLOCK_OPTIONS.map((o) => ({ value: o.value, label: t(o.labelKey) }))}
+              onChange={(bt) => updateBlockType(row.block_id!, bt)}
+            />
+          ) : (
+            <Typography.Text type="secondary">{t("workouts.block.single")}</Typography.Text>
+          )}
+        </div>
+        <div style={{ flex: "1 1 160px", minWidth: 120 }}>
+          <Typography.Text strong>{row.exercise_name ?? `ID ${row.exercise_id}`}</Typography.Text>
+        </div>
+        <InputNumber
+          min={0}
+          size="small"
+          style={{ width: 72 }}
+          placeholder={t("workouts.colSets")}
+          value={row.sets ?? undefined}
+          onChange={(v) => updateAt(index, { sets: v == null ? null : Number(v) })}
+        />
+        <InputNumber
+          min={0}
+          size="small"
+          style={{ width: 72 }}
+          placeholder={t("workouts.colReps")}
+          value={row.reps ?? undefined}
+          onChange={(v) => updateAt(index, { reps: v == null ? null : Number(v) })}
+        />
+        <InputNumber
+          min={0}
+          size="small"
+          style={{ width: 80 }}
+          placeholder={t("workouts.colDurationSec")}
+          value={row.duration_sec ?? undefined}
+          onChange={(v) => updateAt(index, { duration_sec: v == null ? null : Number(v) })}
+        />
+        <InputNumber
+          min={0}
+          size="small"
+          style={{ width: 80 }}
+          placeholder={t("workouts.colRestSec")}
+          value={row.rest_sec ?? undefined}
+          onChange={(v) => updateAt(index, { rest_sec: v == null ? null : Number(v) })}
+        />
+        <Input
+          size="small"
+          style={{ flex: "2 1 180px", minWidth: 140 }}
+          placeholder={t("workouts.colTipsNotes")}
+          value={row.notes ?? ""}
+          onChange={(e) => updateAt(index, { notes: e.target.value || null })}
+        />
+        <Space size={4} wrap>
+          <Button
+            size="small"
+            icon={<LinkOutlined />}
+            disabled={index >= itemsLen - 1}
+            onClick={() => pairWithNext(index)}
+          >
+            {t("workouts.pairWithNext")}
+          </Button>
+          <Button size="small" disabled={index === 0} onClick={() => joinPrevious(index)}>
+            {t("workouts.joinPrevious")}
+          </Button>
+          <Button size="small" disabled={!row.block_id} onClick={() => leaveGroup(index)}>
+            {t("workouts.leaveGroup")}
+          </Button>
+          <Button size="small" danger icon={<DeleteOutlined />} onClick={() => removeAt(index)} />
+        </Space>
+      </Space>
+    </div>
+  );
+}
+
 export function WorkoutItemsEditor({
   mode,
   planId,
@@ -84,6 +289,11 @@ export function WorkoutItemsEditor({
   const [selectedExId, setSelectedExId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
   const venueCompat = useMemo(() => {
     if (planVenue === "home" || planVenue === "commercial_gym") return planVenue;
     return undefined;
@@ -92,7 +302,10 @@ export function WorkoutItemsEditor({
   useEffect(() => {
     const next = (initialItems ?? []).map((x, i) => ({
       ...x,
+      localId: x.localId || newLocalId(),
       sort_order: i,
+      block_id: x.block_id ?? null,
+      block_type: x.block_type ?? null,
     }));
     setItems(next);
   }, [initialItems]);
@@ -152,6 +365,7 @@ export function WorkoutItemsEditor({
     const next = [
       ...items,
       {
+        localId: newLocalId(),
         exercise_id: ex.id,
         sort_order: items.length,
         sets: 3,
@@ -160,19 +374,22 @@ export function WorkoutItemsEditor({
         rest_sec: 60,
         notes: null,
         exercise_name: ex.name,
+        block_id: null,
+        block_type: null,
       },
     ];
     pushItems(next);
     setPickerOpen(false);
   }, [catalogOpts, items, mineOpts, pushItems, selectedExId]);
 
-  const move = useCallback(
-    (index: number, dir: -1 | 1) => {
-      const j = index + dir;
-      if (j < 0 || j >= items.length) return;
-      const next = [...items];
-      [next[index], next[j]] = [next[j], next[index]];
-      pushItems(next.map((row, i) => ({ ...row, sort_order: i })));
+  const onDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event;
+      if (!over || active.id === over.id) return;
+      const oldIndex = items.findIndex((x) => x.localId === active.id);
+      const newIndex = items.findIndex((x) => x.localId === over.id);
+      if (oldIndex < 0 || newIndex < 0) return;
+      pushItems(reorderWithBlocks(items, oldIndex, newIndex));
     },
     [items, pushItems],
   );
@@ -188,6 +405,48 @@ export function WorkoutItemsEditor({
   const updateAt = useCallback(
     (index: number, patch: Partial<WorkoutLine>) => {
       const next = items.map((row, i) => (i === index ? { ...row, ...patch } : row));
+      pushItems(next);
+    },
+    [items, pushItems],
+  );
+
+  const pairWithNext = useCallback(
+    (index: number) => {
+      if (index >= items.length - 1) return;
+      const bid = newLocalId();
+      const bt: WorkoutBlockType = "superset";
+      const next = items.map((row, i) => {
+        if (i === index || i === index + 1) return { ...row, block_id: bid, block_type: bt };
+        return row;
+      });
+      pushItems(next);
+    },
+    [items, pushItems],
+  );
+
+  const joinPrevious = useCallback(
+    (index: number) => {
+      if (index === 0) return;
+      const prev = items[index - 1];
+      if (!prev.block_id) return;
+      const next = items.map((row, i) =>
+        i === index ? { ...row, block_id: prev.block_id, block_type: prev.block_type } : row,
+      );
+      pushItems(next);
+    },
+    [items, pushItems],
+  );
+
+  const leaveGroup = useCallback(
+    (index: number) => {
+      updateAt(index, { block_id: null, block_type: null });
+    },
+    [updateAt],
+  );
+
+  const updateBlockType = useCallback(
+    (blockId: string, bt: WorkoutBlockType) => {
+      const next = items.map((row) => (row.block_id === blockId ? { ...row, block_type: bt } : row));
       pushItems(next);
     },
     [items, pushItems],
@@ -215,101 +474,6 @@ export function WorkoutItemsEditor({
     }
   }, [invalidate, items, message, planId, t]);
 
-  const columns: ColumnsType<WorkoutLine & { _row: number }> = useMemo(
-    () => [
-      {
-        title: "#",
-        width: 44,
-        render: (_, __, i) => i + 1,
-      },
-      {
-        title: t("workouts.colExercise"),
-        render: (_, row) => row.exercise_name ?? `ID ${row.exercise_id}`,
-      },
-      {
-        title: t("workouts.colSets"),
-        width: 88,
-        render: (_, row, i) => (
-          <InputNumber
-            min={0}
-            size="small"
-            style={{ width: "100%" }}
-            value={row.sets ?? undefined}
-            onChange={(v) => updateAt(i, { sets: v == null ? null : Number(v) })}
-          />
-        ),
-      },
-      {
-        title: t("workouts.colReps"),
-        width: 88,
-        render: (_, row, i) => (
-          <InputNumber
-            min={0}
-            size="small"
-            style={{ width: "100%" }}
-            value={row.reps ?? undefined}
-            onChange={(v) => updateAt(i, { reps: v == null ? null : Number(v) })}
-          />
-        ),
-      },
-      {
-        title: t("workouts.colDurationSec"),
-        width: 100,
-        render: (_, row, i) => (
-          <InputNumber
-            min={0}
-            size="small"
-            style={{ width: "100%" }}
-            value={row.duration_sec ?? undefined}
-            onChange={(v) => updateAt(i, { duration_sec: v == null ? null : Number(v) })}
-          />
-        ),
-      },
-      {
-        title: t("workouts.colRestSec"),
-        width: 100,
-        render: (_, row, i) => (
-          <InputNumber
-            min={0}
-            size="small"
-            style={{ width: "100%" }}
-            value={row.rest_sec ?? undefined}
-            onChange={(v) => updateAt(i, { rest_sec: v == null ? null : Number(v) })}
-          />
-        ),
-      },
-      {
-        title: t("workouts.colTipsNotes"),
-        render: (_, row, i) => (
-          <Input
-            size="small"
-            value={row.notes ?? ""}
-            onChange={(e) => updateAt(i, { notes: e.target.value || null })}
-          />
-        ),
-      },
-      {
-        title: t("workouts.colActions"),
-        width: 132,
-        render: (_, __, i) => (
-          <Space size={4}>
-            <Button size="small" icon={<ArrowUpOutlined />} onClick={() => move(i, -1)} disabled={i === 0} />
-            <Button
-              size="small"
-              icon={<ArrowDownOutlined />}
-              onClick={() => move(i, 1)}
-              disabled={i === items.length - 1}
-            />
-            <Button size="small" danger icon={<DeleteOutlined />} onClick={() => removeAt(i)} />
-          </Space>
-        ),
-      },
-    ],
-    [items.length, move, removeAt, t, updateAt],
-  );
-
-  const dataSource = items.map((row, i) => ({ ...row, _row: i }));
-
   return (
     <div>
       <Typography.Title level={5} style={{ marginTop: 0 }}>
@@ -331,14 +495,30 @@ export function WorkoutItemsEditor({
           </Button>
         ) : null}
       </Space>
-      <Table<WorkoutLine & { _row: number }>
-        size="small"
-        rowKey={(r) => `${r.exercise_id}-${r._row}`}
-        dataSource={dataSource}
-        columns={columns}
-        pagination={false}
-        locale={{ emptyText: t("workouts.emptyItems") }}
-      />
+
+      {items.length === 0 ? (
+        <Typography.Text type="secondary">{t("workouts.emptyItems")}</Typography.Text>
+      ) : (
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+          <SortableContext items={items.map((r) => r.localId)} strategy={verticalListSortingStrategy}>
+            {items.map((row, index) => (
+              <SortableRow
+                key={row.localId}
+                row={row}
+                index={index}
+                itemsLen={items.length}
+                t={t}
+                updateAt={updateAt}
+                removeAt={removeAt}
+                pairWithNext={pairWithNext}
+                joinPrevious={joinPrevious}
+                leaveGroup={leaveGroup}
+                updateBlockType={updateBlockType}
+              />
+            ))}
+          </SortableContext>
+        </DndContext>
+      )}
 
       <Modal
         title={t("workouts.pickExercise")}
@@ -386,12 +566,15 @@ export function workoutLinesFromApiItems(
     duration_sec?: number | null;
     rest_sec?: number | null;
     notes?: string | null;
+    block_id?: string | null;
+    block_type?: string | null;
     exercise?: { name?: string };
   }>,
 ): WorkoutLine[] {
   return [...raw]
     .sort((a, b) => a.sort_order - b.sort_order)
     .map((row) => ({
+      localId: newLocalId(),
       exercise_id: row.exercise_id,
       sort_order: row.sort_order,
       sets: row.sets ?? null,
@@ -400,5 +583,7 @@ export function workoutLinesFromApiItems(
       rest_sec: row.rest_sec ?? null,
       notes: row.notes ?? null,
       exercise_name: row.exercise?.name,
+      block_id: row.block_id?.trim() ? row.block_id.trim() : null,
+      block_type: (row.block_type as WorkoutBlockType) || null,
     }));
 }

@@ -7,6 +7,7 @@ from app.models.coach_device_token import CoachDeviceToken
 from app.models.exercise import Exercise
 from app.models.goal_type import GoalType
 from app.models.invoice import Invoice
+from app.models.media_asset import ExerciseMedia, MediaAsset
 from app.models.plan_template import PlanTemplate
 from app.models.training_plan import TrainingPlan
 from app.models.training_plan_item import TrainingPlanItem
@@ -20,7 +21,9 @@ __all__ = [
     "CoachDeviceToken",
     "Exercise",
     "GoalType",
+    "ExerciseMedia",
     "Invoice",
+    "MediaAsset",
     "PlanTemplate",
     "TrainingPlan",
     "TrainingPlanItem",

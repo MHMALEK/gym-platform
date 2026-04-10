@@ -4,15 +4,18 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
+import { WorkoutRichEditor } from "../../components/WorkoutRichEditor";
 import {
   normalizeWorkoutItemsForApi,
   type WorkoutLine,
+  workoutLinesFromApiItems,
   WorkoutItemsEditor,
 } from "../../components/WorkoutItemsEditor";
 import { apiPrefix, authHeaders } from "../../lib/api";
 
 type CoachingPayload = {
   workout_plan: string | null;
+  workout_rich_html: string | null;
   diet_plan: string | null;
   workout_items?: Array<{
     exercise_id: number;
@@ -22,28 +25,12 @@ type CoachingPayload = {
     duration_sec: number | null;
     rest_sec: number | null;
     notes: string | null;
+    block_id?: string | null;
+    block_type?: string | null;
     exercise_name?: string | null;
   }>;
   updated_at: string | null;
 };
-
-function mapApiItemsToLines(
-  items: NonNullable<CoachingPayload["workout_items"]> | undefined,
-): WorkoutLine[] {
-  if (!items?.length) return [];
-  return [...items]
-    .sort((a, b) => a.sort_order - b.sort_order)
-    .map((x) => ({
-      exercise_id: x.exercise_id,
-      sort_order: x.sort_order,
-      sets: x.sets ?? null,
-      reps: x.reps ?? null,
-      duration_sec: x.duration_sec ?? null,
-      rest_sec: x.rest_sec ?? null,
-      notes: x.notes ?? null,
-      exercise_name: x.exercise_name ?? undefined,
-    }));
-}
 
 export function ClientWorkoutDietPlansPage() {
   const { id } = useParams<{ id: string }>();
@@ -81,9 +68,10 @@ export function ClientWorkoutDietPlansPage() {
       const data = (await res.json()) as CoachingPayload;
       form.setFieldsValue({
         workout_plan: data.workout_plan ?? "",
+        workout_rich_html: data.workout_rich_html ?? "",
         diet_plan: data.diet_plan ?? "",
       });
-      setLines(mapApiItemsToLines(data.workout_items));
+      setLines(workoutLinesFromApiItems(data.workout_items ?? []));
       setUpdatedAt(data.updated_at);
     } catch {
       message.error(t("clients.plans.loadError"));
@@ -96,12 +84,18 @@ export function ClientWorkoutDietPlansPage() {
     void load();
   }, [load]);
 
-  const onFinish = async (values: { workout_plan?: string; diet_plan?: string }) => {
+  const onFinish = async (values: {
+    workout_plan?: string;
+    workout_rich_html?: string;
+    diet_plan?: string;
+  }) => {
     if (!valid) return;
     setSaving(true);
     try {
+      const rich = values.workout_rich_html?.replace(/<p><br><\/p>/g, "").trim() ?? "";
       const body = {
         workout_plan: values.workout_plan?.trim() ? values.workout_plan.trim() : null,
+        workout_rich_html: rich && rich !== "<p><br></p>" ? values.workout_rich_html ?? null : null,
         diet_plan: values.diet_plan?.trim() ? values.diet_plan.trim() : null,
         workout_items: normalizeWorkoutItemsForApi(lines),
       };

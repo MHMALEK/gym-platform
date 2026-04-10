@@ -50,5 +50,19 @@ class Settings(BaseSettings):
 
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
 
+    # Local media uploads (multipart POST /media/upload). Use object storage + register in production if preferred.
+    media_upload_dir: Path = _BACKEND_ROOT / "uploads"
+    media_max_upload_bytes: int = 52_428_800  # 50 MiB
+    # If set (e.g. https://api.example.com), public_url in API responses is absolute; else relative /uploads/...
+    media_public_base_url: str = ""
+    media_max_assets_per_exercise: int = 24
+
+    @field_validator("media_upload_dir", mode="after")
+    @classmethod
+    def resolve_media_upload_dir(cls, v: Path) -> Path:
+        if v.is_absolute():
+            return v
+        return (_BACKEND_ROOT / v).resolve()
+
 
 settings = Settings()

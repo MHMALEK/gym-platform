@@ -19,3 +19,4 @@ class Coach(Base, TimestampMixin):
     )
     plan_templates = relationship("PlanTemplate", back_populates="coach")
     device_tokens = relationship("CoachDeviceToken", back_populates="coach", cascade="all, delete-orphan")
+    media_assets = relationship("MediaAsset", back_populates="coach", cascade="all, delete-orphan")

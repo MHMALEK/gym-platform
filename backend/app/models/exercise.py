@@ -26,3 +26,6 @@ class Exercise(Base, TimestampMixin):
 
     coach = relationship("Coach", back_populates="exercises", foreign_keys=[coach_id])
     plan_items = relationship("TrainingPlanItem", back_populates="exercise")
+    media_links = relationship(
+        "ExerciseMedia", back_populates="exercise", cascade="all, delete-orphan"
+    )
