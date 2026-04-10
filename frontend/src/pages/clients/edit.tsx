@@ -10,11 +10,12 @@ import { ClientFormSections } from "./formSections";
 
 export function ClientEdit() {
   const { t } = useTranslation();
-  const { id } = useParams<{ id: string }>();
-  const clientId = id ? Number(id) : NaN;
+  const { id: idFromRoute } = useParams<{ id: string }>();
   const [activeTab, setActiveTab] = useState("profile");
 
-  const { formProps, saveButtonProps } = useForm({ resource: "clients" });
+  const { formProps, saveButtonProps, id: idFromForm } = useForm({
+    resource: "clients",
+  });
 
   const { selectProps: goalTypeSelectProps } = useSelect({
     resource: "directory-goal-types",
@@ -30,14 +31,25 @@ export function ClientEdit() {
     pagination: { current: 1, pageSize: 200, mode: "server" },
   });
 
+  const rawId = idFromForm ?? idFromRoute;
+  const clientId =
+    rawId != null && String(rawId).length > 0 ? Number(rawId) : Number.NaN;
   const validId = Number.isFinite(clientId);
 
   return (
-    <Edit saveButtonProps={saveButtonProps}>
+    <Edit
+      saveButtonProps={saveButtonProps}
+      contentProps={{
+        styles: {
+          body: { paddingTop: 8, paddingInline: 12 },
+        },
+      }}
+    >
       <Tabs
         activeKey={activeTab}
         onChange={setActiveTab}
         destroyInactiveTabPane={false}
+        size="large"
         items={[
           {
             key: "profile",

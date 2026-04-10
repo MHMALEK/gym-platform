@@ -151,6 +151,11 @@ const translation = {
       tabInvoices: "Invoices",
       tabMembership: "Membership",
     },
+    create: {
+      saveFirstTitle: "Save the client first",
+      saveFirstDescription:
+        "Invoices and memberships need a saved client. Fill in the Client & profile tab and click Save — you’ll go to edit where these tabs load the full tools.",
+    },
     form: {
       contactTitle: "Contact & profile",
       contactHint: "Name and contact details for this client.",
