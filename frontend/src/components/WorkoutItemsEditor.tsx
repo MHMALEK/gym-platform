@@ -1,7 +1,7 @@
 import {
   DeleteOutlined,
+  DownOutlined,
   HolderOutlined,
-  LinkOutlined,
   PlusOutlined,
   SearchOutlined,
 } from "@ant-design/icons";
@@ -25,10 +25,12 @@ import { useInvalidate } from "@refinedev/core";
 import {
   App,
   Button,
+  Dropdown,
   Empty,
   Flex,
   Input,
   InputNumber,
+  Divider,
   Modal,
   Segmented,
   Select,
@@ -37,8 +39,7 @@ import {
   Tag,
   Typography,
 } from "antd";
-import type { DefaultOptionType } from "antd/es/select";
-import { type CSSProperties, useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, type CSSProperties, type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { apiPrefix, authHeaders } from "../lib/api";
@@ -110,6 +111,14 @@ function blockAccent(blockId: string): string {
   return `hsl(${h % 360} 58% 52%)`;
 }
 
+/** Adjacent singles only — avoids corrupting existing blocks; unlink first if needed. */
+function canPairBelow(items: WorkoutLine[], index: number): boolean {
+  if (index >= items.length - 1) return false;
+  const a = items[index];
+  const b = items[index + 1];
+  return !a.block_id && !b.block_id;
+}
+
 export function normalizeWorkoutItemsForApi(items: WorkoutLine[]) {
   const stripped = stripOrphanBlocks(items);
   return stripped.map((it, index) => ({
@@ -165,15 +174,46 @@ const BLOCK_OPTIONS: { value: WorkoutBlockType; labelKey: string }[] = [
   { value: "dropset", labelKey: "workouts.block.dropset" },
 ];
 
+function BlockInsertBar({
+  afterIndex,
+  pairWithNextTyped,
+  t,
+}: {
+  afterIndex: number;
+  pairWithNextTyped: (index: number, bt: WorkoutBlockType) => void;
+  t: (k: string) => string;
+}) {
+  const menuItems = BLOCK_OPTIONS.map((o) => ({
+    key: o.value,
+    label: t(o.labelKey),
+  }));
+  return (
+    <div style={{ margin: "4px 0 12px", paddingInlineStart: 36 }}>
+      <Dropdown
+        trigger={["click"]}
+        menu={{
+          items: menuItems,
+          onClick: ({ key }) => pairWithNextTyped(afterIndex, key as WorkoutBlockType),
+        }}
+      >
+        <Button type="dashed" block size="small" icon={<PlusOutlined />}>
+          {t("workouts.pairRowBelowMenu")}{" "}
+          <DownOutlined style={{ fontSize: 11, opacity: 0.72 }} />
+        </Button>
+      </Dropdown>
+    </div>
+  );
+}
+
 function SortableRow({
   row,
   index,
   itemsLen,
   prevBlockId,
+  insideBlock,
   t,
   updateAt,
   removeAt,
-  pairWithNext,
   joinPrevious,
   leaveGroup,
   updateBlockType,
@@ -182,10 +222,10 @@ function SortableRow({
   index: number;
   itemsLen: number;
   prevBlockId: string | null | undefined;
+  insideBlock: boolean;
   t: (k: string) => string;
   updateAt: (i: number, patch: Partial<WorkoutLine>) => void;
   removeAt: (i: number) => void;
-  pairWithNext: (i: number) => void;
   joinPrevious: (i: number) => void;
   leaveGroup: (i: number) => void;
   updateBlockType: (blockId: string, bt: WorkoutBlockType) => void;
@@ -193,16 +233,20 @@ function SortableRow({
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: row.localId,
   });
+  const rowStripe =
+    insideBlock || !row.block_id
+      ? "4px solid transparent"
+      : `4px solid ${blockAccent(row.block_id)}`;
   const style: CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.75 : 1,
-    borderLeft: row.block_id ? `4px solid ${blockAccent(row.block_id)}` : "4px solid transparent",
+    borderLeft: rowStripe,
     paddingLeft: 10,
     paddingRight: 8,
     paddingTop: 10,
     paddingBottom: 10,
-    marginBottom: 8,
+    marginBottom: insideBlock ? 0 : 8,
     background: "var(--app-surface-elevated, #1a2234)",
     borderRadius: 8,
     border: "1px solid var(--app-border, rgba(148,163,184,0.16))",
@@ -278,14 +322,6 @@ function SortableRow({
         <Space size={4} wrap>
           <Button
             size="small"
-            icon={<LinkOutlined />}
-            disabled={index >= itemsLen - 1}
-            onClick={() => pairWithNext(index)}
-          >
-            {t("workouts.pairWithNext")}
-          </Button>
-          <Button
-            size="small"
             disabled={index === 0 || !prevBlockId}
             onClick={() => joinPrevious(index)}
           >
@@ -319,7 +355,6 @@ export function WorkoutItemsEditor({
   const [mineOpts, setMineOpts] = useState<ExerciseOpt[]>([]);
   const [pickerQuery, setPickerQuery] = useState("");
   const [pickerScope, setPickerScope] = useState<"all" | "mine" | "catalog">("all");
-  const [selectedExId, setSelectedExId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
 
   const sensors = useSensors(
@@ -354,7 +389,6 @@ export function WorkoutItemsEditor({
   const openPicker = useCallback(async () => {
     setPickerOpen(true);
     setPickerLoading(true);
-    setSelectedExId(null);
     setPickerQuery("");
     setPickerScope("all");
     try {
@@ -368,59 +402,40 @@ export function WorkoutItemsEditor({
     }
   }, [message, t, venueCompat]);
 
-  const pickerOptionsGrouped = useMemo(() => {
+  const pickerLists = useMemo(() => {
     const q = pickerQuery.trim().toLowerCase();
     const match = (e: ExerciseOpt) => !q || e.name.toLowerCase().includes(q);
     let mineF = mineOpts.filter(match);
     let catF = catalogOpts.filter(match);
     if (pickerScope === "mine") catF = [];
     if (pickerScope === "catalog") mineF = [];
-    const toOpt = (e: ExerciseOpt): DefaultOptionType & { source: ExerciseOpt["source"] } => ({
-      value: e.id,
-      label: e.name,
-      source: e.source,
-    });
-    const groups: {
-      label: string;
-      options: (DefaultOptionType & { source: ExerciseOpt["source"] })[];
-    }[] = [];
-    if (mineF.length) {
-      groups.push({ label: t("workouts.pickerGroupMine"), options: mineF.map(toOpt) });
-    }
-    if (catF.length) {
-      groups.push({ label: t("workouts.pickerGroupCatalog"), options: catF.map(toOpt) });
-    }
-    return groups;
-  }, [catalogOpts, mineOpts, pickerQuery, pickerScope, t]);
+    return { mine: mineF, catalog: catF };
+  }, [catalogOpts, mineOpts, pickerQuery, pickerScope]);
 
-  const flatPickerChoices = useMemo(
-    () => pickerOptionsGrouped.flatMap((g) => g.options),
-    [pickerOptionsGrouped],
+  const pickerTotal = pickerLists.mine.length + pickerLists.catalog.length;
+
+  const addExerciseFromPicker = useCallback(
+    (ex: ExerciseOpt) => {
+      const next = [
+        ...items,
+        {
+          localId: newLocalId(),
+          exercise_id: ex.id,
+          sort_order: items.length,
+          sets: 3,
+          reps: 10,
+          duration_sec: null,
+          rest_sec: 60,
+          notes: null,
+          exercise_name: ex.name,
+          block_id: null,
+          block_type: null,
+        },
+      ];
+      pushItems(next);
+    },
+    [items, pushItems],
   );
-
-  const addSelectedExercise = useCallback(() => {
-    if (selectedExId == null) return;
-    const ex = [...mineOpts, ...catalogOpts].find((e) => e.id === selectedExId);
-    if (!ex) return;
-    const next = [
-      ...items,
-      {
-        localId: newLocalId(),
-        exercise_id: ex.id,
-        sort_order: items.length,
-        sets: 3,
-        reps: 10,
-        duration_sec: null,
-        rest_sec: 60,
-        notes: null,
-        exercise_name: ex.name,
-        block_id: null,
-        block_type: null,
-      },
-    ];
-    pushItems(next);
-    setPickerOpen(false);
-  }, [catalogOpts, items, mineOpts, pushItems, selectedExId]);
 
   const onDragEnd = useCallback(
     (event: DragEndEvent) => {
@@ -451,12 +466,11 @@ export function WorkoutItemsEditor({
   );
 
   const pairWithNext = useCallback(
-    (index: number) => {
-      if (index >= items.length - 1) return;
+    (index: number, blockType: WorkoutBlockType = "superset") => {
+      if (!canPairBelow(items, index)) return;
       const bid = newLocalId();
-      const bt: WorkoutBlockType = "superset";
       const next = items.map((row, i) => {
-        if (i === index || i === index + 1) return { ...row, block_id: bid, block_type: bt };
+        if (i === index || i === index + 1) return { ...row, block_id: bid, block_type: blockType };
         return row;
       });
       pushItems(next);
@@ -541,22 +555,106 @@ export function WorkoutItemsEditor({
       ) : (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
           <SortableContext items={items.map((r) => r.localId)} strategy={verticalListSortingStrategy}>
-            {items.map((row, index) => (
-              <SortableRow
-                key={row.localId}
-                row={row}
-                index={index}
-                itemsLen={items.length}
-                prevBlockId={index > 0 ? items[index - 1]?.block_id : null}
-                t={t}
-                updateAt={updateAt}
-                removeAt={removeAt}
-                pairWithNext={pairWithNext}
-                joinPrevious={joinPrevious}
-                leaveGroup={leaveGroup}
-                updateBlockType={updateBlockType}
-              />
-            ))}
+            {(() => {
+              const nodes: ReactNode[] = [];
+              let i = 0;
+              while (i < items.length) {
+                const row = items[i];
+                if (!row.block_id) {
+                  const idx = i;
+                  nodes.push(
+                    <Fragment key={row.localId}>
+                      <SortableRow
+                        row={row}
+                        index={idx}
+                        itemsLen={items.length}
+                        prevBlockId={idx > 0 ? items[idx - 1]?.block_id : null}
+                        insideBlock={false}
+                        t={t}
+                        updateAt={updateAt}
+                        removeAt={removeAt}
+                        joinPrevious={joinPrevious}
+                        leaveGroup={leaveGroup}
+                        updateBlockType={updateBlockType}
+                      />
+                      {canPairBelow(items, idx) ? (
+                        <BlockInsertBar
+                          key={`ins-${row.localId}`}
+                          afterIndex={idx}
+                          pairWithNextTyped={pairWithNext}
+                          t={t}
+                        />
+                      ) : null}
+                    </Fragment>,
+                  );
+                  i += 1;
+                  continue;
+                }
+                const bid = row.block_id!;
+                const start = i;
+                i += 1;
+                while (i < items.length && items[i].block_id === bid) i += 1;
+                const end = i - 1;
+                const accent = blockAccent(bid);
+                const bt = items[start].block_type ?? "superset";
+                nodes.push(
+                  <div
+                    key={bid}
+                    style={{
+                      marginBottom: 12,
+                      padding: "12px 12px 8px",
+                      borderRadius: 12,
+                      border: "1px solid var(--app-border, rgba(148, 163, 184, 0.2))",
+                      boxShadow: `inset 4px 0 0 0 ${accent}`,
+                      background: "var(--app-surface, rgba(18, 24, 38, 0.35))",
+                    }}
+                  >
+                    <Flex align="center" gap={8} wrap="wrap" style={{ marginBottom: 10 }}>
+                      <Tag style={{ margin: 0 }} color="processing">
+                        {t(`workouts.block.${bt}`)}
+                      </Tag>
+                      <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                        {t("workouts.blockDragBundleHint")}
+                      </Typography.Text>
+                    </Flex>
+                    {Array.from({ length: end - start + 1 }, (_, k) => {
+                      const globalIndex = start + k;
+                      const r = items[globalIndex];
+                      return (
+                        <Fragment key={r.localId}>
+                          {k > 0 ? (
+                            <div
+                              style={{
+                                height: 1,
+                                margin: "6px 0",
+                                background: "var(--app-border, rgba(148, 163, 184, 0.22))",
+                              }}
+                            />
+                          ) : null}
+                          <SortableRow
+                            row={r}
+                            index={globalIndex}
+                            itemsLen={items.length}
+                            prevBlockId={globalIndex > 0 ? items[globalIndex - 1]?.block_id : null}
+                            insideBlock
+                            t={t}
+                            updateAt={updateAt}
+                            removeAt={removeAt}
+                            joinPrevious={joinPrevious}
+                            leaveGroup={leaveGroup}
+                            updateBlockType={updateBlockType}
+                          />
+                        </Fragment>
+                      );
+                    })}
+                    {canPairBelow(items, end) ? (
+                      <BlockInsertBar afterIndex={end} pairWithNextTyped={pairWithNext} t={t} />
+                    ) : null}
+                  </div>,
+                );
+              }
+              return nodes;
+            })()}
           </SortableContext>
         </DndContext>
       )}
@@ -574,31 +672,29 @@ export function WorkoutItemsEditor({
         }
         open={pickerOpen}
         onCancel={() => setPickerOpen(false)}
-        onOk={addSelectedExercise}
-        okText={t("workouts.add")}
-        okButtonProps={{
-          disabled: pickerLoading || selectedExId == null || flatPickerChoices.length === 0,
-        }}
-        confirmLoading={pickerLoading}
-        width={560}
+        footer={
+          <Flex justify="flex-end">
+            <Button type="primary" onClick={() => setPickerOpen(false)}>
+              {t("workouts.pickerDone")}
+            </Button>
+          </Flex>
+        }
+        width={640}
         centered
         destroyOnClose
-        styles={{ body: { paddingTop: 8 } }}
+        styles={{ body: { paddingTop: 8, maxHeight: "min(78vh, 640px)", overflow: "hidden", display: "flex", flexDirection: "column" } }}
       >
         {pickerLoading ? (
           <Flex align="center" justify="center" style={{ minHeight: 220 }}>
             <Spin size="large" />
           </Flex>
         ) : (
-          <Space direction="vertical" style={{ width: "100%" }} size="middle">
+          <Space direction="vertical" style={{ width: "100%", flex: 1, minHeight: 0 }} size="middle">
             <Segmented
               block
               size="large"
               value={pickerScope}
-              onChange={(v) => {
-                setPickerScope(v as "all" | "mine" | "catalog");
-                setSelectedExId(null);
-              }}
+              onChange={(v) => setPickerScope(v as "all" | "mine" | "catalog")}
               options={[
                 { value: "all", label: t("workouts.pickerScopeAll") },
                 { value: "mine", label: t("workouts.pickerScopeMine") },
@@ -612,73 +708,121 @@ export function WorkoutItemsEditor({
               enterButton={<SearchOutlined />}
               placeholder={t("workouts.pickerFilterPh")}
               value={pickerQuery}
-              onChange={(e) => {
-                setPickerQuery(e.target.value);
-                setSelectedExId(null);
-              }}
+              onChange={(e) => setPickerQuery(e.target.value)}
             />
             <Flex align="center" justify="space-between" wrap="wrap" gap={8}>
               <Typography.Text type="secondary" style={{ fontSize: 12 }}>
                 {t("workouts.pickerHint")}
               </Typography.Text>
-              {flatPickerChoices.length > 0 ? (
+              {pickerTotal > 0 ? (
                 <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                  {t("workouts.pickerShowingCount", { count: flatPickerChoices.length })}
+                  {t("workouts.pickerShowingCount", { count: pickerTotal })}
                 </Typography.Text>
               ) : null}
             </Flex>
-            {flatPickerChoices.length === 0 ? (
-              <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("workouts.pickerNoMatches")} />
-            ) : (
-              <Select
-                size="large"
-                style={{ width: "100%" }}
-                placeholder={t("workouts.pickExercisePh")}
-                options={pickerOptionsGrouped}
-                value={selectedExId ?? undefined}
-                onChange={(v) => setSelectedExId(v)}
-                listHeight={320}
-                popupMatchSelectWidth={false}
-                styles={{ popup: { root: { minWidth: 480 } } }}
-                optionRender={(oriOption) => {
-                  const d = oriOption.data as DefaultOptionType & { source?: ExerciseOpt["source"] };
-                  const src = d.source;
-                  const name = typeof d.label === "string" ? d.label : String(d.value ?? "");
-                  return (
-                    <Flex align="center" justify="space-between" gap={10} style={{ minWidth: 0 }}>
-                      <span
-                        style={{
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                          flex: 1,
-                          minWidth: 0,
-                        }}
-                      >
-                        {name}
-                      </span>
-                      <Tag
-                        style={{
-                          flexShrink: 0,
-                          margin: 0,
-                          fontSize: 11,
-                          lineHeight: "18px",
-                          borderRadius: 4,
-                        }}
-                        color={src === "catalog" ? "geekblue" : "green"}
-                      >
-                        {src === "catalog"
-                          ? t("workouts.pickerBadgeCatalog")
-                          : t("workouts.pickerTagMine")}
-                      </Tag>
-                    </Flex>
-                  );
-                }}
-                notFoundContent={
-                  <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("workouts.pickerNoMatches")} />
-                }
-              />
-            )}
+            <div
+              style={{
+                flex: 1,
+                minHeight: 280,
+                maxHeight: 420,
+                overflowY: "auto",
+                paddingInlineEnd: 4,
+              }}
+            >
+              {pickerTotal === 0 ? (
+                <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("workouts.pickerNoMatches")} />
+              ) : (
+                <Space direction="vertical" size={12} style={{ width: "100%" }}>
+                  {pickerLists.mine.length > 0 ? (
+                    <>
+                      <Typography.Text strong style={{ display: "block", fontSize: 13 }}>
+                        {t("workouts.pickerGroupMine")}
+                      </Typography.Text>
+                      {pickerLists.mine.map((ex) => (
+                        <Flex
+                          key={`mine-${ex.id}`}
+                          align="center"
+                          justify="space-between"
+                          gap={12}
+                          wrap="wrap"
+                          style={{
+                            padding: "10px 12px",
+                            borderRadius: 8,
+                            border: "1px solid var(--app-border, rgba(148, 163, 184, 0.16))",
+                            background: "var(--app-surface-elevated, rgba(26, 32, 52, 0.55))",
+                          }}
+                        >
+                          <Flex align="center" gap={10} style={{ minWidth: 0, flex: "1 1 200px" }}>
+                            <Typography.Text ellipsis title={ex.name} style={{ margin: 0 }}>
+                              {ex.name}
+                            </Typography.Text>
+                            <Tag
+                              style={{ margin: 0, fontSize: 11, lineHeight: "18px", flexShrink: 0 }}
+                              color="green"
+                            >
+                              {t("workouts.pickerTagMine")}
+                            </Tag>
+                          </Flex>
+                          <Button
+                            type="primary"
+                            size="small"
+                            icon={<PlusOutlined />}
+                            onClick={() => addExerciseFromPicker(ex)}
+                          >
+                            {t("workouts.pickerAddExercise")}
+                          </Button>
+                        </Flex>
+                      ))}
+                    </>
+                  ) : null}
+                  {pickerLists.mine.length > 0 && pickerLists.catalog.length > 0 ? (
+                    <Divider style={{ margin: "4px 0" }} />
+                  ) : null}
+                  {pickerLists.catalog.length > 0 ? (
+                    <>
+                      <Typography.Text strong style={{ display: "block", fontSize: 13 }}>
+                        {t("workouts.pickerGroupCatalog")}
+                      </Typography.Text>
+                      {pickerLists.catalog.map((ex) => (
+                        <Flex
+                          key={`cat-${ex.id}`}
+                          align="center"
+                          justify="space-between"
+                          gap={12}
+                          wrap="wrap"
+                          style={{
+                            padding: "10px 12px",
+                            borderRadius: 8,
+                            border: "1px solid var(--app-border, rgba(148, 163, 184, 0.16))",
+                            background: "var(--app-surface-elevated, rgba(26, 32, 52, 0.55))",
+                          }}
+                        >
+                          <Flex align="center" gap={10} style={{ minWidth: 0, flex: "1 1 200px" }}>
+                            <Typography.Text ellipsis title={ex.name} style={{ margin: 0 }}>
+                              {ex.name}
+                            </Typography.Text>
+                            <Tag
+                              style={{ margin: 0, fontSize: 11, lineHeight: "18px", flexShrink: 0 }}
+                              color="geekblue"
+                            >
+                              {t("workouts.pickerBadgeCatalog")}
+                            </Tag>
+                          </Flex>
+                          <Button
+                            type="primary"
+                            size="small"
+                            icon={<PlusOutlined />}
+                            onClick={() => addExerciseFromPicker(ex)}
+                          >
+                            {t("workouts.pickerAddExercise")}
+                          </Button>
+                        </Flex>
+                      ))}
+                    </>
+                  ) : null}
+                </Space>
+              )}
+            </div>
           </Space>
         )}
       </Modal>

@@ -553,7 +553,9 @@ const translation = {
   workouts: {
     builderTitle: "Workout builder",
     builderHint:
-      "Drag the handle to reorder (linked supersets/circuits move together). Pair rows with the next exercise or join the previous group, then pick block type. Add rich notes above in edit.",
+      "Drag the handle to reorder — grouped supersets and circuits move together. Use the dashed + between two standalone rows to link them (choose superset, circuit, …). Drag another exercise into the group or use Join previous. Add rich notes in the form above.",
+    pairRowBelowMenu: "Pair with row below",
+    blockDragBundleHint: "Drag the grip to move this whole block; change type with the control on any row.",
     planVenueLabel: "Program venue",
     venueFilterHint: "Exercise picker is filtered for {{venue}} programs (includes “both”).",
     addExercise: "Add exercise",
@@ -562,10 +564,13 @@ const translation = {
     itemsSaveError: "Could not save workout.",
     loadExercisesError: "Could not load exercises.",
     pickExercise: "Add exercise",
-    pickExercisePh: "Select an exercise below",
-    pickerModalSubtitle: "Search your library and the shared catalog, then confirm to add a line to the workout.",
+    pickerModalSubtitle:
+      "Filter the list, then use Add on each row to append it to your workout. You can add the same move more than once.",
     pickerFilterPh: "Search by name…",
-    pickerHint: "Use the scope chips to narrow the list. Catalog moves are shared; My exercises are yours to edit.",
+    pickerHint:
+      "Scope chips narrow the list. Remove lines from the workout with the trash icon on each row outside this window.",
+    pickerDone: "Done",
+    pickerAddExercise: "Add",
     pickerScopeAll: "All",
     pickerScopeMine: "My exercises",
     pickerScopeCatalog: "Catalog",
