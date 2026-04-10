@@ -1,8 +1,9 @@
 import { SaveOutlined } from "@ant-design/icons";
-import { useList } from "@refinedev/core";
-import { App, Button, Card, Divider, Form, Input, Select, Space, Spin, Typography } from "antd";
-import { type ReactNode, useCallback, useEffect, useState } from "react";
+import { type BaseRecord, useList } from "@refinedev/core";
+import { App, Button, Card, Divider, Form, Input, Select, Space, Spin, Table, Typography } from "antd";
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 
 import { NutritionMealsEditor } from "../../components/NutritionMealsEditor";
 import { WorkoutRichEditor } from "../../components/WorkoutRichEditor";
@@ -53,16 +54,19 @@ export function ClientCoachingPlansEditor({ clientId, embed, extraActions }: Pro
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
   const [lines, setLines] = useState<WorkoutLine[]>([]);
   const [dietMeals, setDietMeals] = useState<DietMeal[]>([]);
-  const [nutritionTemplateId, setNutritionTemplateId] = useState<number | null>(null);
+  const [nutritionTemplateFilter, setNutritionTemplateFilter] = useState("");
 
   const { data: nutritionTemplateList, isLoading: nutritionTemplatesLoading } = useList({
     resource: "nutrition-templates",
     pagination: { current: 1, pageSize: 500 },
   });
-  const nutritionTemplateOptions = (nutritionTemplateList?.data ?? []).map((r) => ({
-    value: Number(r.id),
-    label: String(r.name ?? `#${r.id}`),
-  }));
+  const nutritionTemplateRows = useMemo(() => {
+    const raw = (nutritionTemplateList?.data ?? []) as BaseRecord[];
+    const q = nutritionTemplateFilter.trim().toLowerCase();
+    if (!q) return raw;
+    return raw.filter((r) => String(r.name ?? "").toLowerCase().includes(q));
+  }, [nutritionTemplateList?.data, nutritionTemplateFilter]);
+  const nutritionTemplatesTotalCount = nutritionTemplateList?.data?.length ?? 0;
 
   const programVenue = Form.useWatch("program_venue", form);
   const planVenueForPicker =
@@ -96,23 +100,25 @@ export function ClientCoachingPlansEditor({ clientId, embed, extraActions }: Pro
     }
   }, [clientId, form, message, t]);
 
-  const applyNutritionTemplate = useCallback(async () => {
-    if (nutritionTemplateId == null) return;
-    try {
-      const res = await fetch(`${apiPrefix}/nutrition-templates/${nutritionTemplateId}`, {
-        headers: authHeaders(),
-      });
-      if (!res.ok) {
+  const applyNutritionTemplate = useCallback(
+    async (templateId: number) => {
+      try {
+        const res = await fetch(`${apiPrefix}/nutrition-templates/${templateId}`, {
+          headers: authHeaders(),
+        });
+        if (!res.ok) {
+          message.error(t("clients.plans.templateApplyError"));
+          return;
+        }
+        const json = (await res.json()) as { meals?: unknown[] };
+        setDietMeals(dietMealsFromApi(json.meals ?? []));
+        message.success(t("clients.plans.templateApplied"));
+      } catch {
         message.error(t("clients.plans.templateApplyError"));
-        return;
       }
-      const json = (await res.json()) as { meals?: unknown[] };
-      setDietMeals(dietMealsFromApi(json.meals ?? []));
-      message.success(t("clients.plans.templateApplied"));
-    } catch {
-      message.error(t("clients.plans.templateApplyError"));
-    }
-  }, [nutritionTemplateId, message, t]);
+    },
+    [message, t],
+  );
 
   useEffect(() => {
     void load();
@@ -231,32 +237,74 @@ export function ClientCoachingPlansEditor({ clientId, embed, extraActions }: Pro
         </Form.Item>
 
         <Divider />
-        <Typography.Paragraph type="secondary">{t("clients.plans.templateApplyHint")}</Typography.Paragraph>
-        <Space wrap style={{ marginBottom: 16 }}>
-          <Select
-            allowClear
-            showSearch
-            optionFilterProp="label"
-            loading={nutritionTemplatesLoading}
-            placeholder={t("clients.plans.templateSelectPlaceholder")}
-            style={{ minWidth: 280 }}
-            options={nutritionTemplateOptions}
-            value={nutritionTemplateId ?? undefined}
-            onChange={(v) => setNutritionTemplateId(v ?? null)}
-          />
-          <Button
-            type="default"
-            disabled={nutritionTemplateId == null}
-            onClick={() => void applyNutritionTemplate()}
-          >
-            {t("clients.plans.templateApply")}
-          </Button>
+        <Typography.Title level={5} style={{ marginTop: 0 }}>
+          {t("clients.plans.templatesSectionTitle")}
+        </Typography.Title>
+        <Typography.Paragraph type="secondary" style={{ marginBottom: 12 }}>
+          {t("clients.plans.templateApplyHint")}
+        </Typography.Paragraph>
+        <Space wrap style={{ marginBottom: 12 }}>
+          <Link to="/nutrition-templates/create">
+            <Button type="primary">{t("clients.plans.newTemplate")}</Button>
+          </Link>
+          <Link to="/nutrition-templates">
+            <Button>{t("clients.plans.manageTemplates")}</Button>
+          </Link>
+          <Link to="/library/nutrition-templates">
+            <Button>{t("nutritionTemplates.list.openCatalog")}</Button>
+          </Link>
         </Space>
-        {!nutritionTemplatesLoading && nutritionTemplateOptions.length === 0 ? (
-          <Typography.Paragraph type="secondary" style={{ marginBottom: 16 }}>
-            {t("clients.plans.templateEmptyList")}
-          </Typography.Paragraph>
-        ) : null}
+        <Space direction="vertical" size="middle" style={{ width: "100%", marginBottom: 16 }}>
+          <Input.Search
+            allowClear
+            placeholder={t("clients.plans.filterTemplatesPlaceholder")}
+            value={nutritionTemplateFilter}
+            onChange={(e) => setNutritionTemplateFilter(e.target.value)}
+            onSearch={setNutritionTemplateFilter}
+            style={{ maxWidth: 400 }}
+          />
+          <Table<BaseRecord>
+            size="small"
+            rowKey="id"
+            loading={nutritionTemplatesLoading}
+            dataSource={nutritionTemplateRows}
+            pagination={{ pageSize: 8, hideOnSinglePage: true, showSizeChanger: false }}
+            locale={{
+              emptyText:
+                nutritionTemplatesTotalCount === 0
+                  ? t("clients.plans.templateEmptyList")
+                  : nutritionTemplateFilter.trim()
+                    ? t("clients.plans.templateFilterEmpty")
+                    : t("clients.plans.templateEmptyList"),
+            }}
+          >
+            <Table.Column dataIndex="name" title={t("nutritionTemplates.list.name")} ellipsis />
+            <Table.Column
+              dataIndex="meal_count"
+              title={t("nutritionTemplates.list.meals")}
+              width={88}
+              render={(v: number) => v ?? 0}
+            />
+            <Table.Column<BaseRecord>
+              title={t("nutritionTemplates.list.actions")}
+              width={220}
+              render={(_, r) => (
+                <Space wrap size="small">
+                  <Button
+                    type="primary"
+                    size="small"
+                    onClick={() => void applyNutritionTemplate(Number(r.id))}
+                  >
+                    {t("clients.plans.templateApply")}
+                  </Button>
+                  <Link to={`/nutrition-templates/edit/${r.id}`}>
+                    <Button size="small">{t("actions.edit")}</Button>
+                  </Link>
+                </Space>
+              )}
+            />
+          </Table>
+        </Space>
         <NutritionMealsEditor meals={dietMeals} onChange={setDietMeals} />
 
         <Form.Item name="diet_plan" label={t("clients.plans.dietLabel")}>

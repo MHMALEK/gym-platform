@@ -16,7 +16,7 @@ from app.schemas.training_plan import (
 )
 from app.services.exercise_access import exercise_ids_allowed_for_coach
 from app.services.exercise_muscles import EXERCISE_MUSCLE_LOADER
-from app.services.workout_blocks import strip_orphan_workout_blocks
+from app.services.workout_blocks import block_sequences_for_ordered_items, strip_orphan_workout_blocks
 
 router = APIRouter(prefix="/training-plans", tags=["training-plans"])
 
@@ -114,7 +114,9 @@ async def copy_from_catalog(catalog_id: int, coach: CurrentCoach, db: DbSession)
     )
     db.add(new_plan)
     await db.flush()
-    for it in sorted(src.items, key=lambda x: x.sort_order):
+    src_sorted = sorted(src.items, key=lambda x: x.sort_order)
+    seqs = block_sequences_for_ordered_items(src_sorted)
+    for it, bseq in zip(src_sorted, seqs):
         db.add(
             TrainingPlanItem(
                 training_plan_id=new_plan.id,
@@ -127,6 +129,7 @@ async def copy_from_catalog(catalog_id: int, coach: CurrentCoach, db: DbSession)
                 notes=it.notes,
                 block_id=it.block_id,
                 block_type=it.block_type,
+                block_sequence=bseq,
             )
         )
     await db.commit()
@@ -182,7 +185,9 @@ async def replace_training_plan_items(
     if not ok:
         raise HTTPException(status_code=400, detail=err)
     await db.execute(delete(TrainingPlanItem).where(TrainingPlanItem.training_plan_id == plan_id))
-    for row in body:
+    body_sorted = sorted(body, key=lambda x: x.sort_order)
+    seqs = block_sequences_for_ordered_items(body_sorted)
+    for row, bseq in zip(body_sorted, seqs):
         db.add(
             TrainingPlanItem(
                 training_plan_id=plan_id,
@@ -195,6 +200,7 @@ async def replace_training_plan_items(
                 notes=row.notes,
                 block_id=row.block_id,
                 block_type=row.block_type,
+                block_sequence=bseq,
             )
         )
     await db.commit()

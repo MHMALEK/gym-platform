@@ -3,6 +3,7 @@ import { Form, Input, Select, Typography } from "antd";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
+import { ExerciseFormMediaUpload } from "../../components/ExerciseFormMediaUpload";
 import { MuscleGroupSelect } from "../../components/MuscleGroupSelect";
 
 export function ExerciseCreate() {
@@ -52,11 +53,17 @@ export function ExerciseCreate() {
         <Form.Item name="correct_form_cues" label={t("exercises.form.correctFormCues")}>
           <Input.TextArea rows={3} />
         </Form.Item>
-        <Form.Item name="demo_media_url" label={t("exercises.form.demoMediaUrl")}>
-          <Input type="url" />
-        </Form.Item>
         <Form.Item name="thumbnail_url" label={t("exercises.form.thumbnailUrl")}>
-          <Input type="url" />
+          <ExerciseFormMediaUpload
+            variant="thumbnail"
+            accept="image/jpeg,image/png,image/webp,image/gif"
+          />
+        </Form.Item>
+        <Form.Item name="demo_media_url" label={t("exercises.form.demoMediaUrl")}>
+          <ExerciseFormMediaUpload
+            variant="demo"
+            accept="video/mp4,video/webm,image/jpeg,image/png,image/webp,image/gif"
+          />
         </Form.Item>
       </Form>
     </Create>

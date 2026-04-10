@@ -14,6 +14,9 @@ type Item = {
   duration_sec: number | null;
   rest_sec: number | null;
   notes: string | null;
+  block_id?: string | null;
+  block_type?: string | null;
+  block_sequence?: number | null;
   exercise?: { id: number; name: string };
 };
 

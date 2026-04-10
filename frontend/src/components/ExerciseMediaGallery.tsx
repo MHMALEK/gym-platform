@@ -27,7 +27,14 @@ function isVideo(ct: string) {
   return ct.startsWith("video/");
 }
 
-export function ExerciseMediaGallery({ exerciseId }: { exerciseId: string }) {
+export function ExerciseMediaGallery({
+  exerciseId,
+  refreshSignal = 0,
+}: {
+  exerciseId: string;
+  /** Increment to reload the list (e.g. after thumbnail / demo upload from the form). */
+  refreshSignal?: number;
+}) {
   const { t } = useTranslation();
   const eidNum = Number(exerciseId);
   const [items, setItems] = useState<ExerciseMediaItemDTO[]>([]);
@@ -50,7 +57,7 @@ export function ExerciseMediaGallery({ exerciseId }: { exerciseId: string }) {
 
   useEffect(() => {
     void load();
-  }, [load]);
+  }, [load, refreshSignal]);
 
   const handleUpload = async (options: UploadRequestOption) => {
     const file = options.file as File;

@@ -68,6 +68,7 @@ class ClientWorkoutItemWrite(BaseModel):
 
 class ClientWorkoutItemRead(ClientWorkoutItemWrite):
     exercise_name: str | None = None
+    block_sequence: int | None = None
 
 
 class DietFoodLine(BaseModel):

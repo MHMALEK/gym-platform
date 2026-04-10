@@ -58,6 +58,7 @@ class TrainingPlanItemRead(ORMBase):
     notes: str | None
     block_id: str | None = None
     block_type: str | None = None
+    block_sequence: int | None = None
     exercise: ExerciseRead | None = None
 
 

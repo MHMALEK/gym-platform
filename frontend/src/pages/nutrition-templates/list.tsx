@@ -1,6 +1,7 @@
-import { CreateButton, DeleteButton, EditButton, List, useTable } from "@refinedev/antd";
+import { PlusOutlined } from "@ant-design/icons";
+import { DeleteButton, List, useTable } from "@refinedev/antd";
 import { type BaseRecord } from "@refinedev/core";
-import { Input, Space, Table, Typography } from "antd";
+import { Button, Input, Space, Table, Typography } from "antd";
 import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
@@ -22,19 +23,31 @@ export function NutritionTemplateList() {
   );
 
   return (
-    <List headerButtons={<CreateButton />}>
+    <List title={t("nutritionTemplates.list.pageTitle")}>
       <Space direction="vertical" size="middle" style={{ width: "100%" }}>
         <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
           {t("nutritionTemplates.list.intro")}
         </Typography.Paragraph>
-        <Space wrap style={{ width: "100%", justifyContent: "space-between", alignItems: "center" }}>
+        <Space
+          wrap
+          style={{ width: "100%", justifyContent: "space-between", alignItems: "center", rowGap: 12 }}
+        >
           <Input.Search
             allowClear
             placeholder={t("nutritionTemplates.list.searchPlaceholder")}
             onSearch={(v) => applySearch(v)}
-            style={{ maxWidth: 360 }}
+            style={{ minWidth: 220, maxWidth: 400, flex: "1 1 220px" }}
           />
-          <Link to="/library/nutrition-templates">{t("nutritionTemplates.list.openCatalog")}</Link>
+          <Space wrap>
+            <Link to="/nutrition-templates/create">
+              <Button type="primary" icon={<PlusOutlined />}>
+                {t("nutritionTemplates.list.addButton")}
+              </Button>
+            </Link>
+            <Link to="/library/nutrition-templates">
+              <Button>{t("nutritionTemplates.list.openCatalog")}</Button>
+            </Link>
+          </Space>
         </Space>
         <Table {...tableProps} rowKey="id">
           <Table.Column dataIndex="name" title={t("nutritionTemplates.list.name")} />
@@ -52,11 +65,17 @@ export function NutritionTemplateList() {
           />
           <Table.Column<BaseRecord>
             title={t("nutritionTemplates.list.actions")}
-            width={120}
+            width={200}
             render={(_, record: BaseRecord) => (
               <Space wrap>
-                <EditButton hideText size="small" recordItemId={record.id} />
-                <DeleteButton hideText size="small" recordItemId={record.id} />
+                <Link to={`/nutrition-templates/edit/${record.id}`}>
+                  <Button type="primary" size="small">
+                    {t("actions.edit")}
+                  </Button>
+                </Link>
+                <DeleteButton size="small" recordItemId={record.id}>
+                  {t("actions.delete")}
+                </DeleteButton>
               </Space>
             )}
           />

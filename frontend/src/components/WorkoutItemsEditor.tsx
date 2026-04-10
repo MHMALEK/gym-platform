@@ -1,10 +1,4 @@
-import {
-  DeleteOutlined,
-  DownOutlined,
-  HolderOutlined,
-  PlusOutlined,
-  SearchOutlined,
-} from "@ant-design/icons";
+import { DeleteOutlined, HolderOutlined, PlusOutlined, SearchOutlined } from "@ant-design/icons";
 import {
   DndContext,
   type DragEndEvent,
@@ -23,6 +17,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { useInvalidate } from "@refinedev/core";
 import {
+  Alert,
   App,
   Button,
   Dropdown,
@@ -30,8 +25,8 @@ import {
   Flex,
   Input,
   InputNumber,
+  Card,
   Divider,
-  Modal,
   Segmented,
   Select,
   Space,
@@ -39,7 +34,16 @@ import {
   Tag,
   Typography,
 } from "antd";
-import { Fragment, type CSSProperties, type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
+import {
+  Fragment,
+  type CSSProperties,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
 
 import { apiPrefix, authHeaders } from "../lib/api";
@@ -58,6 +62,8 @@ export type WorkoutLine = {
   exercise_name?: string;
   block_id: string | null;
   block_type: WorkoutBlockType | null;
+  /** From API: 0-based index inside the block (optional; server also recomputes on save). */
+  block_sequence?: number | null;
 };
 
 type ExerciseOpt = { id: number; name: string; source: "catalog" | "mine" };
@@ -109,14 +115,6 @@ function blockAccent(blockId: string): string {
   let h = 0;
   for (let i = 0; i < blockId.length; i++) h = (h * 31 + blockId.charCodeAt(i)) >>> 0;
   return `hsl(${h % 360} 58% 52%)`;
-}
-
-/** Adjacent singles only — avoids corrupting existing blocks; unlink first if needed. */
-function canPairBelow(items: WorkoutLine[], index: number): boolean {
-  if (index >= items.length - 1) return false;
-  const a = items[index];
-  const b = items[index + 1];
-  return !a.block_id && !b.block_id;
 }
 
 export function normalizeWorkoutItemsForApi(items: WorkoutLine[]) {
@@ -174,61 +172,97 @@ const BLOCK_OPTIONS: { value: WorkoutBlockType; labelKey: string }[] = [
   { value: "dropset", labelKey: "workouts.block.dropset" },
 ];
 
-function BlockInsertBar({
-  afterIndex,
-  pairWithNextTyped,
-  t,
-}: {
-  afterIndex: number;
-  pairWithNextTyped: (index: number, bt: WorkoutBlockType) => void;
-  t: (k: string) => string;
-}) {
-  const menuItems = BLOCK_OPTIONS.map((o) => ({
-    key: o.value,
-    label: t(o.labelKey),
-  }));
-  return (
-    <div style={{ margin: "4px 0 12px", paddingInlineStart: 36 }}>
-      <Dropdown
-        trigger={["click"]}
-        menu={{
-          items: menuItems,
-          onClick: ({ key }) => pairWithNextTyped(afterIndex, key as WorkoutBlockType),
-        }}
-      >
-        <Button type="dashed" block size="small" icon={<PlusOutlined />}>
-          {t("workouts.pairRowBelowMenu")}{" "}
-          <DownOutlined style={{ fontSize: 11, opacity: 0.72 }} />
-        </Button>
-      </Dropdown>
-    </div>
-  );
+type PickerContext =
+  | { mode: "append" }
+  | { mode: "beginBlock"; anchorIndex: number; blockType: WorkoutBlockType }
+  | { mode: "extendBlock"; afterIndex: number };
+
+function beginBlockFromRow(
+  items: WorkoutLine[],
+  anchorIndex: number,
+  blockType: WorkoutBlockType,
+  childEx: ExerciseOpt,
+): WorkoutLine[] {
+  const bid = newLocalId();
+  const anchor = items[anchorIndex];
+  if (!anchor || anchor.block_id) return items;
+  const child: WorkoutLine = {
+    localId: newLocalId(),
+    exercise_id: childEx.id,
+    exercise_name: childEx.name,
+    sort_order: 0,
+    sets: anchor.sets,
+    reps: anchor.reps,
+    duration_sec: anchor.duration_sec,
+    rest_sec: anchor.rest_sec,
+    notes: null,
+    block_id: bid,
+    block_type: blockType,
+  };
+  const next: WorkoutLine[] = [];
+  for (let i = 0; i < items.length; i++) {
+    if (i === anchorIndex) {
+      next.push({ ...items[i], block_id: bid, block_type: blockType });
+      next.push(child);
+    } else {
+      next.push(items[i]);
+    }
+  }
+  return next.map((row, i) => ({ ...row, sort_order: i }));
+}
+
+function insertLinkedChildAfter(items: WorkoutLine[], afterIndex: number, ex: ExerciseOpt): WorkoutLine[] {
+  const row = items[afterIndex];
+  if (!row?.block_id) return items;
+  const bid = row.block_id;
+  const bt = row.block_type ?? "superset";
+  const child: WorkoutLine = {
+    localId: newLocalId(),
+    exercise_id: ex.id,
+    exercise_name: ex.name,
+    sort_order: 0,
+    sets: row.sets,
+    reps: row.reps,
+    duration_sec: row.duration_sec,
+    rest_sec: row.rest_sec,
+    notes: null,
+    block_id: bid,
+    block_type: bt,
+  };
+  const next = [...items.slice(0, afterIndex + 1), child, ...items.slice(afterIndex + 1)];
+  return next.map((r, i) => ({ ...r, sort_order: i }));
 }
 
 function SortableRow({
   row,
   index,
-  itemsLen,
   prevBlockId,
   insideBlock,
+  blockStepLabel,
+  canBeginLink,
+  canExtendLink,
+  onPickBeginBlock,
+  onPickExtendBlock,
   t,
   updateAt,
   removeAt,
   joinPrevious,
   leaveGroup,
-  updateBlockType,
 }: {
   row: WorkoutLine;
   index: number;
-  itemsLen: number;
   prevBlockId: string | null | undefined;
   insideBlock: boolean;
+  blockStepLabel: string | null;
+  canBeginLink: boolean;
+  canExtendLink: boolean;
+  onPickBeginBlock: (bt: WorkoutBlockType) => void;
+  onPickExtendBlock: () => void;
   t: (k: string) => string;
   updateAt: (i: number, patch: Partial<WorkoutLine>) => void;
   removeAt: (i: number) => void;
   joinPrevious: (i: number) => void;
   leaveGroup: (i: number) => void;
-  updateBlockType: (blockId: string, bt: WorkoutBlockType) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: row.localId,
@@ -256,18 +290,14 @@ function SortableRow({
     <div ref={setNodeRef} style={style}>
       <Space wrap align="start" style={{ width: "100%" }} size={[8, 8]}>
         <Button type="text" size="small" icon={<HolderOutlined />} {...attributes} {...listeners} />
-        <div style={{ minWidth: 128 }}>
+        <div style={{ minWidth: 132 }}>
           <Typography.Text type="secondary" style={{ fontSize: 11, display: "block" }}>
             {t("workouts.colBlock")}
           </Typography.Text>
-          {row.block_id ? (
-            <Select<WorkoutBlockType>
-              size="small"
-              style={{ width: "100%" }}
-              value={row.block_type ?? "superset"}
-              options={BLOCK_OPTIONS.map((o) => ({ value: o.value, label: t(o.labelKey) }))}
-              onChange={(bt) => updateBlockType(row.block_id!, bt)}
-            />
+          {blockStepLabel ? (
+            <Typography.Text strong style={{ fontSize: 12, display: "block" }}>
+              {blockStepLabel}
+            </Typography.Text>
           ) : (
             <Typography.Text type="secondary">{t("workouts.block.single")}</Typography.Text>
           )}
@@ -320,6 +350,27 @@ function SortableRow({
           onChange={(e) => updateAt(index, { notes: e.target.value || null })}
         />
         <Space size={4} wrap>
+          {canBeginLink ? (
+            <Dropdown
+              trigger={["click"]}
+              menu={{
+                items: BLOCK_OPTIONS.map((o) => ({
+                  key: o.value,
+                  label: t(o.labelKey),
+                  onClick: () => onPickBeginBlock(o.value),
+                })),
+              }}
+            >
+              <Button size="small" type="primary" ghost icon={<PlusOutlined />}>
+                {t("workouts.linkExercisesButton")}
+              </Button>
+            </Dropdown>
+          ) : null}
+          {canExtendLink ? (
+            <Button size="small" type="primary" ghost icon={<PlusOutlined />} onClick={onPickExtendBlock}>
+              {t("workouts.addLinkedBelow")}
+            </Button>
+          ) : null}
           <Button
             size="small"
             disabled={index === 0 || !prevBlockId}
@@ -349,13 +400,15 @@ export function WorkoutItemsEditor({
   const { message } = App.useApp();
   const invalidate = useInvalidate();
   const [items, setItems] = useState<WorkoutLine[]>([]);
-  const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerLoading, setPickerLoading] = useState(false);
   const [catalogOpts, setCatalogOpts] = useState<ExerciseOpt[]>([]);
   const [mineOpts, setMineOpts] = useState<ExerciseOpt[]>([]);
   const [pickerQuery, setPickerQuery] = useState("");
   const [pickerScope, setPickerScope] = useState<"all" | "mine" | "catalog">("all");
   const [saving, setSaving] = useState(false);
+  const pickerContextRef = useRef<PickerContext>({ mode: "append" });
+  /** Mirrors ref so the UI can show which add mode is active (append vs linking). */
+  const [pickerBanner, setPickerBanner] = useState<PickerContext>({ mode: "append" });
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -386,11 +439,8 @@ export function WorkoutItemsEditor({
     [onChange],
   );
 
-  const openPicker = useCallback(async () => {
-    setPickerOpen(true);
+  const loadExerciseOptions = useCallback(async () => {
     setPickerLoading(true);
-    setPickerQuery("");
-    setPickerScope("all");
     try {
       const { catalog, mine } = await loadExercisesGrouped(venueCompat ?? null);
       setCatalogOpts(catalog);
@@ -401,6 +451,15 @@ export function WorkoutItemsEditor({
       setPickerLoading(false);
     }
   }, [message, t, venueCompat]);
+
+  useEffect(() => {
+    void loadExerciseOptions();
+  }, [loadExerciseOptions]);
+
+  const armPickerContext = useCallback((ctx: PickerContext) => {
+    pickerContextRef.current = ctx;
+    setPickerBanner(ctx);
+  }, []);
 
   const pickerLists = useMemo(() => {
     const q = pickerQuery.trim().toLowerCase();
@@ -416,23 +475,33 @@ export function WorkoutItemsEditor({
 
   const addExerciseFromPicker = useCallback(
     (ex: ExerciseOpt) => {
-      const next = [
-        ...items,
-        {
-          localId: newLocalId(),
-          exercise_id: ex.id,
-          sort_order: items.length,
-          sets: 3,
-          reps: 10,
-          duration_sec: null,
-          rest_sec: 60,
-          notes: null,
-          exercise_name: ex.name,
-          block_id: null,
-          block_type: null,
-        },
-      ];
+      const ctx = pickerContextRef.current;
+      let next: WorkoutLine[];
+      if (ctx.mode === "beginBlock") {
+        next = beginBlockFromRow(items, ctx.anchorIndex, ctx.blockType, ex);
+      } else if (ctx.mode === "extendBlock") {
+        next = insertLinkedChildAfter(items, ctx.afterIndex, ex);
+      } else {
+        next = [
+          ...items,
+          {
+            localId: newLocalId(),
+            exercise_id: ex.id,
+            sort_order: items.length,
+            sets: 3,
+            reps: 10,
+            duration_sec: null,
+            rest_sec: 60,
+            notes: null,
+            exercise_name: ex.name,
+            block_id: null,
+            block_type: null,
+          },
+        ];
+      }
       pushItems(next);
+      pickerContextRef.current = { mode: "append" };
+      setPickerBanner({ mode: "append" });
     },
     [items, pushItems],
   );
@@ -460,19 +529,6 @@ export function WorkoutItemsEditor({
   const updateAt = useCallback(
     (index: number, patch: Partial<WorkoutLine>) => {
       const next = items.map((row, i) => (i === index ? { ...row, ...patch } : row));
-      pushItems(next);
-    },
-    [items, pushItems],
-  );
-
-  const pairWithNext = useCallback(
-    (index: number, blockType: WorkoutBlockType = "superset") => {
-      if (!canPairBelow(items, index)) return;
-      const bid = newLocalId();
-      const next = items.map((row, i) => {
-        if (i === index || i === index + 1) return { ...row, block_id: bid, block_type: blockType };
-        return row;
-      });
       pushItems(next);
     },
     [items, pushItems],
@@ -539,176 +595,80 @@ export function WorkoutItemsEditor({
           {t("workouts.venueFilterHint", { venue: t(`workouts.venue.${planVenue}`) })}
         </Typography.Text>
       ) : null}
-      <Space wrap style={{ marginBottom: 12 }}>
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => void openPicker()}>
-          {t("workouts.addExercise")}
-        </Button>
-        {mode === "training-plan" && showSaveButton ? (
-          <Button onClick={() => void saveTrainingPlan()} loading={saving}>
-            {t("workouts.saveItems")}
+
+      <Card
+        id="workout-exercise-bank"
+        size="small"
+        title={t("workouts.exerciseBankTitle")}
+        style={{ marginBottom: 16 }}
+        extra={
+          <Button size="small" loading={pickerLoading} onClick={() => void loadExerciseOptions()}>
+            {t("workouts.exerciseBankRefresh")}
           </Button>
-        ) : null}
-      </Space>
-
-      {items.length === 0 ? (
-        <Typography.Text type="secondary">{t("workouts.emptyItems")}</Typography.Text>
-      ) : (
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-          <SortableContext items={items.map((r) => r.localId)} strategy={verticalListSortingStrategy}>
-            {(() => {
-              const nodes: ReactNode[] = [];
-              let i = 0;
-              while (i < items.length) {
-                const row = items[i];
-                if (!row.block_id) {
-                  const idx = i;
-                  nodes.push(
-                    <Fragment key={row.localId}>
-                      <SortableRow
-                        row={row}
-                        index={idx}
-                        itemsLen={items.length}
-                        prevBlockId={idx > 0 ? items[idx - 1]?.block_id : null}
-                        insideBlock={false}
-                        t={t}
-                        updateAt={updateAt}
-                        removeAt={removeAt}
-                        joinPrevious={joinPrevious}
-                        leaveGroup={leaveGroup}
-                        updateBlockType={updateBlockType}
-                      />
-                      {canPairBelow(items, idx) ? (
-                        <BlockInsertBar
-                          key={`ins-${row.localId}`}
-                          afterIndex={idx}
-                          pairWithNextTyped={pairWithNext}
-                          t={t}
-                        />
-                      ) : null}
-                    </Fragment>,
-                  );
-                  i += 1;
-                  continue;
-                }
-                const bid = row.block_id!;
-                const start = i;
-                i += 1;
-                while (i < items.length && items[i].block_id === bid) i += 1;
-                const end = i - 1;
-                const accent = blockAccent(bid);
-                const bt = items[start].block_type ?? "superset";
-                nodes.push(
-                  <div
-                    key={bid}
-                    style={{
-                      marginBottom: 12,
-                      padding: "12px 12px 8px",
-                      borderRadius: 12,
-                      border: "1px solid var(--app-border, rgba(148, 163, 184, 0.2))",
-                      boxShadow: `inset 4px 0 0 0 ${accent}`,
-                      background: "var(--app-surface, rgba(18, 24, 38, 0.35))",
-                    }}
-                  >
-                    <Flex align="center" gap={8} wrap="wrap" style={{ marginBottom: 10 }}>
-                      <Tag style={{ margin: 0 }} color="processing">
-                        {t(`workouts.block.${bt}`)}
-                      </Tag>
-                      <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                        {t("workouts.blockDragBundleHint")}
-                      </Typography.Text>
-                    </Flex>
-                    {Array.from({ length: end - start + 1 }, (_, k) => {
-                      const globalIndex = start + k;
-                      const r = items[globalIndex];
-                      return (
-                        <Fragment key={r.localId}>
-                          {k > 0 ? (
-                            <div
-                              style={{
-                                height: 1,
-                                margin: "6px 0",
-                                background: "var(--app-border, rgba(148, 163, 184, 0.22))",
-                              }}
-                            />
-                          ) : null}
-                          <SortableRow
-                            row={r}
-                            index={globalIndex}
-                            itemsLen={items.length}
-                            prevBlockId={globalIndex > 0 ? items[globalIndex - 1]?.block_id : null}
-                            insideBlock
-                            t={t}
-                            updateAt={updateAt}
-                            removeAt={removeAt}
-                            joinPrevious={joinPrevious}
-                            leaveGroup={leaveGroup}
-                            updateBlockType={updateBlockType}
-                          />
-                        </Fragment>
-                      );
-                    })}
-                    {canPairBelow(items, end) ? (
-                      <BlockInsertBar afterIndex={end} pairWithNextTyped={pairWithNext} t={t} />
-                    ) : null}
-                  </div>,
-                );
-              }
-              return nodes;
-            })()}
-          </SortableContext>
-        </DndContext>
-      )}
-
-      <Modal
-        title={
-          <div>
-            <Typography.Title level={4} style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>
-              {t("workouts.pickExercise")}
-            </Typography.Title>
-            <Typography.Text type="secondary" style={{ display: "block", marginTop: 4, fontWeight: 400 }}>
-              {t("workouts.pickerModalSubtitle")}
-            </Typography.Text>
-          </div>
         }
-        open={pickerOpen}
-        onCancel={() => setPickerOpen(false)}
-        footer={
-          <Flex justify="flex-end">
-            <Button type="primary" onClick={() => setPickerOpen(false)}>
-              {t("workouts.pickerDone")}
-            </Button>
-          </Flex>
-        }
-        width={640}
-        centered
-        destroyOnClose
-        styles={{ body: { paddingTop: 8, maxHeight: "min(78vh, 640px)", overflow: "hidden", display: "flex", flexDirection: "column" } }}
       >
-        {pickerLoading ? (
-          <Flex align="center" justify="center" style={{ minHeight: 220 }}>
-            <Spin size="large" />
+        <Typography.Paragraph type="secondary" style={{ marginBottom: 12 }}>
+          {t("workouts.exerciseBankIntro")}
+        </Typography.Paragraph>
+        {pickerBanner.mode === "beginBlock" ? (
+          <Alert
+            type="info"
+            showIcon
+            style={{ marginBottom: 12 }}
+            message={t("workouts.pickerActiveBeginBlock", {
+              type: t(`workouts.block.${pickerBanner.blockType}`),
+            })}
+            action={
+              <Button size="small" onClick={() => armPickerContext({ mode: "append" })}>
+                {t("workouts.pickerClearMode")}
+              </Button>
+            }
+          />
+        ) : null}
+        {pickerBanner.mode === "extendBlock" ? (
+          <Alert
+            type="info"
+            showIcon
+            style={{ marginBottom: 12 }}
+            message={t("workouts.pickerActiveExtendBlock")}
+            action={
+              <Button size="small" onClick={() => armPickerContext({ mode: "append" })}>
+                {t("workouts.pickerClearMode")}
+              </Button>
+            }
+          />
+        ) : null}
+        {pickerBanner.mode === "append" ? (
+          <Typography.Text type="secondary" style={{ display: "block", marginBottom: 12, fontSize: 13 }}>
+            {t("workouts.pickerActiveAppend")}
+          </Typography.Text>
+        ) : null}
+        {pickerLoading && catalogOpts.length === 0 && mineOpts.length === 0 ? (
+          <Flex align="center" justify="center" style={{ minHeight: 160 }}>
+            <Spin />
           </Flex>
         ) : (
-          <Space direction="vertical" style={{ width: "100%", flex: 1, minHeight: 0 }} size="middle">
-            <Segmented
-              block
-              size="large"
-              value={pickerScope}
-              onChange={(v) => setPickerScope(v as "all" | "mine" | "catalog")}
-              options={[
-                { value: "all", label: t("workouts.pickerScopeAll") },
-                { value: "mine", label: t("workouts.pickerScopeMine") },
-                { value: "catalog", label: t("workouts.pickerScopeCatalog") },
-              ]}
-            />
+          <Space direction="vertical" style={{ width: "100%" }} size="middle">
+            <Flex wrap="wrap" gap={8} align="center" justify="space-between">
+              <Segmented
+                value={pickerScope}
+                onChange={(v) => setPickerScope(v as "all" | "mine" | "catalog")}
+                options={[
+                  { value: "all", label: t("workouts.pickerScopeAll") },
+                  { value: "mine", label: t("workouts.pickerScopeMine") },
+                  { value: "catalog", label: t("workouts.pickerScopeCatalog") },
+                ]}
+              />
+              <Button type="primary" size="small" icon={<PlusOutlined />} onClick={() => armPickerContext({ mode: "append" })}>
+                {t("workouts.addToEnd")}
+              </Button>
+            </Flex>
             <Input.Search
               allowClear
-              size="large"
-              autoFocus
-              enterButton={<SearchOutlined />}
               placeholder={t("workouts.pickerFilterPh")}
               value={pickerQuery}
               onChange={(e) => setPickerQuery(e.target.value)}
+              enterButton={<SearchOutlined />}
             />
             <Flex align="center" justify="space-between" wrap="wrap" gap={8}>
               <Typography.Text type="secondary" style={{ fontSize: 12 }}>
@@ -722,15 +682,17 @@ export function WorkoutItemsEditor({
             </Flex>
             <div
               style={{
-                flex: 1,
-                minHeight: 280,
-                maxHeight: 420,
+                maxHeight: 320,
                 overflowY: "auto",
                 paddingInlineEnd: 4,
               }}
             >
-              {pickerTotal === 0 ? (
+              {pickerTotal === 0 && !pickerLoading ? (
                 <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("workouts.pickerNoMatches")} />
+              ) : pickerTotal === 0 && pickerLoading ? (
+                <Flex justify="center" style={{ padding: 24 }}>
+                  <Spin />
+                </Flex>
               ) : (
                 <Space direction="vertical" size={12} style={{ width: "100%" }}>
                   {pickerLists.mine.length > 0 ? (
@@ -756,10 +718,7 @@ export function WorkoutItemsEditor({
                             <Typography.Text ellipsis title={ex.name} style={{ margin: 0 }}>
                               {ex.name}
                             </Typography.Text>
-                            <Tag
-                              style={{ margin: 0, fontSize: 11, lineHeight: "18px", flexShrink: 0 }}
-                              color="green"
-                            >
+                            <Tag style={{ margin: 0, fontSize: 11, lineHeight: "18px", flexShrink: 0 }} color="green">
                               {t("workouts.pickerTagMine")}
                             </Tag>
                           </Flex>
@@ -825,7 +784,146 @@ export function WorkoutItemsEditor({
             </div>
           </Space>
         )}
-      </Modal>
+      </Card>
+
+      <Space wrap style={{ marginBottom: 12 }}>
+        {mode === "training-plan" && showSaveButton ? (
+          <Button type="primary" onClick={() => void saveTrainingPlan()} loading={saving}>
+            {t("workouts.saveItems")}
+          </Button>
+        ) : null}
+      </Space>
+
+      {items.length === 0 ? (
+        <Typography.Text type="secondary">{t("workouts.emptyItems")}</Typography.Text>
+      ) : (
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+          <SortableContext items={items.map((r) => r.localId)} strategy={verticalListSortingStrategy}>
+            {(() => {
+              const nodes: ReactNode[] = [];
+              let i = 0;
+              while (i < items.length) {
+                const row = items[i];
+                if (!row.block_id) {
+                  const idx = i;
+                  nodes.push(
+                    <Fragment key={row.localId}>
+                      <SortableRow
+                        row={row}
+                        index={idx}
+                        prevBlockId={idx > 0 ? items[idx - 1]?.block_id : null}
+                        insideBlock={false}
+                        blockStepLabel={null}
+                        canBeginLink
+                        canExtendLink={false}
+                        onPickBeginBlock={(bt) => armPickerContext({ mode: "beginBlock", anchorIndex: idx, blockType: bt })}
+                        onPickExtendBlock={() => armPickerContext({ mode: "extendBlock", afterIndex: idx })}
+                        t={t}
+                        updateAt={updateAt}
+                        removeAt={removeAt}
+                        joinPrevious={joinPrevious}
+                        leaveGroup={leaveGroup}
+                      />
+                    </Fragment>,
+                  );
+                  i += 1;
+                  continue;
+                }
+                const bid = row.block_id!;
+                const start = i;
+                i += 1;
+                while (i < items.length && items[i].block_id === bid) i += 1;
+                const end = i - 1;
+                const accent = blockAccent(bid);
+                const bt = items[start].block_type ?? "superset";
+                const blockLen = end - start + 1;
+                nodes.push(
+                  <div
+                    key={bid}
+                    style={{
+                      marginBottom: 12,
+                      padding: "12px 12px 8px",
+                      borderRadius: 12,
+                      border: "1px solid var(--app-border, rgba(148, 163, 184, 0.2))",
+                      boxShadow: `inset 4px 0 0 0 ${accent}`,
+                      background: "var(--app-surface, rgba(18, 24, 38, 0.35))",
+                    }}
+                  >
+                    <Flex align="center" gap={10} wrap="wrap" style={{ marginBottom: 10 }}>
+                      <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                        {t("workouts.blockGroupLabel")}
+                      </Typography.Text>
+                      <Select<WorkoutBlockType>
+                        size="small"
+                        style={{ width: 210 }}
+                        value={bt}
+                        options={BLOCK_OPTIONS.map((o) => ({ value: o.value, label: t(o.labelKey) }))}
+                        onChange={(v) => updateBlockType(bid, v)}
+                      />
+                      <Tag style={{ margin: 0 }} color="processing">
+                        {t("workouts.blockMemberCount", { count: blockLen })}
+                      </Tag>
+                      <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                        {t("workouts.blockDragBundleHint")}
+                      </Typography.Text>
+                    </Flex>
+                    {Array.from({ length: blockLen }, (_, k) => {
+                      const globalIndex = start + k;
+                      const r = items[globalIndex];
+                      const stepLabel = t("workouts.blockMemberStep", { current: k + 1, total: blockLen });
+                      return (
+                        <Fragment key={r.localId}>
+                          {k > 0 ? (
+                            <div
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 8,
+                                margin: "4px 0 4px 28px",
+                                color: "var(--ant-color-text-tertiary)",
+                                fontSize: 12,
+                              }}
+                            >
+                              <span aria-hidden style={{ fontWeight: 600 }}>
+                                ↳
+                              </span>
+                              <div
+                                style={{
+                                  flex: 1,
+                                  height: 1,
+                                  background: "var(--app-border, rgba(148, 163, 184, 0.22))",
+                                }}
+                              />
+                            </div>
+                          ) : null}
+                          <SortableRow
+                            row={r}
+                            index={globalIndex}
+                            prevBlockId={globalIndex > 0 ? items[globalIndex - 1]?.block_id : null}
+                            insideBlock
+                            blockStepLabel={stepLabel}
+                            canBeginLink={false}
+                            canExtendLink
+                            onPickBeginBlock={() => undefined}
+                            onPickExtendBlock={() => armPickerContext({ mode: "extendBlock", afterIndex: globalIndex })}
+                            t={t}
+                            updateAt={updateAt}
+                            removeAt={removeAt}
+                            joinPrevious={joinPrevious}
+                            leaveGroup={leaveGroup}
+                          />
+                        </Fragment>
+                      );
+                    })}
+                  </div>,
+                );
+              }
+              return nodes;
+            })()}
+          </SortableContext>
+        </DndContext>
+      )}
+
     </div>
   );
 }
@@ -841,6 +939,7 @@ export function workoutLinesFromApiItems(
     notes?: string | null;
     block_id?: string | null;
     block_type?: string | null;
+    block_sequence?: number | null;
     exercise?: { name?: string };
     exercise_name?: string | null;
   }>,
@@ -859,5 +958,9 @@ export function workoutLinesFromApiItems(
       exercise_name: row.exercise?.name ?? row.exercise_name ?? undefined,
       block_id: row.block_id?.trim() ? row.block_id.trim() : null,
       block_type: (row.block_type as WorkoutBlockType) || null,
+      block_sequence:
+        row.block_sequence != null && !Number.isNaN(Number(row.block_sequence))
+          ? Number(row.block_sequence)
+          : undefined,
     }));
 }

@@ -6,7 +6,11 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import selectinload
 
 from app.api.deps import CurrentCoach, DbSession
-from app.services.workout_blocks import strip_orphan_workout_blocks
+from app.services.workout_blocks import (
+    block_sequences_for_ordered_items,
+    inject_block_sequences_into_item_dicts,
+    strip_orphan_workout_blocks,
+)
 from app.models.client import Client
 from app.models.client_coaching_plan import ClientCoachingPlan
 from app.models.exercise import Exercise
@@ -70,9 +74,14 @@ async def _enrich_client_workout_items(
         result = await db.execute(select(Exercise).where(Exercise.id.in_(ids)))
         for ex in result.scalars().all():
             names[ex.id] = ex.name
+    seqs = block_sequences_for_ordered_items(validated)
     return [
-        ClientWorkoutItemRead(**x.model_dump(), exercise_name=names.get(x.exercise_id))
-        for x in validated
+        ClientWorkoutItemRead(
+            **x.model_dump(),
+            exercise_name=names.get(x.exercise_id),
+            block_sequence=sq,
+        )
+        for x, sq in zip(validated, seqs)
     ]
 
 
@@ -458,6 +467,7 @@ async def upsert_coaching_plans(
                 d = it.model_dump()
                 d["sort_order"] = idx
                 normalized.append(d)
+            inject_block_sequences_into_item_dicts(normalized)
             row.workout_items_json = json.dumps(normalized)
         else:
             row.workout_items_json = None

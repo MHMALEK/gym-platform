@@ -21,6 +21,8 @@ class TrainingPlanItem(Base, TimestampMixin):
     # Same block_id on adjacent (or reordered) rows = one structured block, e.g. superset.
     block_id: Mapped[str | None] = mapped_column(String(40), nullable=True)
     block_type: Mapped[str | None] = mapped_column(String(24), nullable=True)
+    # 0-based index within the same block_id (first exercise in group = 0); None if not in a block.
+    block_sequence: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     training_plan = relationship("TrainingPlan", back_populates="items")
     exercise = relationship("Exercise", back_populates="plan_items")
