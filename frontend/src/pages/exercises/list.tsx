@@ -75,7 +75,14 @@ export function ExerciseList() {
             title={t("exercises.list.venue")}
             render={(v: string) => t(`workouts.venue.${v ?? "both"}`)}
           />
-          <Table.Column dataIndex="muscle_groups" title={t("exercises.list.muscles")} />
+          <Table.Column
+            title={t("exercises.list.muscles")}
+            render={(_: unknown, record: BaseRecord) => {
+              const m = record.muscle_groups as { label?: string }[] | undefined;
+              if (m?.length) return m.map((x) => x.label).filter(Boolean).join(", ");
+              return "—";
+            }}
+          />
           <Table.Column dataIndex="equipment" title={t("exercises.list.equipment")} />
           <Table.Column<BaseRecord>
             title={t("exercises.list.actions")}

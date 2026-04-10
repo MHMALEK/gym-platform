@@ -3,6 +3,8 @@ import type {
   CreateParams,
   CreateResponse,
   CrudFilter,
+  CustomParams,
+  CustomResponse,
   DataProvider,
   DeleteOneParams,
   DeleteOneResponse,
@@ -23,6 +25,7 @@ function pathForResource(resource: string): string {
     "directory-exercises": "directory/exercises",
     "directory-training-plans": "directory/training-plans",
     "directory-goal-types": "directory/goal-types",
+    "directory-muscle-groups": "directory/muscle-groups",
   };
   return m[resource] ?? resource;
 }
@@ -175,7 +178,53 @@ export const dataProvider: DataProvider = {
     throw new Error("updateMany not implemented");
   },
 
-  custom: async () => {
-    throw new Error("custom not implemented");
+  custom: async <TData extends BaseRecord = BaseRecord>({
+    url,
+    method,
+    payload,
+    query,
+    headers: extraHeaders,
+  }: CustomParams): Promise<CustomResponse<TData>> => {
+    const qs =
+      query && typeof query === "object"
+        ? (() => {
+            const sp = new URLSearchParams();
+            for (const [k, v] of Object.entries(query as Record<string, unknown>)) {
+              if (v === undefined || v === null) continue;
+              sp.set(k, String(v));
+            }
+            const s = sp.toString();
+            return s ? `?${s}` : "";
+          })()
+        : "";
+    const m = method.toUpperCase();
+    const isForm = typeof FormData !== "undefined" && payload instanceof FormData;
+    const h: Record<string, string> = {};
+    const t = localStorage.getItem("access_token");
+    if (t) h.Authorization = `Bearer ${t}`;
+    if (!isForm && m !== "GET" && m !== "HEAD") {
+      h["Content-Type"] = "application/json";
+    }
+    if (extraHeaders && typeof extraHeaders === "object") {
+      Object.assign(h, extraHeaders as Record<string, string>);
+    }
+    const res = await fetch(`${apiPrefix}${url}${qs}`, {
+      method: m,
+      headers: h,
+      body:
+        m === "GET" || m === "HEAD"
+          ? undefined
+          : isForm
+            ? (payload as FormData)
+            : payload !== undefined && payload !== null
+              ? JSON.stringify(payload)
+              : undefined,
+    });
+    if (!res.ok) await parseErr(res);
+    const ct = res.headers.get("content-type") ?? "";
+    if (ct.includes("application/json")) {
+      return { data: (await res.json()) as TData };
+    }
+    return { data: {} as TData };
   },
 };

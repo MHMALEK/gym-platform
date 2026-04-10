@@ -2,8 +2,14 @@ import { Edit, useForm } from "@refinedev/antd";
 import { Form, Input, Select } from "antd";
 import { useTranslation } from "react-i18next";
 
+import { MuscleGroupSelect } from "../../components/MuscleGroupSelect";
+import { useParams } from "react-router-dom";
+
+import { ExerciseMediaGallery } from "../../components/ExerciseMediaGallery";
+
 export function ExerciseEdit() {
   const { t } = useTranslation();
+  const { id } = useParams();
   const { formProps, saveButtonProps } = useForm({ resource: "exercises" });
 
   const venueOptions = [
@@ -24,8 +30,8 @@ export function ExerciseEdit() {
         <Form.Item name="category" label={t("exercises.form.category")}>
           <Input />
         </Form.Item>
-        <Form.Item name="muscle_groups" label={t("exercises.form.muscleGroups")}>
-          <Input />
+        <Form.Item name="muscle_group_ids" label={t("exercises.form.muscleGroups")}>
+          <MuscleGroupSelect />
         </Form.Item>
         <Form.Item name="equipment" label={t("exercises.form.equipment")}>
           <Input />
@@ -49,6 +55,7 @@ export function ExerciseEdit() {
           <Input type="url" />
         </Form.Item>
       </Form>
+      {id ? <ExerciseMediaGallery exerciseId={id} /> : null}
     </Edit>
   );
 }

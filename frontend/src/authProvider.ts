@@ -1,18 +1,10 @@
 import type { AuthProvider } from "@refinedev/core";
-import { getApps, initializeApp, type FirebaseOptions } from "firebase/app";
 import { getAuth, signInWithEmailAndPassword, signOut } from "firebase/auth";
 
 import { apiBootstrap, apiPrefix, authHeaders } from "./lib/api";
+import { getFirebaseApp } from "./lib/firebase";
 
 const devAuth = import.meta.env.VITE_DEV_AUTH === "true";
-
-function firebaseOptions(): FirebaseOptions | null {
-  const apiKey = import.meta.env.VITE_FIREBASE_API_KEY;
-  const authDomain = import.meta.env.VITE_FIREBASE_AUTH_DOMAIN;
-  const projectId = import.meta.env.VITE_FIREBASE_PROJECT_ID;
-  if (!apiKey || !authDomain || !projectId) return null;
-  return { apiKey, authDomain, projectId };
-}
 
 export const authProvider: AuthProvider = {
   login: async ({ email, password }) => {
@@ -21,11 +13,10 @@ export const authProvider: AuthProvider = {
       await apiBootstrap();
       return { success: true, redirectTo: "/" };
     }
-    const opts = firebaseOptions();
-    if (!opts) {
+    const app = getFirebaseApp();
+    if (!app) {
       return { success: false, error: { name: "Config", message: "Firebase env not set" } };
     }
-    const app = getApps().length ? getApps()[0]! : initializeApp(opts);
     const auth = getAuth(app);
     const cred = await signInWithEmailAndPassword(auth, email, password);
     const token = await cred.user.getIdToken();
@@ -35,10 +26,9 @@ export const authProvider: AuthProvider = {
   },
   logout: async () => {
     if (!devAuth) {
-      const opts = firebaseOptions();
-      if (opts) {
+      const app = getFirebaseApp();
+      if (app) {
         try {
-          const app = getApps().length ? getApps()[0]! : initializeApp(opts);
           await signOut(getAuth(app));
         } catch {
           /* ignore */

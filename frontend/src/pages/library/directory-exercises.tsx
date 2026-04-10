@@ -105,7 +105,14 @@ export function DirectoryExercisesPage() {
             title={t("library.venueColumn")}
             render={(v: string) => t(`workouts.venue.${v ?? "both"}`)}
           />
-          <Table.Column dataIndex="muscle_groups" title={t("library.muscles")} />
+          <Table.Column
+            title={t("library.muscles")}
+            render={(_: unknown, record: BaseRecord) => {
+              const m = record.muscle_groups as { label?: string }[] | undefined;
+              if (m?.length) return m.map((x) => x.label).filter(Boolean).join(", ");
+              return "—";
+            }}
+          />
           <Table.Column dataIndex="equipment" title={t("library.equipment")} />
           <Table.Column dataIndex="description" title={t("library.description")} ellipsis />
           <Table.Column<BaseRecord>

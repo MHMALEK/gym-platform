@@ -3,6 +3,8 @@ import { Form, Input, Select, Typography } from "antd";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
+import { MuscleGroupSelect } from "../../components/MuscleGroupSelect";
+
 export function ExerciseCreate() {
   const { t } = useTranslation();
   const { formProps, saveButtonProps } = useForm({ resource: "exercises" });
@@ -19,6 +21,9 @@ export function ExerciseCreate() {
         {t("exercises.form.createHint")}{" "}
         <Link to="/library/exercises">{t("exercises.list.openCatalog")}</Link>
       </Typography.Paragraph>
+      <Typography.Paragraph type="secondary" style={{ marginBottom: 16 }}>
+        {t("exercises.mediaGallery.afterCreateHint")}
+      </Typography.Paragraph>
       <Form {...formProps} layout="vertical">
         <Form.Item name="name" label={t("exercises.form.name")} rules={[{ required: true }]}>
           <Input />
@@ -29,8 +34,8 @@ export function ExerciseCreate() {
         <Form.Item name="category" label={t("exercises.form.category")}>
           <Input />
         </Form.Item>
-        <Form.Item name="muscle_groups" label={t("exercises.form.muscleGroups")}>
-          <Input placeholder={t("exercises.form.muscleGroupsPh")} />
+        <Form.Item name="muscle_group_ids" label={t("exercises.form.muscleGroups")} initialValue={[]}>
+          <MuscleGroupSelect />
         </Form.Item>
         <Form.Item name="equipment" label={t("exercises.form.equipment")}>
           <Input />
