@@ -1,7 +1,7 @@
 """media_assets and exercise_media
 
 Revision ID: h5c0_media_gallery
-Revises: g4b0_workout_builder
+Revises: h5c0_blocks_rich
 Create Date: 2026-04-10
 
 """
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision: str = "h5c0_media_gallery"
-down_revision: Union[str, None] = "g4b0_workout_builder"
+down_revision: Union[str, None] = "h5c0_blocks_rich"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
