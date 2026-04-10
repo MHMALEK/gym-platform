@@ -1,4 +1,10 @@
-import { DeleteOutlined, HolderOutlined, LinkOutlined, PlusOutlined } from "@ant-design/icons";
+import {
+  DeleteOutlined,
+  HolderOutlined,
+  LinkOutlined,
+  PlusOutlined,
+  SearchOutlined,
+} from "@ant-design/icons";
 import {
   DndContext,
   type DragEndEvent,
@@ -16,7 +22,22 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useInvalidate } from "@refinedev/core";
-import { App, Button, Input, InputNumber, Modal, Select, Space, Typography } from "antd";
+import {
+  App,
+  Button,
+  Empty,
+  Flex,
+  Input,
+  InputNumber,
+  Modal,
+  Segmented,
+  Select,
+  Space,
+  Spin,
+  Tag,
+  Typography,
+} from "antd";
+import type { DefaultOptionType } from "antd/es/select";
 import { type CSSProperties, useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -148,6 +169,7 @@ function SortableRow({
   row,
   index,
   itemsLen,
+  prevBlockId,
   t,
   updateAt,
   removeAt,
@@ -159,6 +181,7 @@ function SortableRow({
   row: WorkoutLine;
   index: number;
   itemsLen: number;
+  prevBlockId: string | null | undefined;
   t: (k: string) => string;
   updateAt: (i: number, patch: Partial<WorkoutLine>) => void;
   removeAt: (i: number) => void;
@@ -205,8 +228,13 @@ function SortableRow({
             <Typography.Text type="secondary">{t("workouts.block.single")}</Typography.Text>
           )}
         </div>
-        <div style={{ flex: "1 1 160px", minWidth: 120 }}>
-          <Typography.Text strong>{row.exercise_name ?? `ID ${row.exercise_id}`}</Typography.Text>
+        <div style={{ flex: "1 1 200px", minWidth: 140 }}>
+          <Typography.Text type="secondary" style={{ fontSize: 11, display: "block" }}>
+            {t("workouts.colExercise")}
+          </Typography.Text>
+          <Typography.Text strong style={{ fontSize: 14 }}>
+            {row.exercise_name ?? `ID ${row.exercise_id}`}
+          </Typography.Text>
         </div>
         <InputNumber
           min={0}
@@ -256,7 +284,11 @@ function SortableRow({
           >
             {t("workouts.pairWithNext")}
           </Button>
-          <Button size="small" disabled={index === 0} onClick={() => joinPrevious(index)}>
+          <Button
+            size="small"
+            disabled={index === 0 || !prevBlockId}
+            onClick={() => joinPrevious(index)}
+          >
             {t("workouts.joinPrevious")}
           </Button>
           <Button size="small" disabled={!row.block_id} onClick={() => leaveGroup(index)}>
@@ -286,6 +318,7 @@ export function WorkoutItemsEditor({
   const [catalogOpts, setCatalogOpts] = useState<ExerciseOpt[]>([]);
   const [mineOpts, setMineOpts] = useState<ExerciseOpt[]>([]);
   const [pickerQuery, setPickerQuery] = useState("");
+  const [pickerScope, setPickerScope] = useState<"all" | "mine" | "catalog">("all");
   const [selectedExId, setSelectedExId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -323,6 +356,7 @@ export function WorkoutItemsEditor({
     setPickerLoading(true);
     setSelectedExId(null);
     setPickerQuery("");
+    setPickerScope("all");
     try {
       const { catalog, mine } = await loadExercisesGrouped(venueCompat ?? null);
       setCatalogOpts(catalog);
@@ -337,13 +371,19 @@ export function WorkoutItemsEditor({
   const pickerOptionsGrouped = useMemo(() => {
     const q = pickerQuery.trim().toLowerCase();
     const match = (e: ExerciseOpt) => !q || e.name.toLowerCase().includes(q);
-    const mineF = mineOpts.filter(match);
-    const catF = catalogOpts.filter(match);
-    const toOpt = (e: ExerciseOpt) => ({
+    let mineF = mineOpts.filter(match);
+    let catF = catalogOpts.filter(match);
+    if (pickerScope === "mine") catF = [];
+    if (pickerScope === "catalog") mineF = [];
+    const toOpt = (e: ExerciseOpt): DefaultOptionType & { source: ExerciseOpt["source"] } => ({
       value: e.id,
-      label: e.source === "catalog" ? `${e.name} (${t("workouts.pickerBadgeCatalog")})` : e.name,
+      label: e.name,
+      source: e.source,
     });
-    const groups: { label: string; options: { value: number; label: string }[] }[] = [];
+    const groups: {
+      label: string;
+      options: (DefaultOptionType & { source: ExerciseOpt["source"] })[];
+    }[] = [];
     if (mineF.length) {
       groups.push({ label: t("workouts.pickerGroupMine"), options: mineF.map(toOpt) });
     }
@@ -351,7 +391,7 @@ export function WorkoutItemsEditor({
       groups.push({ label: t("workouts.pickerGroupCatalog"), options: catF.map(toOpt) });
     }
     return groups;
-  }, [catalogOpts, mineOpts, pickerQuery, t]);
+  }, [catalogOpts, mineOpts, pickerQuery, pickerScope, t]);
 
   const flatPickerChoices = useMemo(
     () => pickerOptionsGrouped.flatMap((g) => g.options),
@@ -507,6 +547,7 @@ export function WorkoutItemsEditor({
                 row={row}
                 index={index}
                 itemsLen={items.length}
+                prevBlockId={index > 0 ? items[index - 1]?.block_id : null}
                 t={t}
                 updateAt={updateAt}
                 removeAt={removeAt}
@@ -521,37 +562,125 @@ export function WorkoutItemsEditor({
       )}
 
       <Modal
-        title={t("workouts.pickExercise")}
+        title={
+          <div>
+            <Typography.Title level={4} style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>
+              {t("workouts.pickExercise")}
+            </Typography.Title>
+            <Typography.Text type="secondary" style={{ display: "block", marginTop: 4, fontWeight: 400 }}>
+              {t("workouts.pickerModalSubtitle")}
+            </Typography.Text>
+          </div>
+        }
         open={pickerOpen}
         onCancel={() => setPickerOpen(false)}
         onOk={addSelectedExercise}
         okText={t("workouts.add")}
-        okButtonProps={{ disabled: selectedExId == null || flatPickerChoices.length === 0 }}
+        okButtonProps={{
+          disabled: pickerLoading || selectedExId == null || flatPickerChoices.length === 0,
+        }}
         confirmLoading={pickerLoading}
+        width={560}
+        centered
+        destroyOnClose
+        styles={{ body: { paddingTop: 8 } }}
       >
-        <Space direction="vertical" style={{ width: "100%" }} size="middle">
-          <Input
-            allowClear
-            placeholder={t("workouts.pickerFilterPh")}
-            value={pickerQuery}
-            onChange={(e) => {
-              setPickerQuery(e.target.value);
-              setSelectedExId(null);
-            }}
-          />
-          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-            {t("workouts.pickerHint")}
-          </Typography.Text>
-          <Select
-            style={{ width: "100%" }}
-            placeholder={t("workouts.pickExercisePh")}
-            loading={pickerLoading}
-            options={pickerOptionsGrouped}
-            value={selectedExId ?? undefined}
-            onChange={(v) => setSelectedExId(v)}
-            notFoundContent={pickerLoading ? undefined : t("workouts.pickerEmpty")}
-          />
-        </Space>
+        {pickerLoading ? (
+          <Flex align="center" justify="center" style={{ minHeight: 220 }}>
+            <Spin size="large" />
+          </Flex>
+        ) : (
+          <Space direction="vertical" style={{ width: "100%" }} size="middle">
+            <Segmented
+              block
+              size="large"
+              value={pickerScope}
+              onChange={(v) => {
+                setPickerScope(v as "all" | "mine" | "catalog");
+                setSelectedExId(null);
+              }}
+              options={[
+                { value: "all", label: t("workouts.pickerScopeAll") },
+                { value: "mine", label: t("workouts.pickerScopeMine") },
+                { value: "catalog", label: t("workouts.pickerScopeCatalog") },
+              ]}
+            />
+            <Input.Search
+              allowClear
+              size="large"
+              autoFocus
+              enterButton={<SearchOutlined />}
+              placeholder={t("workouts.pickerFilterPh")}
+              value={pickerQuery}
+              onChange={(e) => {
+                setPickerQuery(e.target.value);
+                setSelectedExId(null);
+              }}
+            />
+            <Flex align="center" justify="space-between" wrap="wrap" gap={8}>
+              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                {t("workouts.pickerHint")}
+              </Typography.Text>
+              {flatPickerChoices.length > 0 ? (
+                <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                  {t("workouts.pickerShowingCount", { count: flatPickerChoices.length })}
+                </Typography.Text>
+              ) : null}
+            </Flex>
+            {flatPickerChoices.length === 0 ? (
+              <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("workouts.pickerNoMatches")} />
+            ) : (
+              <Select
+                size="large"
+                style={{ width: "100%" }}
+                placeholder={t("workouts.pickExercisePh")}
+                options={pickerOptionsGrouped}
+                value={selectedExId ?? undefined}
+                onChange={(v) => setSelectedExId(v)}
+                listHeight={320}
+                popupMatchSelectWidth={false}
+                styles={{ popup: { root: { minWidth: 480 } } }}
+                optionRender={(oriOption) => {
+                  const d = oriOption.data as DefaultOptionType & { source?: ExerciseOpt["source"] };
+                  const src = d.source;
+                  const name = typeof d.label === "string" ? d.label : String(d.value ?? "");
+                  return (
+                    <Flex align="center" justify="space-between" gap={10} style={{ minWidth: 0 }}>
+                      <span
+                        style={{
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                          flex: 1,
+                          minWidth: 0,
+                        }}
+                      >
+                        {name}
+                      </span>
+                      <Tag
+                        style={{
+                          flexShrink: 0,
+                          margin: 0,
+                          fontSize: 11,
+                          lineHeight: "18px",
+                          borderRadius: 4,
+                        }}
+                        color={src === "catalog" ? "geekblue" : "green"}
+                      >
+                        {src === "catalog"
+                          ? t("workouts.pickerBadgeCatalog")
+                          : t("workouts.pickerTagMine")}
+                      </Tag>
+                    </Flex>
+                  );
+                }}
+                notFoundContent={
+                  <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("workouts.pickerNoMatches")} />
+                }
+              />
+            )}
+          </Space>
+        )}
       </Modal>
     </div>
   );

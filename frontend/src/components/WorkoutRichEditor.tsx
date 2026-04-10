@@ -12,18 +12,18 @@ const modules = {
 };
 
 type Props = {
-  value: string;
+  value?: string;
   onChange?: (html: string) => void;
   readOnly?: boolean;
   placeholder?: string;
 };
 
-export function WorkoutRichEditor({ value, onChange, readOnly, placeholder }: Props) {
+export function WorkoutRichEditor({ value = "", onChange, readOnly, placeholder }: Props) {
   return (
     <div className="workout-rich-editor">
       <ReactQuill
         theme="snow"
-        value={value || ""}
+        value={value}
         onChange={onChange ?? (() => {})}
         readOnly={readOnly}
         modules={readOnly ? { toolbar: false } : modules}

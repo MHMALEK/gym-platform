@@ -1,5 +1,6 @@
+import { EditOutlined } from "@ant-design/icons";
 import { Edit, useForm } from "@refinedev/antd";
-import { Form, Input, Select, Spin } from "antd";
+import { Card, Form, Input, Select, Spin, Typography } from "antd";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -21,6 +22,7 @@ type Item = {
 type PlanRecord = {
   id?: number;
   venue_type?: string;
+  workout_rich_html?: string | null;
   items?: Item[];
 };
 
@@ -43,14 +45,49 @@ export function TrainingPlanEdit() {
   return (
     <Edit saveButtonProps={saveButtonProps}>
       <Form {...formProps} layout="vertical">
-        <Form.Item name="name" label={t("trainingPlans.list.name")} rules={[{ required: true }]}>
-          <Input />
-        </Form.Item>
-        <Form.Item name="description" label={t("trainingPlans.list.description")}>
-          <Input.TextArea rows={3} />
-        </Form.Item>
-        <Form.Item name="venue_type" label={t("trainingPlans.form.venue")}>
-          <Select options={venueOptions} />
+        <Card
+          size="small"
+          style={{
+            marginBottom: 24,
+            background: "var(--app-surface-elevated, rgba(15, 23, 42, 0.45))",
+            borderColor: "var(--app-border, rgba(148, 163, 184, 0.2))",
+          }}
+          styles={{ body: { paddingBottom: 8 } }}
+        >
+          <Typography.Title level={5} style={{ marginTop: 0, marginBottom: 4 }}>
+            <EditOutlined style={{ marginInlineEnd: 8, opacity: 0.85 }} />
+            {t("trainingPlans.form.planOverviewTitle")}
+          </Typography.Title>
+          <Typography.Paragraph type="secondary" style={{ marginBottom: 16 }}>
+            {t("trainingPlans.form.planOverviewHint")}
+          </Typography.Paragraph>
+          <Form.Item name="name" label={t("trainingPlans.list.name")} rules={[{ required: true }]}>
+            <Input
+              size="large"
+              placeholder={t("trainingPlans.form.namePlaceholder")}
+              maxLength={160}
+              showCount
+            />
+          </Form.Item>
+          <Form.Item name="description" label={t("trainingPlans.list.description")}>
+            <Input.TextArea
+              rows={3}
+              showCount
+              maxLength={2000}
+              placeholder={t("trainingPlans.form.descriptionPlaceholder")}
+            />
+          </Form.Item>
+          <Form.Item name="venue_type" label={t("trainingPlans.form.venue")}>
+            <Select options={venueOptions} size="large" />
+          </Form.Item>
+        </Card>
+        <Form.Item
+          name="workout_rich_html"
+          label={t("workouts.richSectionTitle")}
+          valuePropName="value"
+          getValueFromEvent={(v: string) => v}
+        >
+          <WorkoutRichEditor placeholder={t("workouts.richPlaceholder")} />
         </Form.Item>
       </Form>
 
