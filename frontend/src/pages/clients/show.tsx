@@ -16,6 +16,7 @@ import { useTranslation } from "react-i18next";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import { formatMoney } from "../../lib/money";
+import { ClientCoachingPlansEditor } from "./ClientCoachingPlansEditor";
 import { ClientPlansCta, clientWorkoutDietPath } from "./ClientPlansCta";
 import { ClientInvoicesPanel, ClientMembershipPanel } from "./finance";
 import { goalTypeLabel } from "./goalOptions";
@@ -79,12 +80,12 @@ function LastInvoiceSnapshotBlock({ inv }: { inv: LastInvSnap }) {
   );
 }
 
-type ClientShowTab = "profile" | "invoices" | "membership";
+type ClientShowTab = "profile" | "workout" | "invoices" | "membership";
 
 function tabFromHash(hash: string): ClientShowTab {
   const h = hash.replace(/^#/, "");
   if (h === "financial") return "invoices";
-  if (h === "invoices" || h === "membership") return h;
+  if (h === "workout" || h === "invoices" || h === "membership") return h;
   return "profile";
 }
 
@@ -134,8 +135,13 @@ export function ClientShow() {
   useEffect(() => {
     if (query?.isLoading) return;
     const h = location.hash.replace(/^#/, "");
-    if (h !== "invoices" && h !== "membership" && h !== "financial") return;
-    const id = h === "membership" ? "client-tab-membership" : "client-tab-invoices";
+    if (h !== "invoices" && h !== "membership" && h !== "financial" && h !== "workout") return;
+    const id =
+      h === "membership"
+        ? "client-tab-membership"
+        : h === "workout"
+          ? "client-tab-workout"
+          : "client-tab-invoices";
     requestAnimationFrame(() => {
       document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
@@ -308,11 +314,23 @@ export function ClientShow() {
         <>
           {defaultButtons}
           {record?.id != null ? (
-            <Link to={clientWorkoutDietPath(record.id)}>
-              <Button type="default" icon={<SnippetsOutlined />} size="middle">
+            <Space size={4}>
+              <Button
+                type="default"
+                icon={<SnippetsOutlined />}
+                size="middle"
+                onClick={() =>
+                  navigate({ pathname: location.pathname, search: location.search, hash: "workout" })
+                }
+              >
                 {t("clients.plans.headerButton")}
               </Button>
-            </Link>
+              <Link to={clientWorkoutDietPath(record.id)}>
+                <Button type="link" size="middle" style={{ paddingInline: 8 }}>
+                  {t("clients.plans.openFullPage")}
+                </Button>
+              </Link>
+            </Space>
           ) : null}
         </>
       )}
@@ -350,6 +368,19 @@ export function ClientShow() {
               ),
               children: profileTab,
             },
+            ...(clientId != null
+              ? [
+                  {
+                    key: "workout" as const,
+                    label: (
+                      <span>
+                        <SnippetsOutlined /> {t("clients.show.tabWorkout")}
+                      </span>
+                    ),
+                    children: <ClientCoachingPlansEditor clientId={clientId} embed />,
+                  },
+                ]
+              : []),
             ...(clientId != null
               ? [
                   {

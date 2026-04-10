@@ -1,7 +1,7 @@
 import { SnippetsOutlined } from "@ant-design/icons";
 import { Alert, Button, Space } from "antd";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 export function clientWorkoutDietPath(clientId: number | string): string {
   return `/clients/show/${clientId}/workout-diet-plans`;
@@ -16,6 +16,7 @@ type Props = {
 /** Call-to-action to open the dedicated workout & diet plans page for this client. */
 export function ClientPlansCta({ clientId, compact }: Props) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const to = clientWorkoutDietPath(clientId);
   return (
     <Alert
@@ -27,11 +28,21 @@ export function ClientPlansCta({ clientId, compact }: Props) {
       description={
         <Space direction="vertical" size="small" style={{ width: "100%" }}>
           <span>{t("clients.plans.ctaBody")}</span>
-          <Link to={to}>
-            <Button type="primary" size="small" icon={<SnippetsOutlined />}>
-              {t("clients.plans.openDedicatedPage")}
+          <Space wrap size="small">
+            <Button
+              type="primary"
+              size="small"
+              icon={<SnippetsOutlined />}
+              onClick={() =>
+                navigate({ pathname: `/clients/show/${clientId}`, hash: "workout" })
+              }
+            >
+              {t("clients.plans.openWorkoutTab")}
             </Button>
-          </Link>
+            <Link to={to}>
+              <Button size="small">{t("clients.plans.openDedicatedPage")}</Button>
+            </Link>
+          </Space>
         </Space>
       }
     />
