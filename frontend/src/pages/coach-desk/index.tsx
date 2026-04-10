@@ -1,9 +1,4 @@
-import {
-  CalendarOutlined,
-  FileTextOutlined,
-  IdcardOutlined,
-  UserOutlined,
-} from "@ant-design/icons";
+import { FileTextOutlined, UserOutlined } from "@ant-design/icons";
 import { useCreate, useList } from "@refinedev/core";
 import type { BaseRecord, HttpError } from "@refinedev/core";
 import { App, Button, Card, DatePicker, Form, Input, InputNumber, Select, Space, Table, Tabs, Typography } from "antd";
@@ -180,76 +175,93 @@ export function CoachDeskPage() {
           </Typography.Paragraph>
         </div>
 
-        <Row gutter={[16, 16]}>
-          <Col xs={24} lg={8}>
-            <Card size="small" title={t("coachDesk.addClient")} loading={clientsLoading}>
-              <Form form={clientForm} layout="vertical" onFinish={onAddClient}>
-                <Form.Item name="name" label={t("coachDesk.clientName")} rules={[{ required: true }]}>
-                  <Input placeholder={t("coachDesk.clientNamePh")} />
-                </Form.Item>
-                <Form.Item name="phone" label={t("coachDesk.phoneOptional")}>
-                  <Input placeholder={t("coachDesk.phonePh")} />
-                </Form.Item>
-                <Button type="primary" htmlType="submit" loading={savingClient} block>
-                  {t("coachDesk.addClientSubmit")}
-                </Button>
-              </Form>
-            </Card>
-          </Col>
+        <Tabs
+          size="large"
+          destroyInactiveTabPane={false}
+          items={[
+            {
+              key: "client",
+              label: (
+                <span>
+                  <UserOutlined /> {t("coachDesk.addClient")}
+                </span>
+              ),
+              children: (
+                <Card size="small" loading={clientsLoading} styles={{ body: { maxWidth: 440 } }}>
+                  <Form form={clientForm} layout="vertical" onFinish={onAddClient}>
+                    <Form.Item name="name" label={t("coachDesk.clientName")} rules={[{ required: true }]}>
+                      <Input placeholder={t("coachDesk.clientNamePh")} />
+                    </Form.Item>
+                    <Form.Item name="phone" label={t("coachDesk.phoneOptional")}>
+                      <Input placeholder={t("coachDesk.phonePh")} />
+                    </Form.Item>
+                    <Button type="primary" htmlType="submit" loading={savingClient}>
+                      {t("coachDesk.addClientSubmit")}
+                    </Button>
+                  </Form>
+                </Card>
+              ),
+            },
+            {
+              key: "invoice",
+              label: (
+                <span>
+                  <FileTextOutlined /> {t("coachDesk.addInvoice")}
+                </span>
+              ),
+              children: (
+                <Card size="small" loading={invoicesLoading} styles={{ body: { maxWidth: 440 } }}>
+                  <Form form={invoiceForm} layout="vertical" onFinish={onAddInvoice}>
+                    <Form.Item name="client_id" label={t("coachDesk.client")} rules={[{ required: true }]}>
+                      <Select
+                        showSearch
+                        optionFilterProp="label"
+                        options={clientOptions}
+                        placeholder={t("coachDesk.chooseClient")}
+                        disabled={clientOptions.length === 0}
+                      />
+                    </Form.Item>
+                    <Form.Item name="amount" label={t("coachDesk.amount")}>
+                      <InputNumber min={0} step={0.01} style={{ width: "100%" }} placeholder="0" />
+                    </Form.Item>
+                    <Form.Item
+                      name="due_date"
+                      label={t("coachDesk.dueDate")}
+                      getValueFromEvent={(d) => d ?? null}
+                      getValueProps={(v) => ({ value: v ?? undefined })}
+                    >
+                      <DatePicker style={{ width: "100%" }} />
+                    </Form.Item>
+                    <Button type="primary" htmlType="submit" loading={savingInvoice}>
+                      {t("coachDesk.addInvoiceSubmit")}
+                    </Button>
+                  </Form>
+                </Card>
+              ),
+            },
+          ]}
+        />
 
-          <Col xs={24} lg={8}>
-            <Card size="small" title={t("coachDesk.addInvoice")} loading={invoicesLoading}>
-              <Form form={invoiceForm} layout="vertical" onFinish={onAddInvoice}>
-                <Form.Item name="client_id" label={t("coachDesk.client")} rules={[{ required: true }]}>
-                  <Select
-                    showSearch
-                    optionFilterProp="label"
-                    options={clientOptions}
-                    placeholder={t("coachDesk.chooseClient")}
-                    disabled={clientOptions.length === 0}
-                  />
-                </Form.Item>
-                <Form.Item name="amount" label={t("coachDesk.amount")}>
-                  <InputNumber min={0} step={0.01} style={{ width: "100%" }} placeholder="0" />
-                </Form.Item>
-                <Form.Item
-                  name="due_date"
-                  label={t("coachDesk.dueDate")}
-                  getValueFromEvent={(d) => d ?? null}
-                  getValueProps={(v) => ({ value: v ?? undefined })}
-                >
-                  <DatePicker style={{ width: "100%" }} />
-                </Form.Item>
-                <Button type="primary" htmlType="submit" loading={savingInvoice} block>
-                  {t("coachDesk.addInvoiceSubmit")}
-                </Button>
-              </Form>
-            </Card>
-          </Col>
-
-          <Col xs={24} lg={8}>
-            <Card size="small" title={t("coachDesk.planSection")}>
-              <Typography.Paragraph type="secondary" style={{ marginTop: 0, fontSize: 13 }}>
-                {t("coachDesk.planHelp")}
-              </Typography.Paragraph>
-              <Select
-                showSearch
-                optionFilterProp="label"
-                allowClear
-                placeholder={t("coachDesk.chooseClient")}
-                options={clientOptions}
-                style={{ width: "100%", marginBottom: 12 }}
-                value={planClientId ?? undefined}
-                onChange={(v) => setPlanClientId(typeof v === "number" ? v : null)}
-              />
-              {planClientId != null ? (
-                <ClientSubscriptionsPanel clientId={planClientId} allowMutation compactHeader />
-              ) : (
-                <Typography.Text type="secondary">{t("coachDesk.pickClientForPlan")}</Typography.Text>
-              )}
-            </Card>
-          </Col>
-        </Row>
+        <Card size="small" title={t("coachDesk.planSection")}>
+          <Typography.Paragraph type="secondary" style={{ marginTop: 0, fontSize: 13 }}>
+            {t("coachDesk.planHelp")}
+          </Typography.Paragraph>
+          <Select
+            showSearch
+            optionFilterProp="label"
+            allowClear
+            placeholder={t("coachDesk.chooseClient")}
+            options={clientOptions}
+            style={{ width: "100%", maxWidth: 420, marginBottom: 16 }}
+            value={planClientId ?? undefined}
+            onChange={(v) => setPlanClientId(typeof v === "number" ? v : null)}
+          />
+          {planClientId != null ? (
+            <ClientSubscriptionsPanel clientId={planClientId} allowMutation compactHeader splitLayout />
+          ) : (
+            <Typography.Text type="secondary">{t("coachDesk.pickClientForPlan")}</Typography.Text>
+          )}
+        </Card>
 
         <Card size="small" title={t("coachDesk.dueGlance")}>
           <Typography.Paragraph type="secondary" style={{ marginTop: 0, fontSize: 13 }}>
@@ -284,8 +296,7 @@ export function CoachDeskPage() {
               {
                 title: t("coachDesk.colWhen"),
                 width: 160,
-                render: (_, r) =>
-                  r.when ? r.when.format("MMM D, YYYY") : t("common.dash"),
+                render: (_, r) => (r.when ? r.when.format("MMM D, YYYY") : t("common.dash")),
               },
             ]}
           />

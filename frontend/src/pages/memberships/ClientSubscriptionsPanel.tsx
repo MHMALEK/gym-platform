@@ -51,9 +51,11 @@ type Props = {
   allowMutation: boolean;
   /** When the panel sits inside a parent Card, hide the duplicate section title. */
   compactHeader?: boolean;
+  /** Two titled cards: current memberships vs assign form (e.g. Quick desk). */
+  splitLayout?: boolean;
 };
 
-export function ClientSubscriptionsPanel({ clientId, allowMutation, compactHeader }: Props) {
+export function ClientSubscriptionsPanel({ clientId, allowMutation, compactHeader, splitLayout }: Props) {
   const { t, i18n } = useTranslation();
   const invalidate = useInvalidate();
   const [subs, setSubs] = useState<Sub[]>([]);
@@ -247,24 +249,16 @@ export function ClientSubscriptionsPanel({ clientId, allowMutation, compactHeade
     );
   };
 
-  return (
-    <section id="client-financial-subscriptions">
-      {!compactHeader ? <Typography.Title level={5}>{t("memberships.panel.title")}</Typography.Title> : null}
-      {!allowMutation ? (
-        <Typography.Paragraph type="secondary" style={{ marginBottom: 12 }}>
-          {t("memberships.panel.readOnlyHint")}{" "}
-          <Link to="/clients">{t("memberships.panel.readOnlyLink")}</Link>.
-        </Typography.Paragraph>
-      ) : null}
-
+  const summaryBlock = (
+    <>
       {loadingSubs ? (
         <Skeleton active paragraph={{ rows: 3 }} />
       ) : subs.length === 0 ? (
-        <Typography.Paragraph type="secondary" style={{ marginBottom: 16 }}>
+        <Typography.Paragraph type="secondary" style={{ marginBottom: splitLayout ? 0 : 16 }}>
           {t("memberships.panel.noSubscriptionsYet")}
         </Typography.Paragraph>
       ) : (
-        <Space direction="vertical" size="middle" style={{ width: "100%", marginBottom: 8 }}>
+        <Space direction="vertical" size="middle" style={{ width: "100%", marginBottom: splitLayout ? 0 : 8 }}>
           {subs.map((r) => (
             <Card key={r.id} size="small" styles={{ body: { padding: "14px 16px" } }}>
               <Row gutter={[16, 12]} align="top">
@@ -287,7 +281,14 @@ export function ClientSubscriptionsPanel({ clientId, allowMutation, compactHeade
                   <Tag color={subStatusColor(r.status)}>{r.status}</Tag>
                 </Col>
                 {allowMutation ? (
-                  <Col xs={24} style={{ borderTop: "1px solid rgba(0,0,0,0.06)", paddingTop: 12, marginTop: 4 }}>
+                  <Col
+                    xs={24}
+                    style={{
+                      borderTop: "1px solid rgba(148, 163, 184, 0.12)",
+                      paddingTop: 12,
+                      marginTop: 4,
+                    }}
+                  >
                     <Space wrap>
                       <Button size="small" type="primary" ghost onClick={() => openEdit(r)}>
                         {t("memberships.panel.editDates")}
@@ -318,128 +319,154 @@ export function ClientSubscriptionsPanel({ clientId, allowMutation, compactHeade
           ))}
         </Space>
       )}
+    </>
+  );
 
-      {allowMutation ? (
-        <>
-          <Card
-            size="small"
-            title={t("memberships.panel.assignTitle")}
-            style={{ marginTop: 16 }}
-            styles={{ body: { paddingBottom: 16 } }}
-          >
-          <Form
-            form={assignForm}
-            layout="vertical"
-            onFinish={assignSubscription}
-            style={{ maxWidth: 480 }}
-            initialValues={{ auto_end: true }}
-          >
-            <Form.Item name="plan_template_id" label={t("memberships.panel.planField")} rules={[{ required: true }]}>
-              <Select
-                showSearch
-                placeholder={t("memberships.panel.planPh")}
-                filterOption={(input, option) => {
-                  const id = option?.value as number | undefined;
-                  const tpl = templates.find((x) => x.id === id);
-                  if (!tpl) return false;
-                  const q = input.toLowerCase();
-                  return (
-                    tpl.name.toLowerCase().includes(q) ||
-                    String(tpl.id).includes(q) ||
-                    (tpl.code?.toLowerCase().includes(q) ?? false)
-                  );
-                }}
-                options={templates.map((tpl) => ({
-                  value: tpl.id,
-                  label: `${tpl.name} (#${tpl.id})${tpl.code ? ` · ${tpl.code}` : ""}`,
-                }))}
-              />
-            </Form.Item>
-
-            {selectedTpl ? (
-              <Card size="small" style={{ marginBottom: 16 }} styles={{ body: { padding: 12 } }}>
-                <Space align="start">
-                  <Avatar src={selectedTpl.image_url || undefined} size={48}>
-                    {selectedTpl.name.slice(0, 1).toUpperCase()}
-                  </Avatar>
-                  <div>
-                    <Typography.Text strong>{selectedTpl.name}</Typography.Text>
-                    <div>
-                      <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                        {t("memberships.panel.templatePreview", {
-                          days: selectedTpl.duration_days,
-                          id: selectedTpl.id,
-                          codeSuffix: selectedTpl.code ? ` · ${selectedTpl.code}` : "",
-                        })}
-                      </Typography.Text>
-                    </div>
-                  </div>
-                </Space>
-              </Card>
-            ) : null}
-
-            <Form.Item name="starts_at" label={t("memberships.panel.start")} rules={[{ required: true }]}>
-              <DatePicker showTime style={{ width: "100%" }} />
-            </Form.Item>
-
-            <Form.Item
-              name="auto_end"
-              label={t("memberships.panel.endMode")}
-              valuePropName="checked"
-              extra={t("memberships.panel.endModeExtra")}
-            >
-              <Switch
-                checkedChildren={t("memberships.panel.usePlanDuration")}
-                unCheckedChildren={t("memberships.panel.customEnd")}
-              />
-            </Form.Item>
-
-            {autoEnd === false ? (
-              <Form.Item name="ends_at" label={t("memberships.panel.customEndField")}>
-                <DatePicker showTime style={{ width: "100%" }} />
-              </Form.Item>
-            ) : null}
-
-            <Space wrap style={{ marginBottom: 16 }}>
-              <Button onClick={applyDurationEnd} disabled={!startsWatch || !selectedTpl}>
-                {t("memberships.panel.setEndButton", { days: selectedTpl?.duration_days ?? "…" })}
-              </Button>
-            </Space>
-
-            <Form.Item name="notes" label={t("memberships.panel.notes")}>
-              <Input.TextArea rows={2} placeholder={t("memberships.panel.notesPh")} />
-            </Form.Item>
-
-            <Button type="primary" htmlType="submit">
-              {t("memberships.panel.assign")}
-            </Button>
-          </Form>
-          </Card>
-
-          <Modal
-            title={t("memberships.panel.modalTitle")}
-            open={editOpen}
-            onCancel={() => {
-              setEditOpen(false);
-              setEditing(null);
+  const assignCard = (
+    <Card
+      size="small"
+      title={t("memberships.panel.assignTitle")}
+      style={splitLayout ? undefined : { marginTop: 16 }}
+      styles={{ body: { paddingBottom: 16 } }}
+    >
+      <Form
+        form={assignForm}
+        layout="vertical"
+        onFinish={assignSubscription}
+        style={{ maxWidth: 480 }}
+        initialValues={{ auto_end: true }}
+      >
+        <Form.Item name="plan_template_id" label={t("memberships.panel.planField")} rules={[{ required: true }]}>
+          <Select
+            showSearch
+            placeholder={t("memberships.panel.planPh")}
+            filterOption={(input, option) => {
+              const id = option?.value as number | undefined;
+              const tpl = templates.find((x) => x.id === id);
+              if (!tpl) return false;
+              const q = input.toLowerCase();
+              return (
+                tpl.name.toLowerCase().includes(q) ||
+                String(tpl.id).includes(q) ||
+                (tpl.code?.toLowerCase().includes(q) ?? false)
+              );
             }}
-            onOk={saveEdit}
-            destroyOnClose
-          >
-            <Form form={editForm} layout="vertical">
-              <Form.Item name="starts_at" label={t("memberships.panel.modalStarts")} rules={[{ required: true }]}>
-                <DatePicker showTime style={{ width: "100%" }} />
-              </Form.Item>
-              <Form.Item name="ends_at" label={t("memberships.panel.modalEnds")}>
-                <DatePicker showTime style={{ width: "100%" }} />
-              </Form.Item>
-              <Form.Item name="notes" label={t("memberships.panel.modalNotes")}>
-                <Input.TextArea rows={2} />
-              </Form.Item>
-            </Form>
-          </Modal>
-        </>
+            options={templates.map((tpl) => ({
+              value: tpl.id,
+              label: `${tpl.name} (#${tpl.id})${tpl.code ? ` · ${tpl.code}` : ""}`,
+            }))}
+          />
+        </Form.Item>
+
+        {selectedTpl ? (
+          <Card size="small" style={{ marginBottom: 16 }} styles={{ body: { padding: 12 } }}>
+            <Space align="start">
+              <Avatar src={selectedTpl.image_url || undefined} size={48}>
+                {selectedTpl.name.slice(0, 1).toUpperCase()}
+              </Avatar>
+              <div>
+                <Typography.Text strong>{selectedTpl.name}</Typography.Text>
+                <div>
+                  <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                    {t("memberships.panel.templatePreview", {
+                      days: selectedTpl.duration_days,
+                      id: selectedTpl.id,
+                      codeSuffix: selectedTpl.code ? ` · ${selectedTpl.code}` : "",
+                    })}
+                  </Typography.Text>
+                </div>
+              </div>
+            </Space>
+          </Card>
+        ) : null}
+
+        <Form.Item name="starts_at" label={t("memberships.panel.start")} rules={[{ required: true }]}>
+          <DatePicker showTime style={{ width: "100%" }} />
+        </Form.Item>
+
+        <Form.Item
+          name="auto_end"
+          label={t("memberships.panel.endMode")}
+          valuePropName="checked"
+          extra={t("memberships.panel.endModeExtra")}
+        >
+          <Switch
+            checkedChildren={t("memberships.panel.usePlanDuration")}
+            unCheckedChildren={t("memberships.panel.customEnd")}
+          />
+        </Form.Item>
+
+        {autoEnd === false ? (
+          <Form.Item name="ends_at" label={t("memberships.panel.customEndField")}>
+            <DatePicker showTime style={{ width: "100%" }} />
+          </Form.Item>
+        ) : null}
+
+        <Space wrap style={{ marginBottom: 16 }}>
+          <Button onClick={applyDurationEnd} disabled={!startsWatch || !selectedTpl}>
+            {t("memberships.panel.setEndButton", { days: selectedTpl?.duration_days ?? "…" })}
+          </Button>
+        </Space>
+
+        <Form.Item name="notes" label={t("memberships.panel.notes")}>
+          <Input.TextArea rows={2} placeholder={t("memberships.panel.notesPh")} />
+        </Form.Item>
+
+        <Button type="primary" htmlType="submit">
+          {t("memberships.panel.assign")}
+        </Button>
+      </Form>
+    </Card>
+  );
+
+  const summarySection = splitLayout ? (
+    <Card size="small" title={t("memberships.panel.summarySectionTitle")} style={{ marginBottom: 0 }}>
+      {summaryBlock}
+    </Card>
+  ) : (
+    summaryBlock
+  );
+
+  return (
+    <section id="client-financial-subscriptions">
+      {!compactHeader ? <Typography.Title level={5}>{t("memberships.panel.title")}</Typography.Title> : null}
+      {!allowMutation ? (
+        <Typography.Paragraph type="secondary" style={{ marginBottom: 12 }}>
+          {t("memberships.panel.readOnlyHint")}{" "}
+          <Link to="/clients">{t("memberships.panel.readOnlyLink")}</Link>.
+        </Typography.Paragraph>
       ) : null}
+
+      <Space direction="vertical" size={splitLayout ? 16 : 0} style={{ width: "100%" }}>
+        {summarySection}
+        {allowMutation ? (
+          <>
+            {assignCard}
+            <Modal
+              title={t("memberships.panel.modalTitle")}
+              open={editOpen}
+              onCancel={() => {
+                setEditOpen(false);
+                setEditing(null);
+              }}
+              onOk={saveEdit}
+              destroyOnClose
+            >
+              <Form form={editForm} layout="vertical">
+                <Form.Item name="starts_at" label={t("memberships.panel.modalStarts")} rules={[{ required: true }]}>
+                  <DatePicker showTime style={{ width: "100%" }} />
+                </Form.Item>
+                <Form.Item name="ends_at" label={t("memberships.panel.modalEnds")}>
+                  <DatePicker showTime style={{ width: "100%" }} />
+                </Form.Item>
+                <Form.Item name="notes" label={t("memberships.panel.modalNotes")}>
+                  <Input.TextArea rows={2} />
+                </Form.Item>
+              </Form>
+            </Modal>
+          </>
+        ) : null}
+      </Space>
     </section>
   );
 }

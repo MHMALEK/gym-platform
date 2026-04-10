@@ -318,6 +318,7 @@ const translation = {
       extend: "Extend",
       extend30: "+30d",
       editDates: "Edit dates",
+      summarySectionTitle: "Membership summary",
       assignTitle: "Assign membership",
       planField: "Plan",
       planPh: "Select membership plan",

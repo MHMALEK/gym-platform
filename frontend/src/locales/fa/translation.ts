@@ -320,6 +320,7 @@ const translation = {
       extend: "تمدید",
       extend30: "+۳۰ روز",
       editDates: "ویرایش تاریخ‌ها",
+      summarySectionTitle: "خلاصه عضویت",
       assignTitle: "تخصیص عضویت",
       planField: "پلن",
       planPh: "انتخاب پلن عضویت",
