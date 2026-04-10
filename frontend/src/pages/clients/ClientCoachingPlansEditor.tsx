@@ -1,4 +1,5 @@
 import { SaveOutlined } from "@ant-design/icons";
+import { useList } from "@refinedev/core";
 import { App, Button, Card, Divider, Form, Input, Select, Space, Spin, Typography } from "antd";
 import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -52,6 +53,16 @@ export function ClientCoachingPlansEditor({ clientId, embed, extraActions }: Pro
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
   const [lines, setLines] = useState<WorkoutLine[]>([]);
   const [dietMeals, setDietMeals] = useState<DietMeal[]>([]);
+  const [nutritionTemplateId, setNutritionTemplateId] = useState<number | null>(null);
+
+  const { data: nutritionTemplateList, isLoading: nutritionTemplatesLoading } = useList({
+    resource: "nutrition-templates",
+    pagination: { current: 1, pageSize: 500 },
+  });
+  const nutritionTemplateOptions = (nutritionTemplateList?.data ?? []).map((r) => ({
+    value: Number(r.id),
+    label: String(r.name ?? `#${r.id}`),
+  }));
 
   const programVenue = Form.useWatch("program_venue", form);
   const planVenueForPicker =
@@ -84,6 +95,24 @@ export function ClientCoachingPlansEditor({ clientId, embed, extraActions }: Pro
       setLoading(false);
     }
   }, [clientId, form, message, t]);
+
+  const applyNutritionTemplate = useCallback(async () => {
+    if (nutritionTemplateId == null) return;
+    try {
+      const res = await fetch(`${apiPrefix}/nutrition-templates/${nutritionTemplateId}`, {
+        headers: authHeaders(),
+      });
+      if (!res.ok) {
+        message.error(t("clients.plans.templateApplyError"));
+        return;
+      }
+      const json = (await res.json()) as { meals?: unknown[] };
+      setDietMeals(dietMealsFromApi(json.meals ?? []));
+      message.success(t("clients.plans.templateApplied"));
+    } catch {
+      message.error(t("clients.plans.templateApplyError"));
+    }
+  }, [nutritionTemplateId, message, t]);
 
   useEffect(() => {
     void load();
@@ -202,6 +231,32 @@ export function ClientCoachingPlansEditor({ clientId, embed, extraActions }: Pro
         </Form.Item>
 
         <Divider />
+        <Typography.Paragraph type="secondary">{t("clients.plans.templateApplyHint")}</Typography.Paragraph>
+        <Space wrap style={{ marginBottom: 16 }}>
+          <Select
+            allowClear
+            showSearch
+            optionFilterProp="label"
+            loading={nutritionTemplatesLoading}
+            placeholder={t("clients.plans.templateSelectPlaceholder")}
+            style={{ minWidth: 280 }}
+            options={nutritionTemplateOptions}
+            value={nutritionTemplateId ?? undefined}
+            onChange={(v) => setNutritionTemplateId(v ?? null)}
+          />
+          <Button
+            type="default"
+            disabled={nutritionTemplateId == null}
+            onClick={() => void applyNutritionTemplate()}
+          >
+            {t("clients.plans.templateApply")}
+          </Button>
+        </Space>
+        {!nutritionTemplatesLoading && nutritionTemplateOptions.length === 0 ? (
+          <Typography.Paragraph type="secondary" style={{ marginBottom: 16 }}>
+            {t("clients.plans.templateEmptyList")}
+          </Typography.Paragraph>
+        ) : null}
         <NutritionMealsEditor meals={dietMeals} onChange={setDietMeals} />
 
         <Form.Item name="diet_plan" label={t("clients.plans.dietLabel")}>

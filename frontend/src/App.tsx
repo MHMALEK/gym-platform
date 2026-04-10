@@ -1,4 +1,5 @@
 import {
+  AppleOutlined,
   BookOutlined,
   DashboardOutlined,
   FileTextOutlined,
@@ -46,7 +47,11 @@ import { InvoiceList } from "./pages/invoices/list";
 import { ExerciseEdit } from "./pages/exercises/edit";
 import { ExerciseList } from "./pages/exercises/list";
 import { DirectoryExercisesPage } from "./pages/library/directory-exercises";
+import { DirectoryNutritionTemplatesPage } from "./pages/library/directory-nutrition-templates";
 import { DirectoryTrainingPlansPage } from "./pages/library/directory-training-plans";
+import { NutritionTemplateCreate } from "./pages/nutrition-templates/create";
+import { NutritionTemplateEdit } from "./pages/nutrition-templates/edit";
+import { NutritionTemplateList } from "./pages/nutrition-templates/list";
 import { LoginPage } from "./pages/login";
 import { PlanTemplateCreate } from "./pages/plan-templates/create";
 import { PlanTemplateEdit } from "./pages/plan-templates/edit";
@@ -145,6 +150,13 @@ function RefineShell() {
         meta: { label: t("nav.trainingPlans"), icon: <UnorderedListOutlined /> },
       },
       {
+        name: "nutrition-templates",
+        list: "/nutrition-templates",
+        create: "/nutrition-templates/create",
+        edit: "/nutrition-templates/edit/:id",
+        meta: { label: t("nav.nutritionTemplates"), icon: <AppleOutlined /> },
+      },
+      {
         name: "directory-exercises",
         list: "/library/exercises",
         meta: { label: t("nav.libraryExercises"), icon: <ReadOutlined /> },
@@ -153,6 +165,11 @@ function RefineShell() {
         name: "directory-training-plans",
         list: "/library/training-plans",
         meta: { label: t("nav.libraryPlans"), icon: <ReadOutlined /> },
+      },
+      {
+        name: "directory-nutrition-templates",
+        list: "/library/nutrition-templates",
+        meta: { label: t("nav.libraryNutritionTemplates"), icon: <ReadOutlined /> },
       },
     ],
     [t, i18n.language],
@@ -207,8 +224,12 @@ function RefineShell() {
           <Route path="/training-plans/create" element={<TrainingPlanCreate />} />
           <Route path="/training-plans/edit/:id" element={<TrainingPlanEdit />} />
           <Route path="/training-plans/show/:id" element={<TrainingPlanShow />} />
+          <Route path="/nutrition-templates" element={<NutritionTemplateList />} />
+          <Route path="/nutrition-templates/create" element={<NutritionTemplateCreate />} />
+          <Route path="/nutrition-templates/edit/:id" element={<NutritionTemplateEdit />} />
           <Route path="/library/exercises" element={<DirectoryExercisesPage />} />
           <Route path="/library/training-plans" element={<DirectoryTrainingPlansPage />} />
+          <Route path="/library/nutrition-templates" element={<DirectoryNutritionTemplatesPage />} />
         </Route>
       </Routes>
       <UnsavedChangesNotifier />

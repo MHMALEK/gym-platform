@@ -21,8 +21,10 @@ const translation = {
     planTemplates: "پلن‌های عضویت",
     exercises: "حرکات من",
     trainingPlans: "برنامه‌های تمرین من",
+    nutritionTemplates: "قالب‌های تغذیه من",
     libraryExercises: "کتابخانه · حرکات",
     libraryPlans: "کتابخانه · برنامه‌ها",
+    libraryNutritionTemplates: "کتابخانه · قالب‌های تغذیه",
   },
   actions: {
     save: "ذخیره",
@@ -113,9 +115,10 @@ const translation = {
     overdueInvoicesPlural: "صورت‌حساب‌های سررسید گذشته",
     reviewInvoices: "بررسی صورت‌حساب‌ها →",
     library: "کتابخانه",
-    libraryHint: "حرکات و برنامه‌های مشترک برای کپی به کتابخانه شما.",
+    libraryHint: "حرکات، برنامه‌های تمرینی و قالب‌های تغذیه مشترک برای کپی به کتابخانه شما.",
     catalogExercises: "حرکات کاتالوگ",
     catalogTrainingPlans: "برنامه‌های تمرینی کاتالوگ",
+    catalogNutritionTemplates: "قالب‌های تغذیه کاتالوگ",
   },
   clients: {
     listTitle: "مراجعین",
@@ -311,6 +314,14 @@ const translation = {
       loadError: "بارگذاری نشد.",
       invalidClient: "مراجع نامعتبر است.",
       lastUpdated: "آخرین به‌روزرسانی",
+      templateApplyHint:
+        "وعده‌های غذایی را از یکی از قالب‌های ذخیره‌شده بارگذاری کنید (از «قالب‌های تغذیه من» یا کپی از کاتالوگ).",
+      templateSelectPlaceholder: "انتخاب قالب تغذیه",
+      templateApply: "اعمال وعده‌ها",
+      templateApplied: "وعده‌ها از قالب بارگذاری شد. در پایان «ذخیره برنامه‌ها» را بزنید.",
+      templateApplyError: "بارگذاری این قالب انجام نشد.",
+      templateEmptyList:
+        "هنوز قالبی نیست. از «قالب‌های تغذیه من» بسازید یا از کاتالوگ کپی کنید.",
     },
   },
   planTemplates: {
@@ -488,9 +499,39 @@ const translation = {
       descriptionPlaceholder: "خلاصه اختیاری برای لیست و هنگام اشتراک برنامه.",
     },
   },
+  nutritionTemplates: {
+    list: {
+      intro:
+        "ساختار روزانه وعده‌ها را ذخیره کنید. از کاتالوگ طرح آماده کپی بگیرید و برای هر مراجع تنظیم کنید.",
+      searchPlaceholder: "جستجو با نام",
+      openCatalog: "قالب‌های تغذیه کاتالوگ",
+      name: "نام",
+      description: "توضیحات",
+      meals: "وعده‌ها",
+      fromCatalog: "از کاتالوگ",
+      actions: "اقدامات",
+    },
+    create: {
+      pageTitle: "ایجاد قالب تغذیه",
+      hint: "برنامه وعده‌ای که می‌خواهید دوباره استفاده کنید ذخیره کنید، یا از کاتالوگ مشترک شروع کنید:",
+    },
+    edit: {
+      pageTitle: "ویرایش قالب تغذیه",
+    },
+    form: {
+      name: "نام",
+      namePlaceholder: "مثال: هفته نگهدارنده · نوع مراجع الف",
+      description: "خلاصه",
+      descriptionPlaceholder: "اختیاری؛ در لیست نمایش داده می‌شود.",
+      notesPlan: "یادداشت مربیگری قالب",
+      notesPlanPlaceholder:
+        "راهنمای اختیاری همراه این قالب (جدا از یادداشت تغذیه هر مراجع).",
+    },
+  },
   library: {
     exercisesTitle: "کتابخانه · حرکات",
     plansTitle: "کتابخانه · برنامه‌های تمرینی",
+    nutritionTemplatesTitle: "کتابخانه · قالب‌های تغذیه کاتالوگ",
     name: "نام",
     venueColumn: "مکان",
     category: "دسته",
@@ -500,6 +541,7 @@ const translation = {
     actions: "اقدامات",
     copyToMine: "کپی به برنامه‌های من",
     copied: "به «برنامه‌های تمرینی من» کپی شد",
+    copiedNutritionTemplates: "به «قالب‌های تغذیه من» کپی شد",
     catalogIntroTitle: "کاتالوگ مشترک حرکات",
     catalogIntroBody:
       "این حرکات برای همه مربی‌ها در اپ از قبل وجود دارد. برای ویرایش یا استفاده در برنامه، یک نسخه به کتابخانه خودتان کپی کنید. فقط وقتی اینجا نیست «حرکت جدید» بسازید.",

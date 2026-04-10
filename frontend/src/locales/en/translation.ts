@@ -21,8 +21,10 @@ const translation = {
     planTemplates: "Membership plans",
     exercises: "My exercises",
     trainingPlans: "My workouts",
+    nutritionTemplates: "My nutrition templates",
     libraryExercises: "Library · Exercises",
     libraryPlans: "Library · Catalog plans",
+    libraryNutritionTemplates: "Library · Nutrition templates",
   },
   actions: {
     save: "Save",
@@ -112,9 +114,10 @@ const translation = {
     overdueInvoicesPlural: "overdue invoices",
     reviewInvoices: "Review invoices →",
     library: "Library",
-    libraryHint: "Shared catalog exercises and programs you can copy into your library.",
+    libraryHint: "Shared catalog exercises, programs, and nutrition templates you can copy into your library.",
     catalogExercises: "Catalog exercises",
     catalogTrainingPlans: "Catalog training plans",
+    catalogNutritionTemplates: "Catalog nutrition templates",
   },
   clients: {
     listTitle: "Clients",
@@ -309,6 +312,13 @@ const translation = {
       loadError: "Could not load plans.",
       invalidClient: "Invalid client.",
       lastUpdated: "Last updated",
+      templateApplyHint:
+        "Load meals from one of your saved nutrition templates (from My nutrition templates or copied from the catalog).",
+      templateSelectPlaceholder: "Choose a nutrition template",
+      templateApply: "Apply meals",
+      templateApplied: "Meals loaded from the template. Save plans when you are done.",
+      templateApplyError: "Could not load that template.",
+      templateEmptyList: "No templates yet. Create some under My nutrition templates or copy from the catalog.",
     },
   },
   planTemplates: {
@@ -485,9 +495,38 @@ const translation = {
       descriptionPlaceholder: "Optional summary shown in lists and when you share the plan.",
     },
   },
+  nutritionTemplates: {
+    list: {
+      intro:
+        "Build reusable day meal structures. Copy ready-made layouts from the catalog, then tweak for each client.",
+      searchPlaceholder: "Search by name",
+      openCatalog: "Catalog nutrition templates",
+      name: "Name",
+      description: "Description",
+      meals: "Meals",
+      fromCatalog: "From catalog",
+      actions: "Actions",
+    },
+    create: {
+      pageTitle: "Create nutrition template",
+      hint: "Save a meal plan you can reuse or start from the shared catalog:",
+    },
+    edit: {
+      pageTitle: "Edit nutrition template",
+    },
+    form: {
+      name: "Name",
+      namePlaceholder: "e.g. Maintenance week · Client type A",
+      description: "Summary",
+      descriptionPlaceholder: "Optional; shown in lists.",
+      notesPlan: "Template coaching notes",
+      notesPlanPlaceholder: "Optional guidance that travels with this template (not the same as per-client diet notes).",
+    },
+  },
   library: {
     exercisesTitle: "Library · Exercises",
     plansTitle: "Library · Catalog training plans",
+    nutritionTemplatesTitle: "Library · Catalog nutrition templates",
     name: "Name",
     venueColumn: "Venue",
     category: "Category",
@@ -497,6 +536,7 @@ const translation = {
     actions: "Actions",
     copyToMine: "Copy to mine",
     copied: "Copied to My training plans",
+    copiedNutritionTemplates: "Copied to My nutrition templates",
     catalogIntroTitle: "Shared exercise catalog",
     catalogIntroBody:
       "These exercises are already in the app for every coach. Copy one into your library to edit it or use it in programs. You only need “Create exercise” when something is missing here.",

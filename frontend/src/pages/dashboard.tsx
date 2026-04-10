@@ -272,6 +272,8 @@ export function DashboardPage() {
           <Link to="/library/exercises">{t("dashboard.catalogExercises")}</Link>
           <span>·</span>
           <Link to="/library/training-plans">{t("dashboard.catalogTrainingPlans")}</Link>
+          <span>·</span>
+          <Link to="/library/nutrition-templates">{t("dashboard.catalogNutritionTemplates")}</Link>
         </Space>
       </Card>
     </Space>
