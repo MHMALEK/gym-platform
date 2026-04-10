@@ -2,7 +2,10 @@ import { useLogin } from "@refinedev/core";
 import { Button, Card, Form, Input, Typography, theme } from "antd";
 import { useTranslation } from "react-i18next";
 
+import { LanguageSwitcher } from "../components/LanguageSwitcher";
+import { ThemeSwitcher } from "../components/ThemeSwitcher";
 import { coachBrand } from "../theme/brand";
+import { useThemeMode } from "../theme/ThemeModeContext";
 
 const devAuth = import.meta.env.VITE_DEV_AUTH === "true";
 
@@ -10,6 +13,19 @@ export function LoginPage() {
   const { mutate: login, isLoading } = useLogin();
   const { t } = useTranslation();
   const { token } = theme.useToken();
+  const { mode } = useThemeMode();
+
+  const shellBg =
+    mode === "dark"
+      ? `
+          radial-gradient(ellipse 90% 55% at 50% -15%, rgba(20, 184, 166, 0.22) 0%, transparent 52%),
+          radial-gradient(ellipse 70% 40% at 100% 100%, rgba(56, 189, 248, 0.08) 0%, transparent 45%),
+          linear-gradient(180deg, ${coachBrand.layoutBg} 0%, #07090d 55%, ${coachBrand.layoutBg} 100%)
+        `
+      : `
+          radial-gradient(ellipse 85% 50% at 50% -12%, ${token.colorPrimary}33 0%, transparent 52%),
+          linear-gradient(180deg, ${token.colorBgLayout} 0%, #e8eef5 50%, ${token.colorBgLayout} 100%)
+        `;
 
   return (
     <div
@@ -20,13 +36,23 @@ export function LoginPage() {
         alignItems: "center",
         justifyContent: "center",
         padding: 24,
-        background: `
-          radial-gradient(ellipse 90% 55% at 50% -15%, rgba(20, 184, 166, 0.22) 0%, transparent 52%),
-          radial-gradient(ellipse 70% 40% at 100% 100%, rgba(56, 189, 248, 0.08) 0%, transparent 45%),
-          linear-gradient(180deg, ${coachBrand.layoutBg} 0%, #07090d 55%, ${coachBrand.layoutBg} 100%)
-        `,
+        background: shellBg,
       }}
     >
+      <div
+        style={{
+          position: "fixed",
+          top: 16,
+          insetInlineEnd: 16,
+          zIndex: 2,
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 4,
+        }}
+      >
+        <ThemeSwitcher />
+        <LanguageSwitcher />
+      </div>
       <Card
         title={t("login.title")}
         style={{

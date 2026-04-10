@@ -27,6 +27,7 @@ import { BrowserRouter, Navigate, Outlet, Route, Routes } from "react-router-dom
 import { authProvider } from "./authProvider";
 import { DesktopSiderPinned } from "./components/DesktopSiderPinned";
 import { LanguageSwitcher } from "./components/LanguageSwitcher";
+import { ThemeSwitcher } from "./components/ThemeSwitcher";
 import { dataProvider } from "./dataProvider";
 import { ClientCreate } from "./pages/clients/create";
 import { ClientEdit } from "./pages/clients/edit";
@@ -37,6 +38,7 @@ import { ClientWorkoutDietPlansPage } from "./pages/clients/workout-diet-plans";
 import { CoachDeskPage } from "./pages/coach-desk";
 import { DashboardPage } from "./pages/dashboard";
 import { buildCoachTheme } from "./theme/antdCoachTheme";
+import { ThemeModeProvider, useThemeMode } from "./theme/ThemeModeContext";
 import { ExerciseCreate } from "./pages/exercises/create";
 import { InvoiceCreate } from "./pages/invoices/create";
 import { InvoiceEdit } from "./pages/invoices/edit";
@@ -59,6 +61,7 @@ function AppLayoutTitle() {
   return (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 12, marginInlineStart: 8 }}>
       <span>{t("app.title")}</span>
+      <ThemeSwitcher />
       <LanguageSwitcher />
     </span>
   );
@@ -66,6 +69,7 @@ function AppLayoutTitle() {
 
 function AntdLocaleBridge({ children }: { children: ReactNode }) {
   const { i18n } = useTranslation();
+  const { mode } = useThemeMode();
   const isFa = i18n.language.startsWith("fa");
   const antdLocale = isFa ? faIR : enUS;
   const direction = isFa ? "rtl" : "ltr";
@@ -81,7 +85,7 @@ function AntdLocaleBridge({ children }: { children: ReactNode }) {
     : '"Inter", "Vazirmatn", system-ui, -apple-system, sans-serif';
 
   return (
-    <ConfigProvider locale={antdLocale} direction={direction} theme={buildCoachTheme(fontFamily)}>
+    <ConfigProvider locale={antdLocale} direction={direction} theme={buildCoachTheme(fontFamily, mode)}>
       {children}
     </ConfigProvider>
   );
@@ -216,11 +220,13 @@ function RefineShell() {
 export default function App() {
   return (
     <BrowserRouter>
-      <AntdLocaleBridge>
-        <AntdApp>
-          <RefineShell />
-        </AntdApp>
-      </AntdLocaleBridge>
+      <ThemeModeProvider>
+        <AntdLocaleBridge>
+          <AntdApp>
+            <RefineShell />
+          </AntdApp>
+        </AntdLocaleBridge>
+      </ThemeModeProvider>
     </BrowserRouter>
   );
 }

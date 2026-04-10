@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="fa" dir="rtl">
+<html lang="fa" dir="rtl" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
@@ -12,6 +12,15 @@
       rel="stylesheet"
     />
     <title>Gym Coach · Coach console</title>
+    <script>
+      (function () {
+        try {
+          var k = "gym-coach-theme";
+          var v = localStorage.getItem(k);
+          document.documentElement.setAttribute("data-theme", v === "light" ? "light" : "dark");
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

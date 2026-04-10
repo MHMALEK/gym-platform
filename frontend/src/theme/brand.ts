@@ -1,5 +1,5 @@
 /**
- * Coach console — dark athletic UI (charcoal + electric teal).
+ * Coach console — charcoal + electric teal (dark) and clean light variant.
  * Maps to Ant Design 5 tokens; adjust here to re-skin the whole app.
  */
 export const coachBrand = {
@@ -20,3 +20,21 @@ export const coachBrand = {
   border: "rgba(148, 163, 184, 0.2)",
   borderSecondary: "rgba(148, 163, 184, 0.1)",
 } as const;
+
+/** Light shell — same accent, high-contrast neutrals for daytime use */
+export const coachBrandLight = {
+  primary: "#0d9488",
+  primaryHover: "#14b8a6",
+  primaryActive: "#0f766e",
+  primaryBgSoft: "rgba(13, 148, 136, 0.14)",
+  primaryBgHover: "rgba(13, 148, 136, 0.08)",
+  layoutBg: "#f1f5f9",
+  surface: "#ffffff",
+  surfaceElevated: "#f8fafc",
+  text: "#0f172a",
+  textSecondary: "#64748b",
+  border: "rgba(15, 23, 42, 0.12)",
+  borderSecondary: "rgba(15, 23, 42, 0.08)",
+} as const;
+
+export type CoachBrandPalette = typeof coachBrand;

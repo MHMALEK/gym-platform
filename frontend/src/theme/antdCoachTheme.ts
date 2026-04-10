@@ -1,28 +1,47 @@
 import type { ThemeConfig } from "antd";
 import { theme as antdTheme } from "antd";
 
-import { coachBrand } from "./brand";
+import { coachBrand, coachBrandLight } from "./brand";
+import type { ThemeMode } from "./ThemeModeContext";
 
-/** Ant Design theme fragment merged into ConfigProvider (with locale-specific fontFamily). */
-export function buildCoachTheme(fontFamily: string): ThemeConfig {
+/** Ant Design theme merged into ConfigProvider (with locale-specific fontFamily). */
+export function buildCoachTheme(fontFamily: string, mode: ThemeMode): ThemeConfig {
+  const brand = mode === "dark" ? coachBrand : coachBrandLight;
+  const algorithm = mode === "dark" ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm;
+
+  const cardShadow =
+    mode === "dark"
+      ? "0 1px 2px rgba(0, 0, 0, 0.35), 0 4px 16px -4px rgba(0, 0, 0, 0.45)"
+      : "0 1px 2px rgba(15, 23, 42, 0.06), 0 4px 12px -2px rgba(15, 23, 42, 0.08)";
+
+  const tableRowHover =
+    mode === "dark" ? "rgba(20, 184, 166, 0.06)" : "rgba(13, 148, 136, 0.08)";
+
+  const alertInfoBg =
+    mode === "dark" ? "rgba(20, 184, 166, 0.12)" : "rgba(13, 148, 136, 0.1)";
+  const alertInfoBorder =
+    mode === "dark" ? "rgba(20, 184, 166, 0.35)" : "rgba(13, 148, 136, 0.28)";
+
   return {
-    algorithm: antdTheme.darkAlgorithm,
+    algorithm,
     token: {
-      colorPrimary: coachBrand.primary,
-      colorSuccess: "#22c55e",
-      colorWarning: "#f59e0b",
-      colorError: "#f87171",
-      colorInfo: "#38bdf8",
-      colorText: coachBrand.text,
-      colorTextSecondary: coachBrand.textSecondary,
-      colorTextTertiary: "rgba(148, 163, 184, 0.85)",
-      colorTextQuaternary: "rgba(148, 163, 184, 0.55)",
-      colorBgLayout: coachBrand.layoutBg,
-      colorBgContainer: coachBrand.surface,
-      colorBgElevated: coachBrand.surfaceElevated,
-      colorBorder: coachBrand.border,
-      colorBorderSecondary: coachBrand.borderSecondary,
-      colorSplit: "rgba(148, 163, 184, 0.12)",
+      colorPrimary: brand.primary,
+      colorSuccess: mode === "dark" ? "#22c55e" : "#16a34a",
+      colorWarning: mode === "dark" ? "#f59e0b" : "#d97706",
+      colorError: mode === "dark" ? "#f87171" : "#dc2626",
+      colorInfo: mode === "dark" ? "#38bdf8" : "#0284c7",
+      colorText: brand.text,
+      colorTextSecondary: brand.textSecondary,
+      colorTextTertiary:
+        mode === "dark" ? "rgba(148, 163, 184, 0.85)" : "rgba(100, 116, 139, 0.9)",
+      colorTextQuaternary:
+        mode === "dark" ? "rgba(148, 163, 184, 0.55)" : "rgba(100, 116, 139, 0.65)",
+      colorBgLayout: brand.layoutBg,
+      colorBgContainer: brand.surface,
+      colorBgElevated: brand.surfaceElevated,
+      colorBorder: brand.border,
+      colorBorderSecondary: brand.borderSecondary,
+      colorSplit: mode === "dark" ? "rgba(148, 163, 184, 0.12)" : "rgba(15, 23, 42, 0.08)",
       wireframe: false,
       fontFamily,
       fontSize: 14,
@@ -34,19 +53,19 @@ export function buildCoachTheme(fontFamily: string): ThemeConfig {
     },
     components: {
       Layout: {
-        headerBg: coachBrand.surfaceElevated,
+        headerBg: brand.surfaceElevated,
         headerHeight: 56,
         headerPadding: "0 20px",
-        bodyBg: coachBrand.layoutBg,
-        footerBg: coachBrand.layoutBg,
-        triggerBg: coachBrand.surfaceElevated,
-        siderBg: coachBrand.surfaceElevated,
+        bodyBg: brand.layoutBg,
+        footerBg: brand.layoutBg,
+        triggerBg: brand.surfaceElevated,
+        siderBg: brand.surfaceElevated,
       },
       Card: {
         borderRadiusLG: 12,
         paddingLG: 22,
-        colorBgContainer: coachBrand.surface,
-        boxShadowTertiary: "0 1px 2px rgba(0, 0, 0, 0.35), 0 4px 16px -4px rgba(0, 0, 0, 0.45)",
+        colorBgContainer: brand.surface,
+        boxShadowTertiary: cardShadow,
       },
       Menu: {
         itemBorderRadius: 8,
@@ -54,31 +73,32 @@ export function buildCoachTheme(fontFamily: string): ThemeConfig {
         itemMarginBlock: 2,
         itemHeight: 40,
         iconSize: 18,
-        itemSelectedBg: coachBrand.primaryBgSoft,
-        itemSelectedColor: coachBrand.primaryHover,
-        itemHoverBg: coachBrand.primaryBgHover,
-        itemColor: coachBrand.textSecondary,
+        itemSelectedBg: brand.primaryBgSoft,
+        itemSelectedColor: brand.primaryHover,
+        itemHoverBg: brand.primaryBgHover,
+        itemColor: brand.textSecondary,
         subMenuItemBg: "transparent",
         darkItemBg: "transparent",
       },
       Button: {
         borderRadius: 8,
         fontWeight: 500,
-        primaryShadow: "0 2px 0 rgba(0, 0, 0, 0.2)",
+        primaryShadow:
+          mode === "dark" ? "0 2px 0 rgba(0, 0, 0, 0.2)" : "0 2px 0 rgba(13, 148, 136, 0.12)",
       },
       Tabs: {
         titleFontSize: 14,
-        inkBarColor: coachBrand.primary,
-        itemSelectedColor: coachBrand.primaryHover,
-        itemHoverColor: coachBrand.primary,
-        itemColor: coachBrand.textSecondary,
+        inkBarColor: brand.primary,
+        itemSelectedColor: brand.primaryHover,
+        itemHoverColor: brand.primary,
+        itemColor: brand.textSecondary,
       },
       Table: {
-        headerBg: coachBrand.surfaceElevated,
-        headerColor: coachBrand.text,
+        headerBg: brand.surfaceElevated,
+        headerColor: brand.text,
         borderRadius: 8,
-        colorBgContainer: coachBrand.surface,
-        rowHoverBg: "rgba(20, 184, 166, 0.06)",
+        colorBgContainer: brand.surface,
+        rowHoverBg: tableRowHover,
       },
       Typography: {
         titleMarginTop: "0.6em",
@@ -87,25 +107,25 @@ export function buildCoachTheme(fontFamily: string): ThemeConfig {
       Form: {
         verticalLabelPadding: "0 0 4px",
         itemMarginBottom: 16,
-        labelColor: coachBrand.textSecondary,
+        labelColor: brand.textSecondary,
       },
       Input: {
-        colorBgContainer: coachBrand.surfaceElevated,
-        activeBorderColor: coachBrand.primary,
-        hoverBorderColor: coachBrand.primaryHover,
+        colorBgContainer: brand.surfaceElevated,
+        activeBorderColor: brand.primary,
+        hoverBorderColor: brand.primaryHover,
       },
       Select: {
-        colorBgContainer: coachBrand.surfaceElevated,
+        colorBgContainer: brand.surfaceElevated,
       },
       Modal: {
-        contentBg: coachBrand.surface,
-        headerBg: coachBrand.surface,
-        footerBg: coachBrand.surface,
+        contentBg: brand.surface,
+        headerBg: brand.surface,
+        footerBg: brand.surface,
       },
       Alert: {
-        colorInfo: coachBrand.primary,
-        colorInfoBg: "rgba(20, 184, 166, 0.12)",
-        colorInfoBorder: "rgba(20, 184, 166, 0.35)",
+        colorInfo: brand.primary,
+        colorInfoBg: alertInfoBg,
+        colorInfoBorder: alertInfoBorder,
       },
     },
   };
