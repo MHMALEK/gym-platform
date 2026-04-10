@@ -260,6 +260,30 @@ const translation = {
       noDueInCard: "No due date",
       editInvoice: "Edit",
     },
+    plans: {
+      headerButton: "Workout & diet plans",
+      ctaTitle: "Workout & diet plans",
+      ctaBody:
+        "Keep a separate training program and nutrition plan for this client. Open the editor to add or update them anytime.",
+      openDedicatedPage: "Open workout & diet editor",
+      pageTitle: "Workout & diet plans",
+      pageSubtitle:
+        "Saved only for this client. Use the fields for sessions, meals, macros—whatever fits how you coach.",
+      workoutLabel: "Workout / training plan",
+      workoutPlaceholder: "e.g. split, exercises, sets, reps, progression notes…",
+      dietLabel: "Diet / nutrition plan",
+      dietPlaceholder: "e.g. calories, macros, meal ideas, restrictions…",
+      save: "Save plans",
+      backToClient: "Back to client",
+      saved: "Plans saved.",
+      saveError: "Could not save plans.",
+      loadError: "Could not load plans.",
+      invalidClient: "Invalid client.",
+      lastUpdated: "Last updated",
+      createFormTitle: "Workout & diet plans",
+      createFormBody:
+        "After you save this client, open their profile and use “Workout & diet plans” (or edit client) to add programs.",
+    },
   },
   planTemplates: {
     list: {

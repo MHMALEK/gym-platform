@@ -1,7 +1,20 @@
 import { FileTextOutlined, UserOutlined } from "@ant-design/icons";
 import { useCreate, useList } from "@refinedev/core";
 import type { BaseRecord, HttpError } from "@refinedev/core";
-import { App, Button, Card, DatePicker, Form, Input, InputNumber, Select, Space, Table, Tabs, Typography } from "antd";
+import {
+  App,
+  Button,
+  Card,
+  DatePicker,
+  Form,
+  Input,
+  InputNumber,
+  Select,
+  Space,
+  Table,
+  Tabs,
+  Typography,
+} from "antd";
 import dayjs from "dayjs";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -98,7 +111,9 @@ export function CoachDeskPage() {
           amount: values.amount ?? undefined,
           currency: "USD",
           status: "pending",
-          due_date: values.due_date ? values.due_date.format("YYYY-MM-DD") : undefined,
+          due_date: values.due_date
+            ? values.due_date.format("YYYY-MM-DD")
+            : undefined,
         },
         invalidates: ["list"],
       },
@@ -138,10 +153,15 @@ export function CoachDeskPage() {
         key: `i-${inv.id}`,
         kind: "invoice",
         who: clientName,
-        detail: inv.reference ? String(inv.reference) : t("coachDesk.invoiceNoRef"),
+        detail: inv.reference
+          ? String(inv.reference)
+          : t("coachDesk.invoiceNoRef"),
         when: due,
         sort: due ? due.valueOf() : Number.POSITIVE_INFINITY,
-        amount: inv.amount != null && inv.amount !== "" ? String(inv.amount) : undefined,
+        amount:
+          inv.amount != null && inv.amount !== ""
+            ? String(inv.amount)
+            : undefined,
         currency: String(inv.currency ?? "USD"),
       });
     }
@@ -187,15 +207,34 @@ export function CoachDeskPage() {
                 </span>
               ),
               children: (
-                <Card size="small" loading={clientsLoading} styles={{ body: { maxWidth: 440 } }}>
-                  <Form form={clientForm} layout="vertical" onFinish={onAddClient}>
-                    <Form.Item name="name" label={t("coachDesk.clientName")} rules={[{ required: true }]}>
+                <Card
+                  size="small"
+                  loading={clientsLoading}
+                  styles={{ body: { maxWidth: 440 } }}
+                >
+                  <Form
+                    form={clientForm}
+                    layout="vertical"
+                    onFinish={onAddClient}
+                  >
+                    <Form.Item
+                      name="name"
+                      label={t("coachDesk.clientName")}
+                      rules={[{ required: true }]}
+                    >
                       <Input placeholder={t("coachDesk.clientNamePh")} />
                     </Form.Item>
-                    <Form.Item name="phone" label={t("coachDesk.phoneOptional")}>
+                    <Form.Item
+                      name="phone"
+                      label={t("coachDesk.phoneOptional")}
+                    >
                       <Input placeholder={t("coachDesk.phonePh")} />
                     </Form.Item>
-                    <Button type="primary" htmlType="submit" loading={savingClient}>
+                    <Button
+                      type="primary"
+                      htmlType="submit"
+                      loading={savingClient}
+                    >
                       {t("coachDesk.addClientSubmit")}
                     </Button>
                   </Form>
@@ -210,9 +249,21 @@ export function CoachDeskPage() {
                 </span>
               ),
               children: (
-                <Card size="small" loading={invoicesLoading} styles={{ body: { maxWidth: 440 } }}>
-                  <Form form={invoiceForm} layout="vertical" onFinish={onAddInvoice}>
-                    <Form.Item name="client_id" label={t("coachDesk.client")} rules={[{ required: true }]}>
+                <Card
+                  size="small"
+                  loading={invoicesLoading}
+                  styles={{ body: { maxWidth: 440 } }}
+                >
+                  <Form
+                    form={invoiceForm}
+                    layout="vertical"
+                    onFinish={onAddInvoice}
+                  >
+                    <Form.Item
+                      name="client_id"
+                      label={t("coachDesk.client")}
+                      rules={[{ required: true }]}
+                    >
                       <Select
                         showSearch
                         optionFilterProp="label"
@@ -222,7 +273,12 @@ export function CoachDeskPage() {
                       />
                     </Form.Item>
                     <Form.Item name="amount" label={t("coachDesk.amount")}>
-                      <InputNumber min={0} step={0.01} style={{ width: "100%" }} placeholder="0" />
+                      <InputNumber
+                        min={0}
+                        step={0.01}
+                        style={{ width: "100%" }}
+                        placeholder="0"
+                      />
                     </Form.Item>
                     <Form.Item
                       name="due_date"
@@ -232,7 +288,11 @@ export function CoachDeskPage() {
                     >
                       <DatePicker style={{ width: "100%" }} />
                     </Form.Item>
-                    <Button type="primary" htmlType="submit" loading={savingInvoice}>
+                    <Button
+                      type="primary"
+                      htmlType="submit"
+                      loading={savingInvoice}
+                    >
                       {t("coachDesk.addInvoiceSubmit")}
                     </Button>
                   </Form>
@@ -243,28 +303,52 @@ export function CoachDeskPage() {
         />
 
         <Card size="small" title={t("coachDesk.planSection")}>
-          <Typography.Paragraph type="secondary" style={{ marginTop: 0, fontSize: 13 }}>
-            {t("coachDesk.planHelp")}
-          </Typography.Paragraph>
-          <Select
-            showSearch
-            optionFilterProp="label"
-            allowClear
-            placeholder={t("coachDesk.chooseClient")}
-            options={clientOptions}
-            style={{ width: "100%", maxWidth: 420, marginBottom: 16 }}
-            value={planClientId ?? undefined}
-            onChange={(v) => setPlanClientId(typeof v === "number" ? v : null)}
-          />
-          {planClientId != null ? (
-            <ClientSubscriptionsPanel clientId={planClientId} allowMutation compactHeader splitLayout />
-          ) : (
-            <Typography.Text type="secondary">{t("coachDesk.pickClientForPlan")}</Typography.Text>
-          )}
+          <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+            <Typography.Paragraph
+              type="secondary"
+              style={{ marginBottom: 0, fontSize: 13, lineHeight: 1.5 }}
+            >
+              {t("coachDesk.planHelp")}
+            </Typography.Paragraph>
+            <Select
+              showSearch
+              optionFilterProp="label"
+              allowClear
+              placeholder={t("coachDesk.chooseClient")}
+              options={clientOptions}
+              style={{ width: "100%", maxWidth: 420 }}
+              value={planClientId ?? undefined}
+              onChange={(v) => setPlanClientId(typeof v === "number" ? v : null)}
+            />
+            {planClientId != null ? (
+              <div style={{ width: "100%", paddingTop: 8 }}>
+                <ClientSubscriptionsPanel
+                  clientId={planClientId}
+                  allowMutation
+                  compactHeader
+                  splitLayout
+                />
+              </div>
+            ) : (
+              <Typography.Text
+                type="secondary"
+                style={{
+                  display: "block",
+                  padding: "10px 4px 14px",
+                  lineHeight: 1.55,
+                }}
+              >
+                {t("coachDesk.pickClientForPlan")}
+              </Typography.Text>
+            )}
+          </Space>
         </Card>
 
         <Card size="small" title={t("coachDesk.dueGlance")}>
-          <Typography.Paragraph type="secondary" style={{ marginTop: 0, fontSize: 13 }}>
+          <Typography.Paragraph
+            type="secondary"
+            style={{ marginTop: 0, fontSize: 13 }}
+          >
             {t("coachDesk.dueGlanceHint")}
           </Typography.Paragraph>
           <Table
@@ -279,7 +363,9 @@ export function CoachDeskPage() {
                 title: t("coachDesk.colType"),
                 width: 120,
                 render: (_, r) =>
-                  r.kind === "invoice" ? t("coachDesk.typeInvoice") : t("coachDesk.typeMembership"),
+                  r.kind === "invoice"
+                    ? t("coachDesk.typeInvoice")
+                    : t("coachDesk.typeMembership"),
               },
               {
                 title: t("coachDesk.colWho"),
@@ -296,7 +382,8 @@ export function CoachDeskPage() {
               {
                 title: t("coachDesk.colWhen"),
                 width: 160,
-                render: (_, r) => (r.when ? r.when.format("MMM D, YYYY") : t("common.dash")),
+                render: (_, r) =>
+                  r.when ? r.when.format("MMM D, YYYY") : t("common.dash"),
               },
             ]}
           />

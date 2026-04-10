@@ -1,7 +1,9 @@
-import { Card, Col, Divider, Form, Input, InputNumber, Row, Select, Space, Typography } from "antd";
+import { Alert, Card, Col, Divider, Form, Input, InputNumber, Row, Select, Space, Typography } from "antd";
 import type { SelectProps } from "antd/es/select";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
+
+import { ClientPlansCta } from "./ClientPlansCta";
 
 type ClientFormSectionsProps = {
   goalTypeSelectProps: SelectProps;
@@ -9,6 +11,8 @@ type ClientFormSectionsProps = {
   isCreate: boolean;
   /** Create wizard: show only one step at a time. Omit for edit (all sections visible). */
   createWizardStep?: 0 | 1 | 2;
+  /** Edit flow: link to workout & diet plans for this client */
+  coachingPlansClientId?: number;
 };
 
 function SectionHead({ title, hint }: { title: string; hint: string }) {
@@ -29,6 +33,7 @@ export function ClientFormSections({
   planSelectProps,
   isCreate,
   createWizardStep,
+  coachingPlansClientId,
 }: ClientFormSectionsProps) {
   const { t } = useTranslation();
   const wizard = createWizardStep !== undefined;
@@ -166,25 +171,29 @@ export function ClientFormSections({
 
   if (unifiedLayout) {
     return (
-      <div className="client-form-unified">
-        <Card bordered={false} className="client-profile-editor-surface" size="small">
-          <section className="client-form-section">{contactBlock}</section>
-          <Divider className="client-form-section-divider" />
-          <section className="client-form-section">{bodyBlock}</section>
-          <Divider className="client-form-section-divider" />
-          <section className="client-form-section">{goalsBlock}</section>
-          <Divider className="client-form-section-divider" />
-          <section className="client-form-section">{membershipBlock}</section>
-          <Divider className="client-form-section-divider" />
-          <section className="client-form-section">{accountBlock}</section>
-          <Divider className="client-form-section-divider" />
-          <section className="client-form-section">{notesBlock}</section>
-        </Card>
-      </div>
+      <>
+        <div className="client-form-unified">
+          <Card bordered={false} className="client-profile-editor-surface" size="small">
+            <section className="client-form-section">{contactBlock}</section>
+            <Divider className="client-form-section-divider" />
+            <section className="client-form-section">{bodyBlock}</section>
+            <Divider className="client-form-section-divider" />
+            <section className="client-form-section">{goalsBlock}</section>
+            <Divider className="client-form-section-divider" />
+            <section className="client-form-section">{membershipBlock}</section>
+            <Divider className="client-form-section-divider" />
+            <section className="client-form-section">{accountBlock}</section>
+            <Divider className="client-form-section-divider" />
+            <section className="client-form-section">{notesBlock}</section>
+          </Card>
+        </div>
+        {coachingPlansClientId != null ? <ClientPlansCta clientId={coachingPlansClientId} compact /> : null}
+      </>
     );
   }
 
   return (
+    <>
     <Space direction="vertical" size={16} style={{ width: "100%", maxWidth: 840 }}>
       <div hidden={stepHidden(0)}>
         <Card size="small" className={sectionCardClass} title={t("clients.form.contactTitle")}>
@@ -330,5 +339,15 @@ export function ClientFormSections({
         </Card>
       </div>
     </Space>
+    {isCreate ? (
+      <Alert
+        type="info"
+        showIcon
+        style={{ marginTop: 16, maxWidth: 840 }}
+        message={t("clients.plans.createFormTitle")}
+        description={t("clients.plans.createFormBody")}
+      />
+    ) : null}
+    </>
   );
 }

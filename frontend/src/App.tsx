@@ -33,6 +33,7 @@ import { ClientEdit } from "./pages/clients/edit";
 import { ClientList } from "./pages/clients/list";
 import { ClientFinance } from "./pages/clients/finance";
 import { ClientShow } from "./pages/clients/show";
+import { ClientWorkoutDietPlansPage } from "./pages/clients/workout-diet-plans";
 import { CoachDeskPage } from "./pages/coach-desk";
 import { DashboardPage } from "./pages/dashboard";
 import { buildCoachTheme } from "./theme/antdCoachTheme";
@@ -186,6 +187,7 @@ function RefineShell() {
           <Route path="/clients/create" element={<ClientCreate />} />
           <Route path="/clients/edit/:id" element={<ClientEdit />} />
           <Route path="/clients/show/:id/finance" element={<ClientFinance />} />
+          <Route path="/clients/show/:id/workout-diet-plans" element={<ClientWorkoutDietPlansPage />} />
           <Route path="/clients/show/:id" element={<ClientShow />} />
           <Route path="/invoices" element={<InvoiceList />} />
           <Route path="/invoices/create" element={<InvoiceCreate />} />

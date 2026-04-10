@@ -39,3 +39,9 @@ class Client(Base, TimestampMixin):
     )
     subscriptions = relationship("ClientSubscription", back_populates="client", cascade="all, delete-orphan")
     invoices = relationship("Invoice", back_populates="client", cascade="all, delete-orphan")
+    coaching_plan = relationship(
+        "ClientCoachingPlan",
+        back_populates="client",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )

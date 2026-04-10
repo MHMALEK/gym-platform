@@ -6,6 +6,7 @@ import {
   DashboardOutlined,
   FileTextOutlined,
   IdcardOutlined,
+  SnippetsOutlined,
   UserOutlined,
 } from "@ant-design/icons";
 import { Alert, Button, Card, Col, Divider, Row, Space, Tabs, Tag, Typography } from "antd";
@@ -15,6 +16,7 @@ import { useTranslation } from "react-i18next";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import { formatMoney } from "../../lib/money";
+import { ClientPlansCta, clientWorkoutDietPath } from "./ClientPlansCta";
 import { ClientInvoicesPanel, ClientMembershipPanel } from "./finance";
 import { goalTypeLabel } from "./goalOptions";
 
@@ -294,11 +296,27 @@ export function ClientShow() {
           </div>
         </div>
       </Card>
+
+      {clientId != null ? <ClientPlansCta clientId={clientId} /> : null}
     </Space>
   );
 
   return (
-    <Show isLoading={query?.isLoading}>
+    <Show
+      isLoading={query?.isLoading}
+      headerButtons={({ defaultButtons }) => (
+        <>
+          {defaultButtons}
+          {record?.id != null ? (
+            <Link to={clientWorkoutDietPath(record.id)}>
+              <Button type="default" icon={<SnippetsOutlined />} size="middle">
+                {t("clients.plans.headerButton")}
+              </Button>
+            </Link>
+          ) : null}
+        </>
+      )}
+    >
       <div className="client-page-shell">
         {record?.id != null && (
           <Alert

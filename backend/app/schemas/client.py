@@ -39,6 +39,17 @@ class LastInvoiceListSummary(BaseModel):
     reference: str | None = None
 
 
+class ClientCoachingPlanRead(BaseModel):
+    workout_plan: str | None = None
+    diet_plan: str | None = None
+    updated_at: datetime | None = None
+
+
+class ClientCoachingPlanUpsert(BaseModel):
+    workout_plan: str | None = None
+    diet_plan: str | None = None
+
+
 class ClientCreate(BaseModel):
     name: str
     email: str | None = None

@@ -6,11 +6,14 @@ from sqlalchemy.orm import selectinload
 
 from app.api.deps import CurrentCoach, DbSession
 from app.models.client import Client
+from app.models.client_coaching_plan import ClientCoachingPlan
 from app.models.client_subscription import ClientSubscription
 from app.models.goal_type import GoalType
 from app.models.invoice import Invoice
 from app.models.plan_template import PlanTemplate
 from app.schemas.client import (
+    ClientCoachingPlanRead,
+    ClientCoachingPlanUpsert,
     ClientCreate,
     ClientRead,
     ClientUpdate,
@@ -332,6 +335,57 @@ async def delete_client(client_id: int, coach: CurrentCoach, db: DbSession):
         raise HTTPException(status_code=404, detail="Client not found")
     await db.delete(c)
     await db.commit()
+
+
+async def _require_client(db: DbSession, coach_id: int, client_id: int) -> Client:
+    result = await db.execute(select(Client).where(Client.id == client_id, Client.coach_id == coach_id))
+    c = result.scalar_one_or_none()
+    if not c:
+        raise HTTPException(status_code=404, detail="Client not found")
+    return c
+
+
+@router.get("/{client_id}/coaching-plans", response_model=ClientCoachingPlanRead)
+async def get_coaching_plans(client_id: int, coach: CurrentCoach, db: DbSession):
+    await _require_client(db, coach.id, client_id)
+    result = await db.execute(select(ClientCoachingPlan).where(ClientCoachingPlan.client_id == client_id))
+    row = result.scalar_one_or_none()
+    if not row:
+        return ClientCoachingPlanRead(workout_plan=None, diet_plan=None, updated_at=None)
+    return ClientCoachingPlanRead(
+        workout_plan=row.workout_plan,
+        diet_plan=row.diet_plan,
+        updated_at=row.updated_at,
+    )
+
+
+@router.put("/{client_id}/coaching-plans", response_model=ClientCoachingPlanRead)
+async def upsert_coaching_plans(
+    client_id: int,
+    body: ClientCoachingPlanUpsert,
+    coach: CurrentCoach,
+    db: DbSession,
+):
+    await _require_client(db, coach.id, client_id)
+    result = await db.execute(select(ClientCoachingPlan).where(ClientCoachingPlan.client_id == client_id))
+    row = result.scalar_one_or_none()
+    if row:
+        row.workout_plan = body.workout_plan
+        row.diet_plan = body.diet_plan
+    else:
+        row = ClientCoachingPlan(
+            client_id=client_id,
+            workout_plan=body.workout_plan,
+            diet_plan=body.diet_plan,
+        )
+        db.add(row)
+    await db.commit()
+    await db.refresh(row)
+    return ClientCoachingPlanRead(
+        workout_plan=row.workout_plan,
+        diet_plan=row.diet_plan,
+        updated_at=row.updated_at,
+    )
 
 
 # --- subscriptions ---

@@ -3,6 +3,7 @@ import {
   EyeOutlined,
   FileTextOutlined,
   IdcardOutlined,
+  SnippetsOutlined,
   UserOutlined,
 } from "@ant-design/icons";
 import { Button, Form, Tabs, Typography } from "antd";
@@ -11,6 +12,7 @@ import { useTranslation } from "react-i18next";
 import { Link, useParams } from "react-router-dom";
 
 import { ClientInvoicesPanel, ClientMembershipPanel } from "./finance";
+import { clientWorkoutDietPath } from "./ClientPlansCta";
 import { ClientFormSections } from "./formSections";
 
 export function ClientEdit() {
@@ -48,6 +50,18 @@ export function ClientEdit() {
   return (
     <Edit
       saveButtonProps={saveButtonProps}
+      headerButtons={({ defaultButtons }) => (
+        <>
+          {defaultButtons}
+          {validId ? (
+            <Link to={clientWorkoutDietPath(clientId)}>
+              <Button type="default" icon={<SnippetsOutlined />} size="middle">
+                {t("clients.plans.headerButton")}
+              </Button>
+            </Link>
+          ) : null}
+        </>
+      )}
       contentProps={{
         styles: {
           body: { paddingTop: 8, paddingInline: 12 },
@@ -86,6 +100,7 @@ export function ClientEdit() {
                       goalTypeSelectProps={goalTypeSelectProps}
                       planSelectProps={planSelectProps}
                       isCreate={false}
+                      coachingPlansClientId={validId ? clientId : undefined}
                     />
                   </Form>
                 </>
