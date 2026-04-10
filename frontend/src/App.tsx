@@ -34,6 +34,7 @@ import { ClientList } from "./pages/clients/list";
 import { ClientFinance } from "./pages/clients/finance";
 import { ClientShow } from "./pages/clients/show";
 import { DashboardPage } from "./pages/dashboard";
+import { buildCoachTheme } from "./theme/antdCoachTheme";
 import { ExerciseCreate } from "./pages/exercises/create";
 import { InvoiceCreate } from "./pages/invoices/create";
 import { InvoiceEdit } from "./pages/invoices/edit";
@@ -79,17 +80,7 @@ function AntdLocaleBridge({ children }: { children: ReactNode }) {
     : '"Inter", "Vazirmatn", system-ui, -apple-system, sans-serif';
 
   return (
-    <ConfigProvider
-      locale={antdLocale}
-      direction={direction}
-      theme={{
-        token: {
-          fontFamily,
-          fontSize: 14,
-          borderRadius: 6,
-        },
-      }}
-    >
+    <ConfigProvider locale={antdLocale} direction={direction} theme={buildCoachTheme(fontFamily)}>
       {children}
     </ConfigProvider>
   );
