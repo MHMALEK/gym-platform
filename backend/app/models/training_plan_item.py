@@ -18,6 +18,9 @@ class TrainingPlanItem(Base, TimestampMixin):
     duration_sec: Mapped[int | None] = mapped_column(Integer, nullable=True)
     rest_sec: Mapped[int | None] = mapped_column(Integer, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Same block_id on adjacent (or reordered) rows = one structured block, e.g. superset.
+    block_id: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    block_type: Mapped[str | None] = mapped_column(String(24), nullable=True)
 
     training_plan = relationship("TrainingPlan", back_populates="items")
     exercise = relationship("Exercise", back_populates="plan_items")

@@ -193,6 +193,9 @@ export function CoachDeskPage() {
           <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
             {t("coachDesk.subtitle")}
           </Typography.Paragraph>
+          <Typography.Paragraph style={{ marginBottom: 0, marginTop: 8 }}>
+            <Link to="/workouts">{t("coachDesk.workoutsLink")}</Link>
+          </Typography.Paragraph>
         </div>
 
         <Tabs

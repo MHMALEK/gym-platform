@@ -15,6 +15,7 @@ from app.schemas.training_plan import (
     TrainingPlanUpdate,
 )
 from app.services.exercise_access import exercise_ids_allowed_for_coach
+from app.services.workout_blocks import strip_orphan_workout_blocks
 
 router = APIRouter(prefix="/training-plans", tags=["training-plans"])
 
@@ -39,6 +40,7 @@ def _plan_to_read(plan: TrainingPlan) -> TrainingPlanRead:
         coach_id=plan.coach_id,
         name=plan.name,
         description=plan.description,
+        workout_rich_html=plan.workout_rich_html,
         source_catalog_plan_id=plan.source_catalog_plan_id,
         venue_type=plan.venue_type,
         items=items_out,
@@ -100,6 +102,7 @@ async def copy_from_catalog(catalog_id: int, coach: CurrentCoach, db: DbSession)
         coach_id=coach.id,
         name=src.name,
         description=src.description,
+        workout_rich_html=src.workout_rich_html,
         source_catalog_plan_id=catalog_id,
         venue_type=src.venue_type,
     )
@@ -116,6 +119,8 @@ async def copy_from_catalog(catalog_id: int, coach: CurrentCoach, db: DbSession)
                 duration_sec=it.duration_sec,
                 rest_sec=it.rest_sec,
                 notes=it.notes,
+                block_id=it.block_id,
+                block_type=it.block_type,
             )
         )
     await db.commit()
@@ -165,6 +170,7 @@ async def replace_training_plan_items(
     plan = result.scalar_one_or_none()
     if not plan:
         raise HTTPException(status_code=404, detail="Training plan not found")
+    body = strip_orphan_workout_blocks(body)
     ids = [x.exercise_id for x in body]
     ok, err = await exercise_ids_allowed_for_coach(db, coach.id, ids)
     if not ok:
@@ -181,6 +187,8 @@ async def replace_training_plan_items(
                 duration_sec=row.duration_sec,
                 rest_sec=row.rest_sec,
                 notes=row.notes,
+                block_id=row.block_id,
+                block_type=row.block_type,
             )
         )
     await db.commit()

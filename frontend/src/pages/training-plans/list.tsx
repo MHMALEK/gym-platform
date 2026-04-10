@@ -7,8 +7,9 @@ import {
   useTable,
 } from "@refinedev/antd";
 import { type BaseRecord } from "@refinedev/core";
-import { Select, Space, Table } from "antd";
+import { Alert, Button, Select, Space, Table } from "antd";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 
 export function TrainingPlanList() {
   const { t } = useTranslation();
@@ -23,6 +24,13 @@ export function TrainingPlanList() {
 
   return (
     <List headerButtons={<CreateButton />}>
+      <Alert
+        type="info"
+        showIcon
+        style={{ marginBottom: 16 }}
+        message={t("trainingPlans.list.builderIntroTitle")}
+        description={t("trainingPlans.list.builderIntroBody")}
+      />
       <Space style={{ marginBottom: 12 }}>
         <Select
           allowClear
@@ -53,7 +61,12 @@ export function TrainingPlanList() {
         <Table.Column<BaseRecord>
           title={t("trainingPlans.list.actions")}
           render={(_, record: BaseRecord) => (
-            <Space>
+            <Space wrap>
+              <Link to={`/training-plans/show/${record.id}`}>
+                <Button type="primary" size="small">
+                  {t("trainingPlans.list.buildWorkout")}
+                </Button>
+              </Link>
               <EditButton hideText size="small" recordItemId={record.id} />
               <ShowButton hideText size="small" recordItemId={record.id} />
               <DeleteButton hideText size="small" recordItemId={record.id} />

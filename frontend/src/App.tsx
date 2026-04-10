@@ -182,6 +182,7 @@ function RefineShell() {
           }
         >
           <Route index element={<CoachDeskPage />} />
+          <Route path="/workouts" element={<Navigate to="/training-plans" replace />} />
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/clients" element={<ClientList />} />
           <Route path="/clients/create" element={<ClientCreate />} />

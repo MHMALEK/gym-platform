@@ -4,7 +4,10 @@ import { useTranslation } from "react-i18next";
 
 export function TrainingPlanCreate() {
   const { t } = useTranslation();
-  const { formProps, saveButtonProps } = useForm({ resource: "training-plans" });
+  const { formProps, saveButtonProps } = useForm({
+    resource: "training-plans",
+    redirect: "show",
+  });
 
   const venueOptions = [
     { value: "mixed", label: t("workouts.venue.mixed") },

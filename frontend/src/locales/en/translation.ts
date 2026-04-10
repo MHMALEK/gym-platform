@@ -16,7 +16,7 @@ const translation = {
     invoices: "Invoices",
     planTemplates: "Membership plans",
     exercises: "My exercises",
-    trainingPlans: "My training plans",
+    trainingPlans: "My workouts",
     libraryExercises: "Library · Exercises",
     libraryPlans: "Library · Catalog plans",
   },
@@ -73,6 +73,7 @@ const translation = {
     openDashboard: "Full dashboard",
     noDues: "Nothing to show yet.",
     saveError: "Could not save. Try again.",
+    workoutsLink: "Build workouts (catalog + your exercises)",
   },
   dashboard: {
     title: "Dashboard",
@@ -435,6 +436,10 @@ const translation = {
       venue: "Venue",
       fromCatalog: "From catalog",
       actions: "Actions",
+      buildWorkout: "Build workout",
+      builderIntroTitle: "Workout builder",
+      builderIntroBody:
+        "Open a plan (or use Build workout) to add exercises from the shared catalog or your own library, then set sets, reps, rest, and coaching tips. You can edit details here or on the plan’s view page.",
     },
     form: {
       venue: "Program venue",
@@ -469,9 +474,9 @@ const translation = {
     loading: "Loading…",
   },
   workouts: {
-    builderTitle: "Workout exercises",
+    builderTitle: "Workout builder",
     builderHint:
-      "Add exercises from the catalog or your library. Reorder with arrows; adjust sets, reps, rest, and notes.",
+      "Add exercises from the catalog or your library. Reorder with arrows. Use sets, reps, duration, rest, and the tips column for cues specific to this program.",
     planVenueLabel: "Program venue",
     venueFilterHint: "Exercise picker is filtered for {{venue}} programs (includes “both”).",
     addExercise: "Add exercise",
@@ -480,7 +485,13 @@ const translation = {
     itemsSaveError: "Could not save workout.",
     loadExercisesError: "Could not load exercises.",
     pickExercise: "Choose exercise",
-    pickExercisePh: "Search by name",
+    pickExercisePh: "Choose from the list",
+    pickerFilterPh: "Filter by name…",
+    pickerHint: "“My exercises” are moves you created or copied; “Catalog” is the shared library.",
+    pickerGroupMine: "My exercises",
+    pickerGroupCatalog: "Catalog",
+    pickerBadgeCatalog: "catalog",
+    pickerEmpty: "No exercises match. Try another search or copy moves from the library.",
     add: "Add",
     emptyItems: "No exercises yet. Add from catalog or your library.",
     colExercise: "Exercise",
@@ -489,6 +500,7 @@ const translation = {
     colDurationSec: "Sec",
     colRestSec: "Rest (s)",
     colNotes: "Notes",
+    colTipsNotes: "Tips / notes",
     colActions: "Order",
     venue: {
       home: "Home gym",

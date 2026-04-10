@@ -16,7 +16,7 @@ const translation = {
     invoices: "صورت‌حساب‌ها",
     planTemplates: "پلن‌های عضویت",
     exercises: "حرکات من",
-    trainingPlans: "برنامه‌های تمرینی من",
+    trainingPlans: "برنامه‌های تمرین من",
     libraryExercises: "کتابخانه · حرکات",
     libraryPlans: "کتابخانه · برنامه‌ها",
   },
@@ -74,6 +74,7 @@ const translation = {
     openDashboard: "داشبورد کامل",
     noDues: "موردی برای نمایش نیست.",
     saveError: "ذخیره نشد. دوباره تلاش کنید.",
+    workoutsLink: "ساخت برنامه تمرین (کاتالوگ + حرکات شما)",
   },
   dashboard: {
     title: "داشبورد",
@@ -437,6 +438,10 @@ const translation = {
       venue: "مکان",
       fromCatalog: "از کاتالوگ",
       actions: "اقدامات",
+      buildWorkout: "ساخت تمرین",
+      builderIntroTitle: "سازنده برنامه تمرین",
+      builderIntroBody:
+        "یک برنامه را باز کنید (یا «ساخت تمرین») تا حرکات را از کاتالوگ مشترک یا حرکات خودتان اضافه کنید؛ ست، تکرار، استراحت و نکات مربیگری را تنظیم کنید. همین‌جا یا در صفحه مشاهده برنامه قابل ویرایش است.",
     },
     form: {
       venue: "مکان برنامه",
@@ -471,9 +476,9 @@ const translation = {
     loading: "در حال بارگذاری…",
   },
   workouts: {
-    builderTitle: "حرکات برنامه تمرین",
+    builderTitle: "سازنده برنامه تمرین",
     builderHint:
-      "از کاتالوگ یا حرکات خودتان اضافه کنید. با فلش ترتیب را عوض کنید؛ ست، تکرار، استراحت و یادداشت را تنظیم کنید.",
+      "از کاتالوگ یا حرکات خودتان اضافه کنید. با فلش ترتیب را عوض کنید. ست، تکرار، مدت، استراحت و ستون نکات را برای همین برنامه پر کنید.",
     planVenueLabel: "مکان برنامه",
     venueFilterHint: "لیست حرکات برای برنامه {{venue}} فیلتر شده (شامل «هر دو»).",
     addExercise: "افزودن حرکت",
@@ -482,7 +487,13 @@ const translation = {
     itemsSaveError: "ذخیره نشد.",
     loadExercisesError: "بارگذاری حرکات نشد.",
     pickExercise: "انتخاب حرکت",
-    pickExercisePh: "جستجو با نام",
+    pickExercisePh: "از لیست انتخاب کنید",
+    pickerFilterPh: "فیلتر با نام…",
+    pickerHint: "«حرکات من» حرکاتی است که ساخته یا کپی کرده‌اید؛ «کاتالوگ» کتابخانه مشترک است.",
+    pickerGroupMine: "حرکات من",
+    pickerGroupCatalog: "کاتالوگ",
+    pickerBadgeCatalog: "کاتالوگ",
+    pickerEmpty: "حرکتی پیدا نشد. جستجو را عوض کنید یا از کتابخانه کپی کنید.",
     add: "افزودن",
     emptyItems: "هنوز حرکتی نیست. از کاتالوگ یا حرکات خود اضافه کنید.",
     colExercise: "حرکت",
@@ -491,6 +502,7 @@ const translation = {
     colDurationSec: "ثانیه",
     colRestSec: "استراحت (ث)",
     colNotes: "یادداشت",
+    colTipsNotes: "نکات / یادداشت",
     colActions: "ترتیب",
     venue: {
       home: "خانه",

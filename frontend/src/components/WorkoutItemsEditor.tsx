@@ -18,7 +18,7 @@ export type WorkoutLine = {
   exercise_name?: string;
 };
 
-type ExerciseOpt = { id: number; name: string };
+type ExerciseOpt = { id: number; name: string; source: "catalog" | "mine" };
 
 export function normalizeWorkoutItemsForApi(items: WorkoutLine[]) {
   return items.map((it, index) => ({
@@ -32,7 +32,9 @@ export function normalizeWorkoutItemsForApi(items: WorkoutLine[]) {
   }));
 }
 
-async function loadMergedExercises(venueCompat: string | null | undefined): Promise<ExerciseOpt[]> {
+async function loadExercisesGrouped(
+  venueCompat: string | null | undefined,
+): Promise<{ catalog: ExerciseOpt[]; mine: ExerciseOpt[] }> {
   const sp = new URLSearchParams({ limit: "200", offset: "0" });
   if (venueCompat === "home" || venueCompat === "commercial_gym") {
     sp.set("venue_compat", venueCompat);
@@ -42,12 +44,15 @@ async function loadMergedExercises(venueCompat: string | null | undefined): Prom
     fetch(`${apiPrefix}/directory/exercises?${sp}`, { headers: h }),
     fetch(`${apiPrefix}/exercises?${sp}`, { headers: h }),
   ]);
-  const aj = (await a.json()) as { items?: ExerciseOpt[] };
-  const bj = (await b.json()) as { items?: ExerciseOpt[] };
-  const map = new Map<number, ExerciseOpt>();
-  for (const x of aj.items ?? []) map.set(x.id, x);
-  for (const x of bj.items ?? []) map.set(x.id, x);
-  return Array.from(map.values()).sort((u, v) => u.name.localeCompare(v.name));
+  const aj = (await a.json()) as { items?: Array<{ id: number; name: string }> };
+  const bj = (await b.json()) as { items?: Array<{ id: number; name: string }> };
+  const catalog = (aj.items ?? [])
+    .map((x) => ({ id: x.id, name: x.name, source: "catalog" as const }))
+    .sort((u, v) => u.name.localeCompare(v.name));
+  const mine = (bj.items ?? [])
+    .map((x) => ({ id: x.id, name: x.name, source: "mine" as const }))
+    .sort((u, v) => u.name.localeCompare(v.name));
+  return { catalog, mine };
 }
 
 export type WorkoutItemsEditorProps = {
@@ -73,7 +78,9 @@ export function WorkoutItemsEditor({
   const [items, setItems] = useState<WorkoutLine[]>([]);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerLoading, setPickerLoading] = useState(false);
-  const [exerciseOptions, setExerciseOptions] = useState<ExerciseOpt[]>([]);
+  const [catalogOpts, setCatalogOpts] = useState<ExerciseOpt[]>([]);
+  const [mineOpts, setMineOpts] = useState<ExerciseOpt[]>([]);
+  const [pickerQuery, setPickerQuery] = useState("");
   const [selectedExId, setSelectedExId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -102,9 +109,11 @@ export function WorkoutItemsEditor({
     setPickerOpen(true);
     setPickerLoading(true);
     setSelectedExId(null);
+    setPickerQuery("");
     try {
-      const opts = await loadMergedExercises(venueCompat ?? null);
-      setExerciseOptions(opts);
+      const { catalog, mine } = await loadExercisesGrouped(venueCompat ?? null);
+      setCatalogOpts(catalog);
+      setMineOpts(mine);
     } catch {
       message.error(t("workouts.loadExercisesError"));
     } finally {
@@ -112,9 +121,33 @@ export function WorkoutItemsEditor({
     }
   }, [message, t, venueCompat]);
 
+  const pickerOptionsGrouped = useMemo(() => {
+    const q = pickerQuery.trim().toLowerCase();
+    const match = (e: ExerciseOpt) => !q || e.name.toLowerCase().includes(q);
+    const mineF = mineOpts.filter(match);
+    const catF = catalogOpts.filter(match);
+    const toOpt = (e: ExerciseOpt) => ({
+      value: e.id,
+      label: e.source === "catalog" ? `${e.name} (${t("workouts.pickerBadgeCatalog")})` : e.name,
+    });
+    const groups: { label: string; options: { value: number; label: string }[] }[] = [];
+    if (mineF.length) {
+      groups.push({ label: t("workouts.pickerGroupMine"), options: mineF.map(toOpt) });
+    }
+    if (catF.length) {
+      groups.push({ label: t("workouts.pickerGroupCatalog"), options: catF.map(toOpt) });
+    }
+    return groups;
+  }, [catalogOpts, mineOpts, pickerQuery, t]);
+
+  const flatPickerChoices = useMemo(
+    () => pickerOptionsGrouped.flatMap((g) => g.options),
+    [pickerOptionsGrouped],
+  );
+
   const addSelectedExercise = useCallback(() => {
     if (selectedExId == null) return;
-    const ex = exerciseOptions.find((e) => e.id === selectedExId);
+    const ex = [...mineOpts, ...catalogOpts].find((e) => e.id === selectedExId);
     if (!ex) return;
     const next = [
       ...items,
@@ -131,7 +164,7 @@ export function WorkoutItemsEditor({
     ];
     pushItems(next);
     setPickerOpen(false);
-  }, [exerciseOptions, items, pushItems, selectedExId]);
+  }, [catalogOpts, items, mineOpts, pushItems, selectedExId]);
 
   const move = useCallback(
     (index: number, dir: -1 | 1) => {
@@ -246,7 +279,7 @@ export function WorkoutItemsEditor({
         ),
       },
       {
-        title: t("workouts.colNotes"),
+        title: t("workouts.colTipsNotes"),
         render: (_, row, i) => (
           <Input
             size="small"
@@ -313,19 +346,32 @@ export function WorkoutItemsEditor({
         onCancel={() => setPickerOpen(false)}
         onOk={addSelectedExercise}
         okText={t("workouts.add")}
-        okButtonProps={{ disabled: selectedExId == null }}
+        okButtonProps={{ disabled: selectedExId == null || flatPickerChoices.length === 0 }}
         confirmLoading={pickerLoading}
       >
-        <Select
-          showSearch
-          optionFilterProp="label"
-          style={{ width: "100%" }}
-          placeholder={t("workouts.pickExercisePh")}
-          loading={pickerLoading}
-          options={exerciseOptions.map((e) => ({ value: e.id, label: e.name }))}
-          value={selectedExId ?? undefined}
-          onChange={(v) => setSelectedExId(v)}
-        />
+        <Space direction="vertical" style={{ width: "100%" }} size="middle">
+          <Input
+            allowClear
+            placeholder={t("workouts.pickerFilterPh")}
+            value={pickerQuery}
+            onChange={(e) => {
+              setPickerQuery(e.target.value);
+              setSelectedExId(null);
+            }}
+          />
+          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+            {t("workouts.pickerHint")}
+          </Typography.Text>
+          <Select
+            style={{ width: "100%" }}
+            placeholder={t("workouts.pickExercisePh")}
+            loading={pickerLoading}
+            options={pickerOptionsGrouped}
+            value={selectedExId ?? undefined}
+            onChange={(v) => setSelectedExId(v)}
+            notFoundContent={pickerLoading ? undefined : t("workouts.pickerEmpty")}
+          />
+        </Space>
       </Modal>
     </div>
   );

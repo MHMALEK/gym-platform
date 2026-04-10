@@ -17,6 +17,7 @@ class ClientCoachingPlan(Base, TimestampMixin):
         index=True,
     )
     workout_plan: Mapped[str | None] = mapped_column(Text, nullable=True)
+    workout_rich_html: Mapped[str | None] = mapped_column(Text, nullable=True)
     diet_plan: Mapped[str | None] = mapped_column(Text, nullable=True)
     workout_items_json: Mapped[str | None] = mapped_column(Text, nullable=True)
 

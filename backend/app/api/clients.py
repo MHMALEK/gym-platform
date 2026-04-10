@@ -6,6 +6,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import selectinload
 
 from app.api.deps import CurrentCoach, DbSession
+from app.services.workout_blocks import strip_orphan_workout_blocks
 from app.models.client import Client
 from app.models.client_coaching_plan import ClientCoachingPlan
 from app.models.exercise import Exercise
@@ -393,6 +394,7 @@ async def get_coaching_plans(client_id: int, coach: CurrentCoach, db: DbSession)
     if not row:
         return ClientCoachingPlanRead(
             workout_plan=None,
+            workout_rich_html=None,
             diet_plan=None,
             workout_items=[],
             updated_at=None,
@@ -400,6 +402,7 @@ async def get_coaching_plans(client_id: int, coach: CurrentCoach, db: DbSession)
     items = await _enrich_client_workout_items(db, row.workout_items_json)
     return ClientCoachingPlanRead(
         workout_plan=row.workout_plan,
+        workout_rich_html=row.workout_rich_html,
         diet_plan=row.diet_plan,
         workout_items=items,
         updated_at=row.updated_at,
@@ -422,17 +425,20 @@ async def upsert_coaching_plans(
         db.add(row)
     if "workout_plan" in dump:
         row.workout_plan = body.workout_plan
+    if "workout_rich_html" in dump:
+        row.workout_rich_html = body.workout_rich_html
     if "diet_plan" in dump:
         row.diet_plan = body.diet_plan
     if "workout_items" in dump:
         items = body.workout_items
         if items is not None:
-            ids = [x.exercise_id for x in items]
+            cleaned = strip_orphan_workout_blocks(items)
+            ids = [x.exercise_id for x in cleaned]
             ok, err = await exercise_ids_allowed_for_coach(db, coach.id, ids)
             if not ok:
                 raise HTTPException(status_code=400, detail=err)
             normalized: list[dict] = []
-            for idx, it in enumerate(sorted(items, key=lambda z: z.sort_order)):
+            for idx, it in enumerate(sorted(cleaned, key=lambda z: z.sort_order)):
                 d = it.model_dump()
                 d["sort_order"] = idx
                 normalized.append(d)
@@ -444,6 +450,7 @@ async def upsert_coaching_plans(
     items_out = await _enrich_client_workout_items(db, row.workout_items_json)
     return ClientCoachingPlanRead(
         workout_plan=row.workout_plan,
+        workout_rich_html=row.workout_rich_html,
         diet_plan=row.diet_plan,
         workout_items=items_out,
         updated_at=row.updated_at,

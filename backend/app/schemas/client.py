@@ -2,7 +2,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, computed_field
+from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validator
 
 from app.schemas.common import ORMBase
 from app.schemas.goal_type import GoalTypeSummary
@@ -39,6 +39,9 @@ class LastInvoiceListSummary(BaseModel):
     reference: str | None = None
 
 
+WorkoutBlockType = Literal["superset", "circuit", "tri_set", "giant_set", "dropset"]
+
+
 class ClientWorkoutItemWrite(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
@@ -49,6 +52,18 @@ class ClientWorkoutItemWrite(BaseModel):
     duration_sec: int | None = None
     rest_sec: int | None = None
     notes: str | None = None
+    block_id: str | None = None
+    block_type: WorkoutBlockType | None = None
+
+    @model_validator(mode="after")
+    def block_consistency(self):
+        bid = (self.block_id or "").strip() or None
+        object.__setattr__(self, "block_id", bid)
+        if not bid:
+            object.__setattr__(self, "block_type", None)
+        elif self.block_type is None:
+            object.__setattr__(self, "block_type", "superset")
+        return self
 
 
 class ClientWorkoutItemRead(ClientWorkoutItemWrite):
@@ -57,6 +72,7 @@ class ClientWorkoutItemRead(ClientWorkoutItemWrite):
 
 class ClientCoachingPlanRead(BaseModel):
     workout_plan: str | None = None
+    workout_rich_html: str | None = None
     diet_plan: str | None = None
     workout_items: list[ClientWorkoutItemRead] = Field(default_factory=list)
     updated_at: datetime | None = None
@@ -64,6 +80,7 @@ class ClientCoachingPlanRead(BaseModel):
 
 class ClientCoachingPlanUpsert(BaseModel):
     workout_plan: str | None = None
+    workout_rich_html: str | None = None
     diet_plan: str | None = None
     workout_items: list[ClientWorkoutItemWrite] | None = None
 
