@@ -14,6 +14,7 @@ class TrainingPlan(Base, TimestampMixin):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     source_catalog_plan_id: Mapped[int | None] = mapped_column(nullable=True)
+    venue_type: Mapped[str] = mapped_column(String(32), nullable=False, default="mixed", server_default="mixed")
 
     coach = relationship("Coach", back_populates="training_plans", foreign_keys=[coach_id])
     items = relationship(

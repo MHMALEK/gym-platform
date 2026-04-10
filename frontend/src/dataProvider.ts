@@ -53,9 +53,20 @@ function appendListQueryParams(searchParams: URLSearchParams, resource: string, 
   if (resource === "exercises" || resource === "directory-exercises") {
     for (const f of filters) {
       if (!isLogicalFilter(f)) continue;
-      if (f.field !== "q" || f.value == null) continue;
-      const s = String(f.value).trim();
-      if (s) searchParams.set("q", s);
+      if (f.field === "q" && f.value != null && String(f.value).trim()) {
+        searchParams.set("q", String(f.value).trim());
+      }
+      if (f.field === "venue_type" && f.value != null && String(f.value) !== "") {
+        searchParams.set("venue_type", String(f.value));
+      }
+    }
+  }
+  if (resource === "training-plans") {
+    for (const f of filters) {
+      if (!isLogicalFilter(f)) continue;
+      if (f.field === "venue_type" && f.value != null && String(f.value) !== "") {
+        searchParams.set("venue_type", String(f.value));
+      }
     }
   }
 }

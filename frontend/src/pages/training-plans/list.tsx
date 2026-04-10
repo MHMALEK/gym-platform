@@ -7,18 +7,44 @@ import {
   useTable,
 } from "@refinedev/antd";
 import { type BaseRecord } from "@refinedev/core";
-import { Space, Table } from "antd";
+import { Select, Space, Table } from "antd";
 import { useTranslation } from "react-i18next";
 
 export function TrainingPlanList() {
   const { t } = useTranslation();
-  const { tableProps } = useTable({ resource: "training-plans", syncWithLocation: true });
+  const { tableProps, setFilters } = useTable({ resource: "training-plans", syncWithLocation: true });
+
+  const venueOptions = [
+    { value: "", label: t("exercises.list.filterVenue") + " —" },
+    { value: "mixed", label: t("workouts.venue.mixed") },
+    { value: "home", label: t("workouts.venue.home") },
+    { value: "commercial_gym", label: t("workouts.venue.commercial_gym") },
+  ];
 
   return (
     <List headerButtons={<CreateButton />}>
+      <Space style={{ marginBottom: 12 }}>
+        <Select
+          allowClear
+          placeholder={t("trainingPlans.list.venue")}
+          style={{ minWidth: 200 }}
+          options={venueOptions.filter((o) => o.value !== "")}
+          onChange={(v) => {
+            setFilters(
+              v ? [{ field: "venue_type", operator: "eq", value: v }] : [],
+              "replace",
+            );
+          }}
+        />
+      </Space>
       <Table {...tableProps} rowKey="id">
         <Table.Column dataIndex="name" title={t("trainingPlans.list.name")} />
         <Table.Column dataIndex="description" title={t("trainingPlans.list.description")} ellipsis />
+        <Table.Column
+          dataIndex="venue_type"
+          title={t("trainingPlans.list.venue")}
+          render={(v: string) => t(`workouts.venue.${v ?? "mixed"}`)}
+        />
         <Table.Column
           dataIndex="source_catalog_plan_id"
           title={t("trainingPlans.list.fromCatalog")}

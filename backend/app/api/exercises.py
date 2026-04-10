@@ -15,8 +15,16 @@ async def list_my_exercises(
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     q: str | None = None,
+    venue_type: str | None = None,
+    venue_compat: str | None = None,
 ):
     cond = [Exercise.coach_id == coach.id]
+    if venue_type:
+        cond.append(Exercise.venue_type == venue_type)
+    if venue_compat == "home":
+        cond.append(or_(Exercise.venue_type == "home", Exercise.venue_type == "both"))
+    elif venue_compat == "commercial_gym":
+        cond.append(or_(Exercise.venue_type == "commercial_gym", Exercise.venue_type == "both"))
     if q and q.strip():
         term = f"%{q.strip()}%"
         cond.append(or_(Exercise.name.ilike(term), Exercise.description.ilike(term)))
@@ -43,6 +51,12 @@ async def create_exercise(body: ExerciseCreate, coach: CurrentCoach, db: DbSessi
         category=body.category,
         muscle_groups=body.muscle_groups,
         equipment=body.equipment,
+        venue_type=body.venue_type,
+        tips=body.tips,
+        common_mistakes=body.common_mistakes,
+        correct_form_cues=body.correct_form_cues,
+        demo_media_url=body.demo_media_url,
+        thumbnail_url=body.thumbnail_url,
     )
     db.add(ex)
     await db.commit()
@@ -73,6 +87,12 @@ async def copy_exercise_from_directory(
         category=src.category,
         muscle_groups=src.muscle_groups,
         equipment=src.equipment,
+        venue_type=src.venue_type,
+        tips=src.tips,
+        common_mistakes=src.common_mistakes,
+        correct_form_cues=src.correct_form_cues,
+        demo_media_url=src.demo_media_url,
+        thumbnail_url=src.thumbnail_url,
     )
     db.add(ex)
     await db.commit()

@@ -1,16 +1,49 @@
 import { useOne } from "@refinedev/core";
-import { App, Breadcrumb, Button, Card, Form, Input, Space, Spin, Typography } from "antd";
+import { App, Breadcrumb, Button, Card, Divider, Form, Input, Space, Spin, Typography } from "antd";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
+import {
+  normalizeWorkoutItemsForApi,
+  type WorkoutLine,
+  WorkoutItemsEditor,
+} from "../../components/WorkoutItemsEditor";
 import { apiPrefix, authHeaders } from "../../lib/api";
 
 type CoachingPayload = {
   workout_plan: string | null;
   diet_plan: string | null;
+  workout_items?: Array<{
+    exercise_id: number;
+    sort_order: number;
+    sets: number | null;
+    reps: number | null;
+    duration_sec: number | null;
+    rest_sec: number | null;
+    notes: string | null;
+    exercise_name?: string | null;
+  }>;
   updated_at: string | null;
 };
+
+function mapApiItemsToLines(
+  items: NonNullable<CoachingPayload["workout_items"]> | undefined,
+): WorkoutLine[] {
+  if (!items?.length) return [];
+  return [...items]
+    .sort((a, b) => a.sort_order - b.sort_order)
+    .map((x) => ({
+      exercise_id: x.exercise_id,
+      sort_order: x.sort_order,
+      sets: x.sets ?? null,
+      reps: x.reps ?? null,
+      duration_sec: x.duration_sec ?? null,
+      rest_sec: x.rest_sec ?? null,
+      notes: x.notes ?? null,
+      exercise_name: x.exercise_name ?? undefined,
+    }));
+}
 
 export function ClientWorkoutDietPlansPage() {
   const { id } = useParams<{ id: string }>();
@@ -23,6 +56,7 @@ export function ClientWorkoutDietPlansPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
+  const [lines, setLines] = useState<WorkoutLine[]>([]);
 
   const clientQuery = useOne({
     resource: "clients",
@@ -49,6 +83,7 @@ export function ClientWorkoutDietPlansPage() {
         workout_plan: data.workout_plan ?? "",
         diet_plan: data.diet_plan ?? "",
       });
+      setLines(mapApiItemsToLines(data.workout_items));
       setUpdatedAt(data.updated_at);
     } catch {
       message.error(t("clients.plans.loadError"));
@@ -68,6 +103,7 @@ export function ClientWorkoutDietPlansPage() {
       const body = {
         workout_plan: values.workout_plan?.trim() ? values.workout_plan.trim() : null,
         diet_plan: values.diet_plan?.trim() ? values.diet_plan.trim() : null,
+        workout_items: normalizeWorkoutItemsForApi(lines),
       };
       const res = await fetch(`${apiPrefix}/clients/${clientId}/coaching-plans`, {
         method: "PUT",
@@ -80,6 +116,7 @@ export function ClientWorkoutDietPlansPage() {
       }
       const data = (await res.json()) as CoachingPayload;
       setUpdatedAt(data.updated_at);
+      setLines(mapApiItemsToLines(data.workout_items));
       message.success(t("clients.plans.saved"));
     } catch {
       message.error(t("clients.plans.saveError"));
@@ -129,18 +166,44 @@ export function ClientWorkoutDietPlansPage() {
                 {t("clients.plans.lastUpdated")}: {new Date(updatedAt).toLocaleString()}
               </Typography.Text>
             ) : null}
+
+            <WorkoutItemsEditor
+              mode="client"
+              planVenue={null}
+              initialItems={lines}
+              showSaveButton={false}
+              onChange={setLines}
+            />
+
+            <Divider />
+
+            <Typography.Title level={5}>{t("clients.plans.notesSectionTitle")}</Typography.Title>
+            <Typography.Paragraph type="secondary">{t("clients.plans.notesSectionHint")}</Typography.Paragraph>
+
             <Form form={form} layout="vertical" onFinish={(v) => void onFinish(v)}>
-              <Form.Item name="workout_plan" label={t("clients.plans.workoutLabel")}>
-                <Input.TextArea rows={12} placeholder={t("clients.plans.workoutPlaceholder")} showCount maxLength={32000} />
+              <Form.Item name="workout_plan" label={t("clients.plans.workoutNotesLabel")}>
+                <Input.TextArea
+                  rows={6}
+                  placeholder={t("clients.plans.workoutPlaceholder")}
+                  showCount
+                  maxLength={32000}
+                />
               </Form.Item>
               <Form.Item name="diet_plan" label={t("clients.plans.dietLabel")}>
-                <Input.TextArea rows={12} placeholder={t("clients.plans.dietPlaceholder")} showCount maxLength={32000} />
+                <Input.TextArea
+                  rows={8}
+                  placeholder={t("clients.plans.dietPlaceholder")}
+                  showCount
+                  maxLength={32000}
+                />
               </Form.Item>
               <Space wrap>
                 <Button type="primary" htmlType="submit" loading={saving}>
                   {t("clients.plans.save")}
                 </Button>
-                <Button onClick={() => navigate(`/clients/show/${clientId}`)}>{t("clients.plans.backToClient")}</Button>
+                <Button onClick={() => navigate(`/clients/show/${clientId}`)}>
+                  {t("clients.plans.backToClient")}
+                </Button>
               </Space>
             </Form>
           </Spin>

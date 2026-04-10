@@ -40,6 +40,7 @@ def _plan_to_read(plan: TrainingPlan) -> TrainingPlanRead:
         name=plan.name,
         description=plan.description,
         source_catalog_plan_id=plan.source_catalog_plan_id,
+        venue_type=plan.venue_type,
         items=items_out,
     )
 
@@ -50,8 +51,11 @@ async def list_my_training_plans(
     db: DbSession,
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
+    venue_type: str | None = None,
 ):
     cond = [TrainingPlan.coach_id == coach.id]
+    if venue_type:
+        cond.append(TrainingPlan.venue_type == venue_type)
     total = (
         await db.execute(select(func.count()).select_from(TrainingPlan).where(*cond))
     ).scalar_one()
@@ -74,6 +78,7 @@ async def create_training_plan(body: TrainingPlanCreate, coach: CurrentCoach, db
         coach_id=coach.id,
         name=body.name,
         description=body.description,
+        venue_type=body.venue_type,
     )
     db.add(plan)
     await db.commit()
@@ -96,6 +101,7 @@ async def copy_from_catalog(catalog_id: int, coach: CurrentCoach, db: DbSession)
         name=src.name,
         description=src.description,
         source_catalog_plan_id=catalog_id,
+        venue_type=src.venue_type,
     )
     db.add(new_plan)
     await db.flush()

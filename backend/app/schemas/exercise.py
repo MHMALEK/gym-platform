@@ -1,6 +1,10 @@
+from typing import Literal
+
 from pydantic import BaseModel
 
 from app.schemas.common import ORMBase
+
+ExerciseVenue = Literal["home", "commercial_gym", "both"]
 
 
 class ExerciseCreate(BaseModel):
@@ -9,6 +13,12 @@ class ExerciseCreate(BaseModel):
     category: str | None = None
     muscle_groups: str | None = None
     equipment: str | None = None
+    venue_type: ExerciseVenue = "both"
+    tips: str | None = None
+    common_mistakes: str | None = None
+    correct_form_cues: str | None = None
+    demo_media_url: str | None = None
+    thumbnail_url: str | None = None
 
 
 class ExerciseUpdate(BaseModel):
@@ -17,6 +27,12 @@ class ExerciseUpdate(BaseModel):
     category: str | None = None
     muscle_groups: str | None = None
     equipment: str | None = None
+    venue_type: ExerciseVenue | None = None
+    tips: str | None = None
+    common_mistakes: str | None = None
+    correct_form_cues: str | None = None
+    demo_media_url: str | None = None
+    thumbnail_url: str | None = None
 
 
 class ExerciseRead(ORMBase):
@@ -27,3 +43,9 @@ class ExerciseRead(ORMBase):
     category: str | None
     muscle_groups: str | None
     equipment: str | None
+    venue_type: str = "both"
+    tips: str | None = None
+    common_mistakes: str | None = None
+    correct_form_cues: str | None = None
+    demo_media_url: str | None = None
+    thumbnail_url: str | None = None

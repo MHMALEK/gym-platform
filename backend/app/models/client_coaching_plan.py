@@ -18,5 +18,6 @@ class ClientCoachingPlan(Base, TimestampMixin):
     )
     workout_plan: Mapped[str | None] = mapped_column(Text, nullable=True)
     diet_plan: Mapped[str | None] = mapped_column(Text, nullable=True)
+    workout_items_json: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     client = relationship("Client", back_populates="coaching_plan")

@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import selectinload
 
 from app.api.deps import CurrentCoach, DbSession
@@ -43,12 +43,23 @@ async def list_goal_types(
     }
 
 
-def _exercise_filters(category: str | None, q: str | None):
+def _exercise_filters(
+    category: str | None,
+    q: str | None,
+    venue_type: str | None,
+    venue_compat: str | None,
+):
     cond = [Exercise.coach_id.is_(None)]
     if category:
         cond.append(Exercise.category == category)
     if q:
         cond.append(Exercise.name.ilike(f"%{q}%"))
+    if venue_type:
+        cond.append(Exercise.venue_type == venue_type)
+    if venue_compat == "home":
+        cond.append(or_(Exercise.venue_type == "home", Exercise.venue_type == "both"))
+    elif venue_compat == "commercial_gym":
+        cond.append(or_(Exercise.venue_type == "commercial_gym", Exercise.venue_type == "both"))
     return cond
 
 
@@ -60,8 +71,10 @@ async def list_directory_exercises(
     offset: int = Query(0, ge=0),
     category: str | None = None,
     q: str | None = None,
+    venue_type: str | None = None,
+    venue_compat: str | None = None,
 ):
-    cond = _exercise_filters(category, q)
+    cond = _exercise_filters(category, q, venue_type, venue_compat)
     total = (
         await db.execute(select(func.count()).select_from(Exercise).where(*cond))
     ).scalar_one()

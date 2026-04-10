@@ -2,7 +2,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Literal
 
-from pydantic import BaseModel, Field, computed_field
+from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 from app.schemas.common import ORMBase
 from app.schemas.goal_type import GoalTypeSummary
@@ -39,15 +39,33 @@ class LastInvoiceListSummary(BaseModel):
     reference: str | None = None
 
 
+class ClientWorkoutItemWrite(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    exercise_id: int
+    sort_order: int = 0
+    sets: int | None = None
+    reps: int | None = None
+    duration_sec: int | None = None
+    rest_sec: int | None = None
+    notes: str | None = None
+
+
+class ClientWorkoutItemRead(ClientWorkoutItemWrite):
+    exercise_name: str | None = None
+
+
 class ClientCoachingPlanRead(BaseModel):
     workout_plan: str | None = None
     diet_plan: str | None = None
+    workout_items: list[ClientWorkoutItemRead] = Field(default_factory=list)
     updated_at: datetime | None = None
 
 
 class ClientCoachingPlanUpsert(BaseModel):
     workout_plan: str | None = None
     diet_plan: str | None = None
+    workout_items: list[ClientWorkoutItemWrite] | None = None
 
 
 class ClientCreate(BaseModel):

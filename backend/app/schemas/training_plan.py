@@ -1,17 +1,23 @@
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 from app.schemas.common import ORMBase
 from app.schemas.exercise import ExerciseRead
 
+PlanVenue = Literal["home", "commercial_gym", "mixed"]
+
 
 class TrainingPlanCreate(BaseModel):
     name: str
     description: str | None = None
+    venue_type: PlanVenue = "mixed"
 
 
 class TrainingPlanUpdate(BaseModel):
     name: str | None = None
     description: str | None = None
+    venue_type: PlanVenue | None = None
 
 
 class TrainingPlanItemWrite(BaseModel):
@@ -43,6 +49,7 @@ class TrainingPlanRead(ORMBase):
     name: str
     description: str | None
     source_catalog_plan_id: int | None
+    venue_type: str = "mixed"
     items: list[TrainingPlanItemRead] = Field(default_factory=list)
 
 
@@ -52,3 +59,4 @@ class TrainingPlanSummary(ORMBase):
     name: str
     description: str | None
     source_catalog_plan_id: int | None
+    venue_type: str = "mixed"

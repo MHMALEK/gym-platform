@@ -1,3 +1,4 @@
+import json
 from datetime import date, datetime, timedelta
 
 from fastapi import APIRouter, HTTPException, Query
@@ -7,6 +8,7 @@ from sqlalchemy.orm import selectinload
 from app.api.deps import CurrentCoach, DbSession
 from app.models.client import Client
 from app.models.client_coaching_plan import ClientCoachingPlan
+from app.models.exercise import Exercise
 from app.models.client_subscription import ClientSubscription
 from app.models.goal_type import GoalType
 from app.models.invoice import Invoice
@@ -17,10 +19,13 @@ from app.schemas.client import (
     ClientCreate,
     ClientRead,
     ClientUpdate,
+    ClientWorkoutItemRead,
+    ClientWorkoutItemWrite,
     LastInvoiceListSummary,
     MembershipListSummary,
     SubscriptionPlanSummary,
 )
+from app.services.exercise_access import exercise_ids_allowed_for_coach
 
 from app.schemas.goal_type import GoalTypeSummary
 from app.schemas.plan_template import PlanTemplateRead
@@ -31,6 +36,41 @@ from app.schemas.subscription import (
 )
 
 router = APIRouter(prefix="/clients", tags=["clients"])
+
+
+def _parse_coaching_workout_items_raw(raw: str | None) -> list[dict]:
+    if not raw or not str(raw).strip():
+        return []
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        return []
+    if not isinstance(data, list):
+        return []
+    return [x for x in data if isinstance(x, dict)]
+
+
+async def _enrich_client_workout_items(
+    db: DbSession,
+    raw: str | None,
+) -> list[ClientWorkoutItemRead]:
+    rows = _parse_coaching_workout_items_raw(raw)
+    validated: list[ClientWorkoutItemWrite] = []
+    for row in rows:
+        try:
+            validated.append(ClientWorkoutItemWrite.model_validate(row))
+        except Exception:
+            continue
+    ids = list({x.exercise_id for x in validated})
+    names: dict[int, str] = {}
+    if ids:
+        result = await db.execute(select(Exercise).where(Exercise.id.in_(ids)))
+        for ex in result.scalars().all():
+            names[ex.id] = ex.name
+    return [
+        ClientWorkoutItemRead(**x.model_dump(), exercise_name=names.get(x.exercise_id))
+        for x in validated
+    ]
 
 
 def _client_selectinload_options():
@@ -351,10 +391,17 @@ async def get_coaching_plans(client_id: int, coach: CurrentCoach, db: DbSession)
     result = await db.execute(select(ClientCoachingPlan).where(ClientCoachingPlan.client_id == client_id))
     row = result.scalar_one_or_none()
     if not row:
-        return ClientCoachingPlanRead(workout_plan=None, diet_plan=None, updated_at=None)
+        return ClientCoachingPlanRead(
+            workout_plan=None,
+            diet_plan=None,
+            workout_items=[],
+            updated_at=None,
+        )
+    items = await _enrich_client_workout_items(db, row.workout_items_json)
     return ClientCoachingPlanRead(
         workout_plan=row.workout_plan,
         diet_plan=row.diet_plan,
+        workout_items=items,
         updated_at=row.updated_at,
     )
 
@@ -367,23 +414,38 @@ async def upsert_coaching_plans(
     db: DbSession,
 ):
     await _require_client(db, coach.id, client_id)
+    dump = body.model_dump(exclude_unset=True)
     result = await db.execute(select(ClientCoachingPlan).where(ClientCoachingPlan.client_id == client_id))
     row = result.scalar_one_or_none()
-    if row:
-        row.workout_plan = body.workout_plan
-        row.diet_plan = body.diet_plan
-    else:
-        row = ClientCoachingPlan(
-            client_id=client_id,
-            workout_plan=body.workout_plan,
-            diet_plan=body.diet_plan,
-        )
+    if not row:
+        row = ClientCoachingPlan(client_id=client_id)
         db.add(row)
+    if "workout_plan" in dump:
+        row.workout_plan = body.workout_plan
+    if "diet_plan" in dump:
+        row.diet_plan = body.diet_plan
+    if "workout_items" in dump:
+        items = body.workout_items
+        if items is not None:
+            ids = [x.exercise_id for x in items]
+            ok, err = await exercise_ids_allowed_for_coach(db, coach.id, ids)
+            if not ok:
+                raise HTTPException(status_code=400, detail=err)
+            normalized: list[dict] = []
+            for idx, it in enumerate(sorted(items, key=lambda z: z.sort_order)):
+                d = it.model_dump()
+                d["sort_order"] = idx
+                normalized.append(d)
+            row.workout_items_json = json.dumps(normalized)
+        else:
+            row.workout_items_json = None
     await db.commit()
     await db.refresh(row)
+    items_out = await _enrich_client_workout_items(db, row.workout_items_json)
     return ClientCoachingPlanRead(
         workout_plan=row.workout_plan,
         diet_plan=row.diet_plan,
+        workout_items=items_out,
         updated_at=row.updated_at,
     )
 

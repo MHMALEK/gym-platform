@@ -1,7 +1,7 @@
 import { List, useTable } from "@refinedev/antd";
 import { useInvalidate } from "@refinedev/core";
 import type { BaseRecord } from "@refinedev/core";
-import { Alert, App, Button, Input, Space, Table, Typography } from "antd";
+import { Alert, App, Button, Input, Select, Space, Table, Typography } from "antd";
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
@@ -13,15 +13,28 @@ export function DirectoryExercisesPage() {
   const { message } = App.useApp();
   const invalidate = useInvalidate();
   const [copyingId, setCopyingId] = useState<number | null>(null);
+  const [q, setQ] = useState("");
+  const [venue, setVenue] = useState<string | undefined>();
   const { tableProps, setFilters } = useTable({
     resource: "directory-exercises",
     syncWithLocation: true,
   });
 
-  const onSearch = (value: string) => {
-    const v = value.trim();
-    setFilters(v ? [{ field: "q", operator: "eq", value: v }] : [], "replace");
-  };
+  const applyFilters = useCallback(
+    (nextQ: string, nextVenue?: string) => {
+      const f: { field: string; operator: "eq"; value: string }[] = [];
+      if (nextQ.trim()) f.push({ field: "q", operator: "eq", value: nextQ.trim() });
+      if (nextVenue) f.push({ field: "venue_type", operator: "eq", value: nextVenue });
+      setFilters(f, "replace");
+    },
+    [setFilters],
+  );
+
+  const venueFilterOptions = [
+    { value: "both", label: t("workouts.venue.both") },
+    { value: "home", label: t("workouts.venue.home") },
+    { value: "commercial_gym", label: t("workouts.venue.commercial_gym") },
+  ];
 
   const copyToMine = useCallback(
     async (id: number) => {
@@ -60,17 +73,38 @@ export function DirectoryExercisesPage() {
           {t("library.readOnlyHint")}
         </Typography.Paragraph>
         <Space wrap style={{ width: "100%", justifyContent: "space-between", alignItems: "center" }}>
-          <Input.Search
-            allowClear
-            placeholder={t("library.searchCatalog")}
-            onSearch={onSearch}
-            style={{ maxWidth: 360 }}
-          />
+          <Space wrap>
+            <Input.Search
+              allowClear
+              placeholder={t("library.searchCatalog")}
+              onSearch={(v) => {
+                setQ(v);
+                applyFilters(v, venue);
+              }}
+              style={{ maxWidth: 360 }}
+            />
+            <Select
+              allowClear
+              placeholder={t("library.filterVenue")}
+              style={{ minWidth: 200 }}
+              options={venueFilterOptions}
+              value={venue}
+              onChange={(v) => {
+                setVenue(v);
+                applyFilters(q, v);
+              }}
+            />
+          </Space>
           <Link to="/exercises">{t("library.goToMyExercises")}</Link>
         </Space>
         <Table {...tableProps} rowKey="id" locale={{ emptyText: t("library.catalogEmpty") }}>
           <Table.Column dataIndex="name" title={t("library.name")} />
           <Table.Column dataIndex="category" title={t("library.category")} />
+          <Table.Column
+            dataIndex="venue_type"
+            title={t("library.venueColumn")}
+            render={(v: string) => t(`workouts.venue.${v ?? "both"}`)}
+          />
           <Table.Column dataIndex="muscle_groups" title={t("library.muscles")} />
           <Table.Column dataIndex="equipment" title={t("library.equipment")} />
           <Table.Column dataIndex="description" title={t("library.description")} ellipsis />
