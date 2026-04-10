@@ -285,7 +285,7 @@ export function ClientSubscriptionsPanel({ clientId, allowMutation, compactHeade
       {!allowMutation ? (
         <Typography.Paragraph type="secondary" style={{ marginBottom: 12 }}>
           {t("memberships.panel.readOnlyHint")}{" "}
-          <Link to="/memberships">{t("memberships.panel.readOnlyLink")}</Link>.
+          <Link to="/clients">{t("memberships.panel.readOnlyLink")}</Link>.
         </Typography.Paragraph>
       ) : null}
       <Table<Sub>

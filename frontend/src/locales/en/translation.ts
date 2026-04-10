@@ -13,7 +13,6 @@ const translation = {
     dashboard: "Dashboard",
     clients: "Clients",
     invoices: "Invoices",
-    memberships: "Memberships",
     planTemplates: "Membership plans",
     exercises: "My exercises",
     trainingPlans: "My training plans",
@@ -151,10 +150,13 @@ const translation = {
       tabInvoices: "Invoices",
       tabMembership: "Membership",
     },
-    create: {
-      saveFirstTitle: "Save the client first",
-      saveFirstDescription:
-        "Invoices and memberships need a saved client. Fill in the Client & profile tab and click Save — you’ll go to edit where these tabs load the full tools.",
+    wizard: {
+      intro: "Invoices and subscriptions are added after the client exists — you’ll land on edit with those tabs when you save.",
+      stepContact: "Contact",
+      stepBodyGoals: "Body & goals",
+      stepPlanAccount: "Plan & account",
+      next: "Next",
+      back: "Back",
     },
     form: {
       contactTitle: "Contact & profile",
@@ -253,14 +255,14 @@ const translation = {
   memberships: {
     pageTitle: "Memberships",
     pageHint:
-      "Assign or extend memberships for any client from here, or use the same controls on a client's Financial section. Profile and roster edits stay under Clients.",
+      "Memberships are managed per client: open Clients, choose someone, then use their Membership tab (or Invoices & membership).",
     client: "Client",
     clientPh: "Search and select a client",
     selectClient: "Select a client to manage their memberships.",
     panel: {
       title: "Membership subscriptions",
-      readOnlyHint: "Read-only here. To assign or extend a membership, use",
-      readOnlyLink: "Memberships",
+      readOnlyHint: "Read-only here. To assign or extend, open the client from",
+      readOnlyLink: "Clients",
       plan: "Plan",
       starts: "Starts",
       ends: "Ends",

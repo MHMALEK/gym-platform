@@ -1,17 +1,20 @@
-import { Create, useForm, useSelect } from "@refinedev/antd";
-import { FileTextOutlined, IdcardOutlined, UserOutlined } from "@ant-design/icons";
-import { Form, Tabs } from "antd";
-import { useState } from "react";
+import { Create, SaveButton, useForm, useSelect } from "@refinedev/antd";
+import { Button, Form, Space, Steps, Typography } from "antd";
+import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { ClientFinancialLockedPlaceholder } from "./ClientFinancialLockedPlaceholder";
 import { ClientFormSections } from "./formSections";
+
+const WIZARD_FIELD_GROUPS: [string[], string[]] = [
+  ["name", "email", "phone"],
+  ["weight_kg", "height_cm", "goal_type_id", "goal"],
+];
 
 export function ClientCreate() {
   const { t } = useTranslation();
-  const [activeTab, setActiveTab] = useState("profile");
+  const [step, setStep] = useState(0);
 
-  const { formProps, saveButtonProps } = useForm({
+  const { formProps, saveButtonProps, form } = useForm({
     resource: "clients",
     redirect: "edit",
   });
@@ -30,6 +33,20 @@ export function ClientCreate() {
     pagination: { current: 1, pageSize: 200, mode: "server" },
   });
 
+  const handleNext = useCallback(async () => {
+    if (step >= 2) return;
+    try {
+      await form.validateFields(WIZARD_FIELD_GROUPS[step]);
+    } catch {
+      return;
+    }
+    setStep((s) => s + 1);
+  }, [form, step]);
+
+  const handleBack = useCallback(() => {
+    setStep((s) => Math.max(0, s - 1));
+  }, []);
+
   return (
     <Create
       saveButtonProps={saveButtonProps}
@@ -38,58 +55,42 @@ export function ClientCreate() {
           body: { paddingTop: 8, paddingInline: 12 },
         },
       }}
+      footerButtons={({ saveButtonProps: sp }) => (
+        <Space wrap>
+          {step > 0 ? (
+            <Button onClick={handleBack}>{t("clients.wizard.back")}</Button>
+          ) : null}
+          {step < 2 ? (
+            <Button type="primary" onClick={() => void handleNext()}>
+              {t("clients.wizard.next")}
+            </Button>
+          ) : (
+            <SaveButton {...sp} />
+          )}
+        </Space>
+      )}
     >
-      <Tabs
-        activeKey={activeTab}
-        onChange={setActiveTab}
-        destroyInactiveTabPane={false}
-        size="large"
-        items={[
-          {
-            key: "profile",
-            label: (
-              <span>
-                <UserOutlined /> {t("clients.edit.tabProfile")}
-              </span>
-            ),
-            children: (
-              <Form {...formProps} layout="vertical">
-                <ClientFormSections
-                  goalTypeSelectProps={goalTypeSelectProps}
-                  planSelectProps={planSelectProps}
-                  isCreate
-                />
-              </Form>
-            ),
-          },
-          {
-            key: "invoices",
-            label: (
-              <span>
-                <FileTextOutlined /> {t("clients.edit.tabInvoices")}
-              </span>
-            ),
-            children: (
-              <div style={{ paddingTop: 4 }}>
-                <ClientFinancialLockedPlaceholder />
-              </div>
-            ),
-          },
-          {
-            key: "membership",
-            label: (
-              <span>
-                <IdcardOutlined /> {t("clients.edit.tabMembership")}
-              </span>
-            ),
-            children: (
-              <div style={{ paddingTop: 4 }}>
-                <ClientFinancialLockedPlaceholder />
-              </div>
-            ),
-          },
-        ]}
-      />
+      <Space direction="vertical" size="large" style={{ width: "100%" }}>
+        <Steps
+          current={step}
+          items={[
+            { title: t("clients.wizard.stepContact") },
+            { title: t("clients.wizard.stepBodyGoals") },
+            { title: t("clients.wizard.stepPlanAccount") },
+          ]}
+        />
+        <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
+          {t("clients.wizard.intro")}
+        </Typography.Paragraph>
+        <Form {...formProps} layout="vertical">
+          <ClientFormSections
+            goalTypeSelectProps={goalTypeSelectProps}
+            planSelectProps={planSelectProps}
+            isCreate
+            createWizardStep={step as 0 | 1 | 2}
+          />
+        </Form>
+      </Space>
     </Create>
   );
 }

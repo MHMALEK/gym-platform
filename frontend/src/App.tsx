@@ -3,7 +3,6 @@ import {
   DashboardOutlined,
   FileTextOutlined,
   FireOutlined,
-  IdcardOutlined,
   ReadOutlined,
   TeamOutlined,
   UnorderedListOutlined,
@@ -44,7 +43,6 @@ import { ExerciseList } from "./pages/exercises/list";
 import { DirectoryExercisesPage } from "./pages/library/directory-exercises";
 import { DirectoryTrainingPlansPage } from "./pages/library/directory-training-plans";
 import { LoginPage } from "./pages/login";
-import { MembershipsPage } from "./pages/memberships";
 import { PlanTemplateCreate } from "./pages/plan-templates/create";
 import { PlanTemplateEdit } from "./pages/plan-templates/edit";
 import { PlanTemplateList } from "./pages/plan-templates/list";
@@ -111,11 +109,6 @@ function RefineShell() {
         create: "/invoices/create",
         edit: "/invoices/edit/:id",
         meta: { label: t("nav.invoices"), icon: <FileTextOutlined /> },
-      },
-      {
-        name: "memberships",
-        list: "/memberships",
-        meta: { label: t("nav.memberships"), icon: <IdcardOutlined /> },
       },
       {
         name: "plan-templates",
@@ -189,7 +182,6 @@ function RefineShell() {
           <Route path="/invoices" element={<InvoiceList />} />
           <Route path="/invoices/create" element={<InvoiceCreate />} />
           <Route path="/invoices/edit/:id" element={<InvoiceEdit />} />
-          <Route path="/memberships" element={<MembershipsPage />} />
           <Route path="/plan-templates" element={<PlanTemplateList />} />
           <Route path="/plan-templates/create" element={<PlanTemplateCreate />} />
           <Route path="/plan-templates/edit/:id" element={<PlanTemplateEdit />} />
