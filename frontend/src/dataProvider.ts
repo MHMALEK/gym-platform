@@ -24,6 +24,7 @@ function pathForResource(resource: string): string {
   const m: Record<string, string> = {
     "directory-exercises": "directory/exercises",
     "directory-training-plans": "directory/training-plans",
+    "directory-nutrition-templates": "directory/nutrition-templates",
     "directory-goal-types": "directory/goal-types",
     "directory-muscle-groups": "directory/muscle-groups",
   };
@@ -69,6 +70,14 @@ function appendListQueryParams(searchParams: URLSearchParams, resource: string, 
       if (!isLogicalFilter(f)) continue;
       if (f.field === "venue_type" && f.value != null && String(f.value) !== "") {
         searchParams.set("venue_type", String(f.value));
+      }
+    }
+  }
+  if (resource === "nutrition-templates" || resource === "directory-nutrition-templates") {
+    for (const f of filters) {
+      if (!isLogicalFilter(f)) continue;
+      if (f.field === "q" && f.value != null && String(f.value).trim()) {
+        searchParams.set("q", String(f.value).trim());
       }
     }
   }

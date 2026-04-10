@@ -18,5 +18,8 @@ class Coach(Base, TimestampMixin):
         "TrainingPlan", back_populates="coach", foreign_keys="TrainingPlan.coach_id"
     )
     plan_templates = relationship("PlanTemplate", back_populates="coach")
+    nutrition_templates = relationship(
+        "NutritionTemplate", back_populates="coach", foreign_keys="NutritionTemplate.coach_id"
+    )
     device_tokens = relationship("CoachDeviceToken", back_populates="coach", cascade="all, delete-orphan")
     media_assets = relationship("MediaAsset", back_populates="coach", cascade="all, delete-orphan")

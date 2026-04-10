@@ -10,6 +10,7 @@ from app.models.goal_type import GoalType
 from app.models.muscle_group import MuscleGroup
 from app.models.invoice import Invoice
 from app.models.media_asset import ExerciseMedia, MediaAsset
+from app.models.nutrition_template import NutritionTemplate
 from app.models.plan_template import PlanTemplate
 from app.models.training_plan import TrainingPlan
 from app.models.training_plan_item import TrainingPlanItem
@@ -28,6 +29,7 @@ __all__ = [
     "ExerciseMedia",
     "Invoice",
     "MediaAsset",
+    "NutritionTemplate",
     "PlanTemplate",
     "TrainingPlan",
     "TrainingPlanItem",

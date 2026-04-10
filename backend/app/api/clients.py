@@ -27,6 +27,7 @@ from app.schemas.client import (
     MembershipListSummary,
     SubscriptionPlanSummary,
 )
+from app.services.diet_meals_json import diet_meals_to_json_column, parse_diet_meals_raw
 from app.services.exercise_access import exercise_ids_allowed_for_coach
 
 from app.schemas.goal_type import GoalTypeSummary
@@ -50,26 +51,6 @@ def _parse_coaching_workout_items_raw(raw: str | None) -> list[dict]:
     if not isinstance(data, list):
         return []
     return [x for x in data if isinstance(x, dict)]
-
-
-def _parse_diet_meals_raw(raw: str | None) -> list[DietMeal]:
-    if not raw or not str(raw).strip():
-        return []
-    try:
-        data = json.loads(raw)
-    except json.JSONDecodeError:
-        return []
-    if not isinstance(data, list):
-        return []
-    out: list[DietMeal] = []
-    for x in data:
-        if not isinstance(x, dict):
-            continue
-        try:
-            out.append(DietMeal.model_validate(x))
-        except Exception:
-            continue
-    return out
 
 
 async def _enrich_client_workout_items(
@@ -423,7 +404,7 @@ async def get_coaching_plans(client_id: int, coach: CurrentCoach, db: DbSession)
             updated_at=None,
         )
     items = await _enrich_client_workout_items(db, row.workout_items_json)
-    diet_meals = _parse_diet_meals_raw(row.diet_meals_json)
+    diet_meals = parse_diet_meals_raw(row.diet_meals_json)
     pv = row.program_venue if row.program_venue in ("mixed", "home", "commercial_gym") else "mixed"
     return ClientCoachingPlanRead(
         workout_plan=row.workout_plan,
@@ -461,12 +442,7 @@ async def upsert_coaching_plans(
     if "diet_meals" in dump:
         meals = body.diet_meals
         if meals is not None:
-            normalized: list[dict] = []
-            for idx, m in enumerate(sorted(meals, key=lambda z: z.sort_order)):
-                d = m.model_dump()
-                d["sort_order"] = idx
-                normalized.append(d)
-            row.diet_meals_json = json.dumps(normalized) if normalized else None
+            row.diet_meals_json = diet_meals_to_json_column(list(meals))
         else:
             row.diet_meals_json = None
     if "workout_items" in dump:
@@ -488,7 +464,7 @@ async def upsert_coaching_plans(
     await db.commit()
     await db.refresh(row)
     items_out = await _enrich_client_workout_items(db, row.workout_items_json)
-    diet_meals_out = _parse_diet_meals_raw(row.diet_meals_json)
+    diet_meals_out = parse_diet_meals_raw(row.diet_meals_json)
     pv = row.program_venue if row.program_venue in ("mixed", "home", "commercial_gym") else "mixed"
     return ClientCoachingPlanRead(
         workout_plan=row.workout_plan,
