@@ -75,15 +75,16 @@ import {
   isMergeDragRoot,
   isWorkoutLineSetLikeRow,
   mergeExerciseBundleAfterTarget,
-  normalizeBundleDropOverIndex,
   newExerciseWithOneSet,
+  newExerciseWithOneSetInBlock,
   newLocalId,
   normalizeWorkoutLinesForApi,
   orderedExerciseHeadLocalIds,
-  reorderExerciseBundleInList,
+  reorderWorkoutLinesByHeadMove,
   setCountInGroup,
   setOrdinalInGroup,
   setRowUISegment,
+  stripBlocksWithFewerThanTwoExercises,
   validateWorkoutLinesSequence,
 } from "../lib/workoutLineModel";
 
@@ -103,14 +104,6 @@ function legacyRowUISegment(
   return "runMiddle";
 }
 
-function arrayMove<T>(arr: T[], from: number, to: number): T[] {
-  if (from === to || from < 0 || to < 0 || from >= arr.length || to >= arr.length) return arr.slice();
-  const next = arr.slice();
-  const [removed] = next.splice(from, 1);
-  next.splice(to, 0, removed);
-  return next;
-}
-
 function contiguousBlockRange(items: WorkoutLine[], index: number): [number, number] {
   const bid = items[index]?.block_id;
   if (!bid) return [index, index];
@@ -121,15 +114,33 @@ function contiguousBlockRange(items: WorkoutLine[], index: number): [number, num
   return [lo, hi];
 }
 
+/** How many exercise bundles (heads) sit in this block slice [blockStart, blockEnd] inclusive. */
+function countExerciseBundlesInBlockSlice(items: WorkoutLine[], blockStart: number, blockEnd: number): number {
+  let n = 0;
+  let p = blockStart;
+  while (p <= blockEnd && p < items.length) {
+    const [, hi] = exerciseGroupRange(items, p);
+    n += 1;
+    p = hi + 1;
+  }
+  return n;
+}
+
 export function reorderWithBlocks(items: WorkoutLine[], activeIndex: number, overIndex: number): WorkoutLine[] {
   if (activeIndex === overIndex) return items;
   const [lo, hi] = contiguousBlockRange(items, activeIndex);
   if (overIndex >= lo && overIndex <= hi) return items;
   const chunk = items.slice(lo, hi + 1);
+  const chunkLen = chunk.length;
   const rest = [...items.slice(0, lo), ...items.slice(hi + 1)];
-  let insertBefore = overIndex;
-  if (overIndex > hi) insertBefore = overIndex - chunk.length;
-  else if (overIndex < lo) insertBefore = overIndex;
+  let insertBefore: number;
+  if (overIndex > hi) {
+    const [tLo, tHi] = exerciseGroupRange(items, overIndex);
+    const targetLen = tHi - tLo + 1;
+    insertBefore = overIndex - chunkLen + targetLen;
+  } else {
+    insertBefore = overIndex;
+  }
   insertBefore = Math.max(0, Math.min(insertBefore, rest.length));
   return [...rest.slice(0, insertBefore), ...chunk, ...rest.slice(insertBefore)].map((row, i) => ({
     ...row,
@@ -147,43 +158,47 @@ function mergeIntoDroppableId(headLocalId: string) {
 /** Left action column width — keep merge-drop `marginLeft` in sync */
 const WORKOUT_ROW_RAIL_WIDTH = 44;
 
+/** Standalone exercise card — flat surface + subtle ring (theme-aware) */
 const exerciseGroupShellStyle: CSSProperties = {
-  marginBottom: 16,
-  padding: "12px 12px 10px",
+  marginBottom: 14,
+  padding: 0,
   borderRadius: 16,
-  border: "1px solid color-mix(in srgb, var(--ant-color-primary) 11%, var(--app-border, rgba(148, 163, 184, 0.2)))",
-  background:
-    "linear-gradient(165deg, color-mix(in srgb, var(--ant-color-primary) 9%, var(--app-surface, #121826)) 0%, color-mix(in srgb, var(--ant-color-primary) 4%, var(--app-surface, #121826)) 100%)",
-  boxShadow:
-    "0 2px 12px rgba(0, 0, 0, 0.12), inset 0 1px 0 color-mix(in srgb, #fff 5%, transparent)",
+  border: "1px solid var(--app-border)",
+  background: "var(--app-surface-elevated)",
+  boxShadow: "0 1px 2px rgba(0, 0, 0, 0.04), 0 12px 40px rgba(0, 0, 0, 0.08)",
 };
 
-const exerciseGroupInBlockShellStyle: CSSProperties = {
-  marginBottom: 10,
-  padding: "8px 10px 8px",
-  borderRadius: 12,
-  border: "1px solid color-mix(in srgb, var(--app-border, rgba(148, 163, 184, 0.16)) 88%, var(--ant-color-primary) 12%)",
-  background: "color-mix(in srgb, var(--app-surface-elevated, #1a2130) 94%, var(--ant-color-primary) 6%)",
-};
+/** Nested card inside a block — accent rail only */
+function exerciseCardShellInBlock(blockAccent: string): CSSProperties {
+  return {
+    marginBottom: 10,
+    padding: 0,
+    borderRadius: 12,
+    border: "1px solid var(--app-border)",
+    borderLeft: `3px solid ${blockAccent}`,
+    background: "var(--app-surface-elevated)",
+    boxShadow: "none",
+  };
+}
 
 const rowActionsRailStyle: CSSProperties = {
   width: WORKOUT_ROW_RAIL_WIDTH,
   flexShrink: 0,
-  padding: "12px 4px 12px 6px",
-  borderRight: "1px solid color-mix(in srgb, var(--app-border, rgba(148, 163, 184, 0.14)) 100%, transparent)",
-  background: "color-mix(in srgb, var(--app-surface-elevated, #1a2234) 78%, transparent)",
+  padding: "10px 6px",
+  borderRight: "1px solid var(--app-border)",
+  background: "color-mix(in srgb, var(--app-surface) 65%, transparent)",
 };
 
 function AddSetBelowFooter({ onClick, label }: { onClick: () => void; label: string }) {
   return (
     <div
       style={{
-        marginTop: 6,
-        paddingTop: 12,
-        borderTop: "1px dashed color-mix(in srgb, var(--ant-color-primary) 14%, var(--app-border, rgba(148,163,184,0.22)))",
+        marginTop: 0,
+        padding: "10px 12px 12px",
+        borderTop: "1px solid var(--app-border)",
       }}
     >
-      <Button type="dashed" block size="small" icon={<PlusOutlined />} onClick={onClick}>
+      <Button type="default" block size="small" icon={<PlusOutlined />} onClick={onClick} style={{ borderRadius: 10 }}>
         {label}
       </Button>
     </div>
@@ -237,7 +252,8 @@ function workoutCollisionDetection(args: Parameters<CollisionDetection>[0]) {
 function blockAccent(blockId: string): string {
   let h = 0;
   for (let i = 0; i < blockId.length; i++) h = (h * 31 + blockId.charCodeAt(i)) >>> 0;
-  return `hsl(${h % 360} 58% 52%)`;
+  /* Slightly higher chroma — reads like equipment / floor markers in gym apps */
+  return `hsl(${h % 360} 62% 54%)`;
 }
 
 async function loadExercisesGrouped(
@@ -280,7 +296,11 @@ const BLOCK_OPTIONS: { value: WorkoutBlockType; labelKey: string }[] = [
   { value: "dropset", labelKey: "workouts.block.dropset" },
 ];
 
-type PickerContext = { mode: "append" } | { mode: "extendBlock"; afterIndex: number };
+type PickerContext =
+  | { mode: "append" }
+  | { mode: "extendBlock"; afterIndex: number }
+  | { mode: "newSupersetFirst" }
+  | { mode: "newSupersetSecond"; afterHeadLocalId: string };
 
 type RowPresentation = "exercise_head" | "set_under" | "legacy_combined";
 
@@ -315,17 +335,14 @@ function SortableExerciseGroup({
     setSortableRef(el);
     setMergeRef(el);
   };
-  const mergeOutline =
-    mergeDropEnabled && mergeDropOver
-      ? "2px solid color-mix(in srgb, var(--ant-color-primary) 65%, var(--app-border, rgba(148,163,184,0.35)))"
-      : mergeDropEnabled
-        ? "1px dashed color-mix(in srgb, var(--ant-color-primary) 35%, var(--app-border, rgba(148,163,184,0.35)))"
-        : undefined;
-  /** Subtle frame so cards read as draggable targets when idle (hidden while this card is dragged). */
-  const idleDndAffordance =
-    !isDragging && !mergeOutline
-      ? "1px solid color-mix(in srgb, var(--ant-color-primary) 14%, var(--app-border, rgba(148,163,184,0.2)))"
-      : undefined;
+  const ring =
+    isDragging
+      ? "none"
+      : mergeDropEnabled && mergeDropOver
+        ? "0 0 0 2px var(--app-accent), 0 8px 24px rgba(0,0,0,0.1)"
+        : mergeDropEnabled
+          ? "0 0 0 1px dashed color-mix(in srgb, var(--app-accent) 45%, var(--app-border))"
+          : "0 0 0 1px var(--app-border), 0 2px 8px rgba(0,0,0,0.04)";
 
   return (
     <div
@@ -334,9 +351,8 @@ function SortableExerciseGroup({
         ...shellStyle,
         transform: CSS.Transform.toString(transform),
         transition,
-        opacity: isDragging ? 0.22 : 1,
-        outline: mergeOutline ?? idleDndAffordance,
-        outlineOffset: mergeOutline || idleDndAffordance ? 2 : undefined,
+        opacity: isDragging ? 0.38 : 1,
+        boxShadow: ring,
       }}
     >
       {children({ attributes, listeners: listeners as Record<string, unknown> | undefined })}
@@ -388,17 +404,13 @@ function WorkoutRow({
       ? "4px solid transparent"
       : `4px solid ${blockAccent(row.block_id)}`;
 
-  const setRail = "3px solid color-mix(in srgb, var(--ant-color-primary) 26%, transparent)";
-  const headSurface =
-    "color-mix(in srgb, var(--app-surface-elevated, #1d2536) 91%, var(--ant-color-primary) 9%)";
-  const setSurface = "color-mix(in srgb, var(--app-surface, #131a26) 93%, var(--ant-color-primary) 7%)";
-  const headBorder =
-    "1px solid color-mix(in srgb, var(--app-border, rgba(148,163,184,0.16)) 78%, var(--ant-color-primary) 22%)";
-  const setBorder =
-    "1px solid color-mix(in srgb, var(--app-border, rgba(148,163,184,0.12)) 82%, var(--ant-color-primary) 18%)";
-  const setDividerTop =
-    "1px solid color-mix(in srgb, var(--app-border, rgba(148,163,184,0.1)) 70%, var(--ant-color-primary) 30%)";
-  const nestedBorder = "1px solid color-mix(in srgb, var(--ant-color-primary) 14%, var(--app-border, rgba(148,163,184,0.18)))";
+  const setRail = "3px solid color-mix(in srgb, var(--app-accent) 50%, var(--app-border))";
+  const headSurface = "var(--app-surface-elevated)";
+  const setSurface = "var(--app-surface)";
+  const headBorder = "1px solid var(--app-border)";
+  const setBorder = "1px solid var(--app-border)";
+  const setDividerTop = "1px solid var(--app-border)";
+  const nestedBorder = "1px solid var(--app-border)";
 
   const displayReps = isSetUnder ? effectiveNumeric(items, index, "reps") : row.reps;
   const displayDur = isSetUnder ? effectiveNumeric(items, index, "duration_sec") : row.duration_sec;
@@ -508,20 +520,16 @@ function WorkoutRow({
     ...(borderTop !== undefined ? { borderTop } : {}),
     ...(borderBottom !== undefined ? { borderBottom } : {}),
     borderRadius,
-    boxShadow:
-      presentation === "exercise_head" && !(packInExerciseGroup && setCountInGroup(items, index) >= 1)
-        ? "0 1px 0 color-mix(in srgb, #fff 4%, transparent)"
-        : undefined,
+    boxShadow: undefined,
   };
 
   const labelTiny: CSSProperties = {
-    fontSize: 10,
-    textTransform: "uppercase",
-    letterSpacing: "0.08em",
+    fontSize: 11,
+    fontWeight: 600,
+    letterSpacing: "0.02em",
     display: "block",
     marginBottom: 4,
-    opacity: 0.72,
-    fontWeight: 500,
+    color: "var(--app-text-muted)",
   };
 
   const contentPadLeft = 14 + extraPaddingLeft;
@@ -553,9 +561,9 @@ function WorkoutRow({
                 style={{
                   margin: 0,
                   cursor: "grab",
-                  border: "1px dashed color-mix(in srgb, var(--ant-color-primary) 28%, var(--app-border, rgba(148,163,184,0.25)))",
-                  borderRadius: 8,
-                  background: "color-mix(in srgb, var(--ant-color-primary) 6%, transparent)",
+                  borderRadius: 10,
+                  color: "var(--app-text-muted)",
+                  background: "color-mix(in srgb, var(--app-accent) 8%, transparent)",
                 }}
                 {...dragHandleProps.attributes}
                 {...dragHandleProps.listeners}
@@ -630,9 +638,22 @@ function WorkoutRow({
                     {t("workouts.colBlock")}
                   </Typography.Text>
                   {blockStepLabel ? (
-                    <Typography.Text strong style={{ fontSize: 12, display: "block", lineHeight: 1.35 }}>
+                    <span
+                      style={{
+                        display: "inline-block",
+                        marginTop: 2,
+                        padding: "4px 10px",
+                        borderRadius: 999,
+                        fontSize: 11,
+                        fontWeight: 600,
+                        lineHeight: 1.35,
+                        color: "var(--app-text-heading)",
+                        background: "color-mix(in srgb, var(--app-accent) 12%, var(--app-surface-elevated))",
+                        border: "1px solid var(--app-border)",
+                      }}
+                    >
                       {blockStepLabel}
-                    </Typography.Text>
+                    </span>
                   ) : (
                     <Typography.Text type="secondary" style={{ fontSize: 12 }}>
                       {t("workouts.block.single")}
@@ -655,11 +676,11 @@ function WorkoutRow({
                     strong
                     style={{
                       fontSize: 17,
-                      fontWeight: 650,
+                      fontWeight: 600,
                       lineHeight: 1.35,
                       display: "block",
-                      letterSpacing: "-0.01em",
-                      color: "var(--ant-color-text)",
+                      letterSpacing: "-0.02em",
+                      color: "var(--app-text-heading)",
                     }}
                     ellipsis={{ tooltip: row.exercise_name ?? `ID ${row.exercise_id}` }}
                   >
@@ -686,18 +707,21 @@ function WorkoutRow({
                       {t("workouts.colSet")}
                     </Typography.Text>
                     <Tag
-                      color={hasSetOverride ? "warning" : showCompactExerciseColumn ? "default" : "processing"}
+                      bordered={false}
+                      color={hasSetOverride ? "warning" : "default"}
                       style={{
                         margin: 0,
-                        minWidth: 34,
+                        minWidth: 36,
                         textAlign: "center",
                         fontSize: 11,
                         fontWeight: 600,
-                        lineHeight: "22px",
-                        padding: "0 9px",
-                        borderRadius: 6,
-                        border: "1px solid color-mix(in srgb, var(--app-border, rgba(148,163,184,0.25)) 100%, transparent)",
-                        background: "color-mix(in srgb, var(--app-surface-elevated, #1a2234) 85%, transparent)",
+                        lineHeight: "24px",
+                        padding: "0 10px",
+                        borderRadius: 999,
+                        background: hasSetOverride
+                          ? undefined
+                          : "color-mix(in srgb, var(--app-accent) 10%, var(--app-surface-elevated))",
+                        color: "var(--app-text-heading)",
                       }}
                     >
                       {setLabel}
@@ -760,13 +784,13 @@ function WorkoutRow({
                 width: "100%",
                 rowGap: 10,
                 paddingTop: 2,
-                borderTop: "1px solid color-mix(in srgb, var(--app-border, rgba(148,163,184,0.12)) 100%, transparent)",
+                borderTop: "1px solid var(--app-border)",
               }}
             >
               <InputNumber
                 min={0}
                 size="small"
-                style={{ width: 76 }}
+                style={{ width: 76, borderRadius: 10 }}
                 placeholder={t("workouts.colReps")}
                 value={displayReps ?? undefined}
                 onChange={(v) => updateAt(index, { reps: v == null ? null : Number(v) })}
@@ -774,7 +798,7 @@ function WorkoutRow({
               <InputNumber
                 min={0}
                 size="small"
-                style={{ width: 84 }}
+                style={{ width: 84, borderRadius: 10 }}
                 placeholder={t("workouts.colDurationSec")}
                 value={displayDur ?? undefined}
                 onChange={(v) => updateAt(index, { duration_sec: v == null ? null : Number(v) })}
@@ -782,14 +806,14 @@ function WorkoutRow({
               <InputNumber
                 min={0}
                 size="small"
-                style={{ width: 84 }}
+                style={{ width: 84, borderRadius: 10 }}
                 placeholder={t("workouts.colRestSec")}
                 value={displayRest ?? undefined}
                 onChange={(v) => updateAt(index, { rest_sec: v == null ? null : Number(v) })}
               />
               <Input
                 size="small"
-                style={{ flex: "1 1 220px", minWidth: 168, maxWidth: 520 }}
+                style={{ flex: "1 1 220px", minWidth: 168, maxWidth: 520, borderRadius: 10 }}
                 placeholder={t("workouts.colTipsNotes")}
                 value={displayNotes}
                 onChange={(e) => updateAt(index, { notes: e.target.value || null })}
@@ -849,9 +873,18 @@ export function WorkoutItemsEditor({
   }, [activeDragId, items]);
 
   const mergeDropActiveForHead = useCallback(
-    (targetHeadLocalId: string) =>
-      Boolean(activeDragId && activeDragId !== targetHeadLocalId && mergeDragEligible),
-    [activeDragId, mergeDragEligible],
+    (targetHeadLocalId: string) => {
+      if (!activeDragId || activeDragId === targetHeadLocalId || !mergeDragEligible) return false;
+      const ai = items.findIndex((r) => r.localId === activeDragId);
+      const ti = items.findIndex((r) => r.localId === targetHeadLocalId);
+      if (ai < 0 || ti < 0) return false;
+      const aBid = items[ai]?.block_id?.trim() || null;
+      const tBid = items[ti]?.block_id?.trim() || null;
+      /* Same superset/circuit block: only reorder via sortable, never merge-on-drop (merge steals the pointer). */
+      if (aBid && tBid && aBid === tBid) return false;
+      return true;
+    },
+    [activeDragId, items, mergeDragEligible],
   );
 
   const sortableHeadIds = useMemo(() => orderedExerciseHeadLocalIds(items), [items]);
@@ -885,19 +918,49 @@ export function WorkoutItemsEditor({
     [onChange],
   );
 
-  /** Re-index, validate exercise/set sequence (matches API), then commit. */
+  /** PUT plan items (block_id / order / row types). Used by Save and after DnD merge/reorder. */
+  const syncPlanItemsToApi = useCallback(
+    async (normalized: WorkoutLine[], opts?: { silent?: boolean }) => {
+      if (!planId || mode !== "training-plan") return false;
+      if (validateWorkoutLinesSequence(normalized) !== null) return false;
+      try {
+        const res = await fetch(`${apiPrefix}/training-plans/${planId}/items`, {
+          method: "PUT",
+          headers: authHeaders(),
+          body: JSON.stringify(normalizeWorkoutLinesForApi(normalized)),
+        });
+        if (!res.ok) {
+          message.error(await res.text());
+          return false;
+        }
+        if (!opts?.silent) message.success(t("workouts.itemsSaved"));
+        await invalidate({ resource: "training-plans", invalidates: ["detail"], id: String(planId) });
+        return true;
+      } catch {
+        message.error(t("workouts.itemsSaveError"));
+        return false;
+      }
+    },
+    [invalidate, message, mode, planId, t],
+  );
+
+  /**
+   * Re-index, validate (same rules as API), update local state. For training plans, also persists
+   * grouping/order to the server so block membership is not only in memory.
+   */
   const applyOrderedItems = useCallback(
     (next: WorkoutLine[]) => {
       const normalized = next.map((r, i) => ({ ...r, sort_order: i }));
       const err = validateWorkoutLinesSequence(normalized);
       if (err) {
         message.warning(t("workouts.invalidWorkoutOrder"));
-        return false;
+        return null;
       }
       pushItems(normalized);
-      return true;
+      if (planId && mode === "training-plan") void syncPlanItemsToApi(normalized, { silent: true });
+      return normalized;
     },
-    [message, pushItems, t],
+    [message, mode, planId, pushItems, syncPlanItemsToApi, t],
   );
 
   const loadExerciseOptions = useCallback(async () => {
@@ -919,16 +982,44 @@ export function WorkoutItemsEditor({
   }, [exercisePickerModalOpen, loadExerciseOptions]);
 
   const closeExercisePickerModal = useCallback(() => {
+    const ctx = pickerContextRef.current;
     setExercisePickerModalOpen(false);
+    if (ctx.mode === "newSupersetSecond") {
+      setPickerBanner({ mode: "newSupersetSecond", afterHeadLocalId: ctx.afterHeadLocalId });
+      return;
+    }
     pickerContextRef.current = { mode: "append" };
     setPickerBanner({ mode: "append" });
   }, []);
 
-  const armPickerContext = useCallback((ctx: PickerContext) => {
-    pickerContextRef.current = ctx;
-    setPickerBanner(ctx);
-    setExercisePickerModalOpen(true);
-  }, []);
+  const cancelIncompleteSuperset = useCallback(() => {
+    pickerContextRef.current = { mode: "append" };
+    setPickerBanner({ mode: "append" });
+    setItems((prev) => {
+      const cleaned = stripBlocksWithFewerThanTwoExercises(prev).map((r, i) => ({ ...r, sort_order: i }));
+      if (validateWorkoutLinesSequence(cleaned) !== null) return prev;
+      onChange?.(cleaned);
+      return cleaned;
+    });
+  }, [onChange]);
+
+  const armPickerContext = useCallback(
+    (ctx: PickerContext) => {
+      const prev = pickerContextRef.current;
+      if (prev.mode === "newSupersetSecond" && ctx.mode !== "newSupersetSecond") {
+        setItems((p) => {
+          const cleaned = stripBlocksWithFewerThanTwoExercises(p).map((r, i) => ({ ...r, sort_order: i }));
+          if (validateWorkoutLinesSequence(cleaned) !== null) return p;
+          onChange?.(cleaned);
+          return cleaned;
+        });
+      }
+      pickerContextRef.current = ctx;
+      setPickerBanner(ctx);
+      setExercisePickerModalOpen(true);
+    },
+    [onChange],
+  );
 
   const pickerLists = useMemo(() => {
     const q = pickerQuery.trim().toLowerCase();
@@ -945,12 +1036,33 @@ export function WorkoutItemsEditor({
   const addExerciseFromPicker = useCallback(
     (ex: ExerciseOpt) => {
       const ctx = pickerContextRef.current;
-      let next: WorkoutLine[];
       if (ctx.mode === "extendBlock") {
-        next = insertLinkedExerciseAfter(items, ctx.afterIndex, ex);
-      } else {
-        next = [...items, ...newExerciseWithOneSet(ex)];
+        const next = insertLinkedExerciseAfter(items, ctx.afterIndex, ex);
+        pushItems(next);
+        pickerContextRef.current = { mode: "append" };
+        setPickerBanner({ mode: "append" });
+        return;
       }
+      if (ctx.mode === "newSupersetFirst") {
+        const bid = newLocalId();
+        const bundle = newExerciseWithOneSetInBlock(ex, bid, "superset");
+        const afterHeadLocalId = bundle[0]!.localId;
+        pushItems([...items, ...bundle].map((r, i) => ({ ...r, sort_order: i })));
+        pickerContextRef.current = { mode: "newSupersetSecond", afterHeadLocalId };
+        setPickerBanner({ mode: "newSupersetSecond", afterHeadLocalId });
+        return;
+      }
+      if (ctx.mode === "newSupersetSecond") {
+        const afterIdx = items.findIndex((r) => r.localId === ctx.afterHeadLocalId);
+        if (afterIdx < 0) return;
+        const next = insertLinkedExerciseAfter(items, afterIdx, ex);
+        pushItems(next);
+        pickerContextRef.current = { mode: "append" };
+        setPickerBanner({ mode: "append" });
+        setExercisePickerModalOpen(false);
+        return;
+      }
+      const next = [...items, ...newExerciseWithOneSet(ex)];
       pushItems(next.map((r, i) => ({ ...r, sort_order: i })));
       pickerContextRef.current = { mode: "append" };
       setPickerBanner({ mode: "append" });
@@ -1023,14 +1135,12 @@ export function WorkoutItemsEditor({
         if (newIndex < blo || newIndex > bhi) {
           applyOrderedItems(reorderWithBlocks(items, gLo, newIndex));
         } else {
-          const overN = normalizeBundleDropOverIndex(items, gLo, newIndex);
-          applyOrderedItems(reorderExerciseBundleInList(items, gLo, overN));
+          applyOrderedItems(reorderWorkoutLinesByHeadMove(items, activeLocalId, overId));
         }
         return;
       }
 
-      const overN = normalizeBundleDropOverIndex(items, gLo, newIndex);
-      applyOrderedItems(reorderExerciseBundleInList(items, gLo, overN));
+      applyOrderedItems(reorderWorkoutLinesByHeadMove(items, activeLocalId, overId));
     },
     [applyOrderedItems, items, message, t],
   );
@@ -1085,49 +1195,54 @@ export function WorkoutItemsEditor({
 
   const saveTrainingPlan = useCallback(async () => {
     if (!planId) return;
+    const normalized = items.map((r, i) => ({ ...r, sort_order: i }));
+    if (validateWorkoutLinesSequence(normalized) !== null) {
+      message.warning(t("workouts.invalidWorkoutOrder"));
+      return;
+    }
     setSaving(true);
     try {
-      /* Backend persists row_type, exercise_instance_id, block_id, block_type and assigns block_sequence. */
-      const res = await fetch(`${apiPrefix}/training-plans/${planId}/items`, {
-        method: "PUT",
-        headers: authHeaders(),
-        body: JSON.stringify(normalizeWorkoutLinesForApi(items)),
-      });
-      if (!res.ok) {
-        message.error(await res.text());
-        return;
-      }
-      message.success(t("workouts.itemsSaved"));
-      await invalidate({ resource: "training-plans", invalidates: ["detail"], id: String(planId) });
-    } catch {
-      message.error(t("workouts.itemsSaveError"));
+      await syncPlanItemsToApi(normalized, { silent: false });
     } finally {
       setSaving(false);
     }
-  }, [invalidate, items, message, planId, t]);
+  }, [items, message, planId, syncPlanItemsToApi, t]);
 
   return (
-    <div>
-      <Typography.Title level={5} style={{ marginTop: 0 }}>
-        {t("workouts.builderTitle")}
-      </Typography.Title>
-      <Typography.Paragraph type="secondary">{t("workouts.builderHint")}</Typography.Paragraph>
-      {planVenue === "home" || planVenue === "commercial_gym" ? (
-        <Typography.Text type="secondary" style={{ display: "block", marginBottom: 8 }}>
-          {t("workouts.venueFilterHint", { venue: t(`workouts.venue.${planVenue}`) })}
-        </Typography.Text>
-      ) : null}
-
-      <Space wrap style={{ marginBottom: 12 }}>
-        {mode === "training-plan" && showSaveButton ? (
-          <Button type="primary" onClick={() => void saveTrainingPlan()} loading={saving}>
-            {t("workouts.saveItems")}
-          </Button>
-        ) : null}
-      </Space>
+    <div className="workout-items-editor">
+      <div style={{ marginBottom: 22 }}>
+        <Flex justify="space-between" align="flex-start" wrap="wrap" gap={16}>
+          <div style={{ flex: "1 1 280px", minWidth: 0 }}>
+            <Typography.Title
+              level={4}
+              style={{
+                margin: "0 0 8px",
+                fontWeight: 700,
+                letterSpacing: "-0.02em",
+                color: "var(--app-text-heading)",
+              }}
+            >
+              {t("workouts.builderTitle")}
+            </Typography.Title>
+            <Typography.Paragraph type="secondary" style={{ marginBottom: 0, maxWidth: 520, fontSize: 14, lineHeight: 1.55 }}>
+              {t("workouts.builderHint")}
+            </Typography.Paragraph>
+            {planVenue === "home" || planVenue === "commercial_gym" ? (
+              <Typography.Text type="secondary" style={{ display: "block", marginTop: 10, fontSize: 13 }}>
+                {t("workouts.venueFilterHint", { venue: t(`workouts.venue.${planVenue}`) })}
+              </Typography.Text>
+            ) : null}
+          </div>
+          {mode === "training-plan" && showSaveButton ? (
+            <Button type="primary" size="large" onClick={() => void saveTrainingPlan()} loading={saving} style={{ borderRadius: 12 }}>
+              {t("workouts.saveItems")}
+            </Button>
+          ) : null}
+        </Flex>
+      </div>
 
       {items.length === 0 ? (
-        <Typography.Text type="secondary">{t("workouts.emptyItems")}</Typography.Text>
+        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("workouts.emptyItems")} style={{ margin: "28px 0" }} />
       ) : (
         <DndContext
           sensors={sensors}
@@ -1139,8 +1254,9 @@ export function WorkoutItemsEditor({
           <Alert
             type="info"
             showIcon
-            style={{ marginBottom: 14 }}
-            message={t("workouts.dndGuideTitle")}
+            className="workout-items-editor__dnd-tip"
+            style={{ marginBottom: 18 }}
+            message={<span style={{ fontWeight: 600 }}>{t("workouts.dndGuideTitle")}</span>}
             description={
               <Typography.Text type="secondary" style={{ fontSize: 13, display: "block", lineHeight: 1.55 }}>
                 {t("workouts.dndGuideBody")}
@@ -1221,92 +1337,88 @@ export function WorkoutItemsEditor({
                 const accent = blockAccent(bid);
                 const bt = items[start].block_type ?? "superset";
                 const blockLen = end - start + 1;
+                const exercisesInBlock = countExerciseBundlesInBlockSlice(items, start, end);
                 nodes.push(
                   <div
                     key={bid}
                     style={{
                       marginBottom: 16,
-                      padding: "12px 14px 10px",
                       borderRadius: 16,
-                      border: "1px solid color-mix(in srgb, var(--app-border, rgba(148, 163, 184, 0.2)) 82%, var(--ant-color-primary) 18%)",
+                      overflow: "hidden",
+                      border: "1px solid var(--app-border)",
                       borderLeft: `4px solid ${accent}`,
-                      background:
-                        "linear-gradient(135deg, color-mix(in srgb, var(--app-surface, #121826) 96%, var(--ant-color-primary) 4%) 0%, color-mix(in srgb, var(--app-surface, #121826) 98%, transparent) 100%)",
-                      boxShadow: "0 2px 10px rgba(0, 0, 0, 0.1)",
+                      background: "color-mix(in srgb, var(--app-surface-elevated) 92%, transparent)",
+                      boxShadow: "0 1px 2px rgba(0,0,0,0.04), 0 10px 36px rgba(0,0,0,0.08)",
                     }}
                   >
-                    <Flex justify="space-between" align="flex-start" wrap="wrap" gap={10} style={{ marginBottom: 8 }}>
-                      <Flex vertical gap={6} style={{ minWidth: 0, flex: "1 1 240px" }}>
-                        <Typography.Text
-                          type="secondary"
-                          style={{
-                            fontSize: 10,
-                            letterSpacing: "0.08em",
-                            textTransform: "uppercase",
-                            display: "block",
-                            marginBottom: 0,
-                            opacity: 0.85,
-                          }}
-                        >
-                          {t("workouts.blockGroupLabel")}
-                        </Typography.Text>
-                        <Flex align="center" gap={10} wrap="wrap">
-                          <Select<WorkoutBlockType>
-                            size="small"
-                            style={{ minWidth: 176, maxWidth: 260 }}
-                            value={bt}
-                            options={BLOCK_OPTIONS.map((o) => ({ value: o.value, label: t(o.labelKey) }))}
-                            onChange={(v) => updateBlockType(bid, v)}
-                          />
-                          <Tag style={{ margin: 0 }} color="processing">
-                            {t("workouts.blockMemberCount", { count: blockLen })}
-                          </Tag>
+                    <div style={{ padding: "16px 18px 14px" }}>
+                      <Flex justify="space-between" align="flex-start" wrap="wrap" gap={12} style={{ marginBottom: 14 }}>
+                        <Flex vertical gap={10} style={{ minWidth: 0, flex: "1 1 240px" }}>
+                          <Typography.Text style={{ fontSize: 12, fontWeight: 600, color: "var(--app-text-muted)" }}>
+                            {t("workouts.blockGroupLabel")}
+                          </Typography.Text>
+                          <Flex align="center" gap={10} wrap="wrap">
+                            <Select<WorkoutBlockType>
+                              size="middle"
+                              style={{
+                                minWidth: 200,
+                                maxWidth: 300,
+                                borderRadius: 12,
+                              }}
+                              value={bt}
+                              options={BLOCK_OPTIONS.map((o) => ({ value: o.value, label: t(o.labelKey) }))}
+                              onChange={(v) => updateBlockType(bid, v)}
+                            />
+                            <Tag
+                              bordered={false}
+                              style={{
+                                margin: 0,
+                                borderRadius: 999,
+                                fontWeight: 600,
+                                padding: "4px 12px",
+                                background: `color-mix(in srgb, ${accent} 16%, var(--app-surface-elevated))`,
+                                color: "var(--app-text-heading)",
+                              }}
+                            >
+                              {t("workouts.blockMemberCount", { count: exercisesInBlock })}
+                            </Tag>
+                          </Flex>
                         </Flex>
+                        <Tooltip title={t("workouts.blockDragBundleHint")}>
+                          <Button type="text" size="small" icon={<QuestionCircleOutlined />} style={{ color: "var(--app-text-muted)" }} />
+                        </Tooltip>
                       </Flex>
-                      <Tooltip title={t("workouts.blockDragBundleHint")}>
-                        <QuestionCircleOutlined
-                          style={{
-                            color: "var(--ant-color-text-tertiary)",
-                            fontSize: 16,
-                            cursor: "help",
-                            marginTop: 2,
-                          }}
-                        />
-                      </Tooltip>
-                    </Flex>
-                    {(() => {
+                      {(() => {
                       const dividerStyle: CSSProperties = {
                         display: "flex",
                         alignItems: "center",
-                        gap: 8,
-                        margin: "2px 0 6px 8px",
-                        color: "var(--ant-color-text-tertiary)",
-                        fontSize: 11,
+                        gap: 10,
+                        margin: "14px 0 12px",
                       };
                       let k = 0;
+                      let bundleOrdinal = 0;
                       const blockChildren: ReactNode[] = [];
                       while (k < blockLen) {
                         const globalIndex = start + k;
                         const [lo, hi] = exerciseGroupRange(items, globalIndex);
+                        bundleOrdinal += 1;
+                        /* Capture per bundle: SortableExerciseGroup calls this fn later, so `bundleOrdinal` alone would be stale (last loop value for every card). */
+                        const stepIndexForBundle = bundleOrdinal;
+                        const totalStepsForBlock = exercisesInBlock;
                         blockChildren.push(
                           <Fragment key={`ex-in-block-${items[lo].localId}`}>
                             {lo > start ? (
                               <div style={dividerStyle}>
-                                <span aria-hidden style={{ fontWeight: 600 }}>
-                                  ↳
+                                <div style={{ flex: 1, height: 1, background: "var(--app-border)" }} />
+                                <span aria-hidden style={{ color: accent, fontSize: 12, opacity: 0.85, padding: "0 4px" }}>
+                                  ↓
                                 </span>
-                                <div
-                                  style={{
-                                    flex: 1,
-                                    height: 1,
-                                    background: "var(--app-border, rgba(148, 163, 184, 0.22))",
-                                  }}
-                                />
+                                <div style={{ flex: 1, height: 1, background: "var(--app-border)" }} />
                               </div>
                             ) : null}
                             <SortableExerciseGroup
                               headLocalId={items[lo].localId}
-                              shellStyle={exerciseGroupInBlockShellStyle}
+                              shellStyle={exerciseCardShellInBlock(accent)}
                               mergeDropEnabled={mergeDropActiveForHead(items[lo].localId)}
                               activeDragHeadId={activeDragId}
                             >
@@ -1316,8 +1428,8 @@ export function WorkoutItemsEditor({
                                     const idx = lo + d;
                                     const r = items[idx];
                                     const stepLabel = t("workouts.blockMemberStep", {
-                                      current: idx - start + 1,
-                                      total: blockLen,
+                                      current: stepIndexForBundle,
+                                      total: totalStepsForBlock,
                                     });
                                     const presentation: RowPresentation =
                                       r.row_type === "exercise"
@@ -1368,6 +1480,7 @@ export function WorkoutItemsEditor({
                       }
                       return blockChildren;
                     })()}
+                    </div>
                   </div>,
                 );
               }
@@ -1378,13 +1491,13 @@ export function WorkoutItemsEditor({
             {activeDragBundleRows.length > 0 ? (
               <div
                 style={{
-                  padding: "12px 16px",
-                  minWidth: 280,
+                  padding: "16px 18px",
+                  minWidth: 288,
                   maxWidth: 440,
-                  borderRadius: 12,
-                  background: "var(--app-surface-elevated, #1a2234)",
-                  border: "1px solid color-mix(in srgb, var(--ant-color-primary) 45%, var(--app-border, rgba(148,163,184,0.3)))",
-                  boxShadow: "0 14px 32px rgba(0, 0, 0, 0.38)",
+                  borderRadius: 16,
+                  background: "var(--app-surface-elevated)",
+                  border: "1px solid var(--app-border-strong)",
+                  boxShadow: "0 24px 48px rgba(0, 0, 0, 0.18), 0 0 0 1px color-mix(in srgb, var(--app-accent) 12%, transparent)",
                   cursor: "grabbing",
                 }}
               >
@@ -1406,7 +1519,7 @@ export function WorkoutItemsEditor({
                         style={{
                           paddingTop: bi ? 8 : 0,
                           marginTop: bi ? 8 : 0,
-                          borderTop: bi ? "1px dashed color-mix(in srgb, var(--ant-color-primary) 28%, var(--app-border, rgba(148,163,184,0.25)))" : undefined,
+                          borderTop: bi ? "1px solid var(--app-border)" : undefined,
                         }}
                       >
                         {showSetTag ? (
@@ -1444,34 +1557,66 @@ export function WorkoutItemsEditor({
         <Alert
           type="info"
           showIcon
-          style={{ marginTop: 16 }}
-          message={t("workouts.pickerCollapsedLinkHint")}
+          className="workout-items-editor__banner"
+          style={{ marginTop: 20 }}
+          message={
+            pickerBanner.mode === "newSupersetSecond"
+              ? t("workouts.pickerCollapsedSupersetHint")
+              : t("workouts.pickerCollapsedLinkHint")
+          }
           action={
-            <Button size="small" type="primary" onClick={() => setExercisePickerModalOpen(true)}>
-              {t("workouts.openExerciseLibrary")}
-            </Button>
+            <Space size={8} wrap>
+              {pickerBanner.mode === "newSupersetSecond" ? (
+                <Button size="small" onClick={cancelIncompleteSuperset}>
+                  {t("workouts.cancelSupersetDraft")}
+                </Button>
+              ) : null}
+              <Button size="small" type="primary" onClick={() => setExercisePickerModalOpen(true)}>
+                {t("workouts.openExerciseLibrary")}
+              </Button>
+            </Space>
           }
         />
       ) : null}
 
-      <Button
-        type="dashed"
-        block
-        size="large"
-        icon={<PlusOutlined />}
-        onClick={() => armPickerContext({ mode: "append" })}
-        style={{ marginTop: 16 }}
-      >
-        {t("workouts.addExercise")}
-      </Button>
+      <Flex vertical gap={10} style={{ width: "100%", marginTop: 20 }}>
+        <Button
+          type="primary"
+          block
+          size="large"
+          icon={<PlusOutlined />}
+          onClick={() => armPickerContext({ mode: "append" })}
+          style={{ borderRadius: 12, height: 46, fontWeight: 600 }}
+        >
+          {t("workouts.addExercise")}
+        </Button>
+        <Button
+          block
+          size="large"
+          icon={<LinkOutlined />}
+          onClick={() => armPickerContext({ mode: "newSupersetFirst" })}
+          style={{
+            borderRadius: 12,
+            height: 46,
+            fontWeight: 600,
+            borderColor: "var(--app-border-strong)",
+            background: "var(--app-surface-elevated)",
+          }}
+        >
+          {t("workouts.addSuperset")}
+        </Button>
+      </Flex>
 
       <Modal
         title={
           <div>
-            <Typography.Title level={4} style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>
+            <Typography.Title
+              level={4}
+              style={{ margin: 0, fontSize: 19, fontWeight: 700, letterSpacing: "-0.02em", color: "var(--app-text-heading)" }}
+            >
               {t("workouts.pickExercise")}
             </Typography.Title>
-            <Typography.Text type="secondary" style={{ display: "block", marginTop: 4, fontWeight: 400 }}>
+            <Typography.Text type="secondary" style={{ display: "block", marginTop: 6, fontSize: 13, lineHeight: 1.5 }}>
               {t("workouts.pickerModalSubtitle")}
             </Typography.Text>
           </div>
@@ -1480,10 +1625,10 @@ export function WorkoutItemsEditor({
         onCancel={closeExercisePickerModal}
         footer={
           <Flex justify="space-between" align="center" wrap="wrap" gap={8}>
-            <Button loading={pickerLoading} onClick={() => void loadExerciseOptions()}>
+            <Button loading={pickerLoading} onClick={() => void loadExerciseOptions()} style={{ borderRadius: 10 }}>
               {t("workouts.exerciseBankRefresh")}
             </Button>
-            <Button type="primary" onClick={closeExercisePickerModal}>
+            <Button type="primary" onClick={closeExercisePickerModal} style={{ borderRadius: 10 }}>
               {t("workouts.pickerDone")}
             </Button>
           </Flex>
@@ -1491,9 +1636,11 @@ export function WorkoutItemsEditor({
         width={640}
         centered
         destroyOnClose
+        rootClassName="workout-items-editor__modal"
         styles={{
+          content: { borderRadius: 16, overflow: "hidden" },
           body: {
-            paddingTop: 8,
+            paddingTop: 12,
             maxHeight: "min(78vh, 640px)",
             overflow: "hidden",
             display: "flex",
@@ -1509,11 +1656,40 @@ export function WorkoutItemsEditor({
             <Alert
               type="info"
               showIcon
+              className="workout-items-editor__banner"
               style={{ marginBottom: 12 }}
               message={t("workouts.pickerActiveExtendBlock")}
               action={
                 <Button size="small" onClick={() => armPickerContext({ mode: "append" })}>
                   {t("workouts.pickerClearMode")}
+                </Button>
+              }
+            />
+          ) : null}
+          {pickerBanner.mode === "newSupersetFirst" ? (
+            <Alert
+              type="info"
+              showIcon
+              className="workout-items-editor__banner"
+              style={{ marginBottom: 12 }}
+              message={t("workouts.pickerActiveSupersetFirst")}
+              action={
+                <Button size="small" onClick={() => armPickerContext({ mode: "append" })}>
+                  {t("workouts.pickerClearMode")}
+                </Button>
+              }
+            />
+          ) : null}
+          {pickerBanner.mode === "newSupersetSecond" ? (
+            <Alert
+              type="warning"
+              showIcon
+              className="workout-items-editor__banner"
+              style={{ marginBottom: 12 }}
+              message={t("workouts.pickerActiveSupersetSecond")}
+              action={
+                <Button size="small" onClick={cancelIncompleteSuperset}>
+                  {t("workouts.cancelSupersetDraft")}
                 </Button>
               }
             />
@@ -1554,6 +1730,7 @@ export function WorkoutItemsEditor({
                 value={pickerQuery}
                 onChange={(e) => setPickerQuery(e.target.value)}
                 enterButton={<SearchOutlined />}
+                style={{ borderRadius: 12 }}
               />
               <Flex align="center" justify="space-between" wrap="wrap" gap={8}>
                 <Typography.Text type="secondary" style={{ fontSize: 12 }}>
@@ -1594,12 +1771,7 @@ export function WorkoutItemsEditor({
                             justify="space-between"
                             gap={12}
                             wrap="wrap"
-                            style={{
-                              padding: "10px 12px",
-                              borderRadius: 8,
-                              border: "1px solid var(--app-border, rgba(148, 163, 184, 0.16))",
-                              background: "var(--app-surface-elevated, rgba(26, 32, 52, 0.55))",
-                            }}
+                            className="workout-items-editor__picker-row"
                           >
                             <Flex align="center" gap={10} style={{ minWidth: 0, flex: "1 1 200px" }}>
                               <Typography.Text ellipsis title={ex.name} style={{ margin: 0 }}>
@@ -1617,6 +1789,7 @@ export function WorkoutItemsEditor({
                               size="small"
                               icon={<PlusOutlined />}
                               onClick={() => addExerciseFromPicker(ex)}
+                              style={{ borderRadius: 10 }}
                             >
                               {t("workouts.pickerAddExercise")}
                             </Button>
@@ -1639,12 +1812,7 @@ export function WorkoutItemsEditor({
                             justify="space-between"
                             gap={12}
                             wrap="wrap"
-                            style={{
-                              padding: "10px 12px",
-                              borderRadius: 8,
-                              border: "1px solid var(--app-border, rgba(148, 163, 184, 0.16))",
-                              background: "var(--app-surface-elevated, rgba(26, 32, 52, 0.55))",
-                            }}
+                            className="workout-items-editor__picker-row"
                           >
                             <Flex align="center" gap={10} style={{ minWidth: 0, flex: "1 1 200px" }}>
                               <Typography.Text ellipsis title={ex.name} style={{ margin: 0 }}>
@@ -1662,6 +1830,7 @@ export function WorkoutItemsEditor({
                               size="small"
                               icon={<PlusOutlined />}
                               onClick={() => addExerciseFromPicker(ex)}
+                              style={{ borderRadius: 10 }}
                             >
                               {t("workouts.pickerAddExercise")}
                             </Button>
@@ -1681,9 +1850,11 @@ export function WorkoutItemsEditor({
         title={t("workouts.mergeModalTitle")}
         open={mergeModal != null}
         okText={t("workouts.mergeModalOk")}
+        rootClassName="workout-items-editor__modal"
+        styles={{ content: { borderRadius: 16, overflow: "hidden" } }}
         onOk={() => {
           if (!mergeModal) return;
-          const ok = applyOrderedItems(
+          const committed = applyOrderedItems(
             mergeExerciseBundleAfterTarget(
               items,
               mergeModal.activeLocalId,
@@ -1691,7 +1862,7 @@ export function WorkoutItemsEditor({
               mergePickType,
             ),
           );
-          if (ok) setMergeModal(null);
+          if (committed !== null) setMergeModal(null);
         }}
         onCancel={() => setMergeModal(null)}
         destroyOnClose
@@ -1700,7 +1871,7 @@ export function WorkoutItemsEditor({
           {t("workouts.mergeModalHint")}
         </Typography.Paragraph>
         <Select<WorkoutBlockType>
-          style={{ width: "100%" }}
+          style={{ width: "100%", borderRadius: 12 }}
           value={mergePickType}
           onChange={(v) => setMergePickType(v)}
           options={BLOCK_OPTIONS.map((o) => ({ value: o.value, label: t(o.labelKey) }))}
