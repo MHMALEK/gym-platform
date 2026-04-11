@@ -18,7 +18,7 @@ class MediaAsset(Base, TimestampMixin):
     byte_size: Mapped[int] = mapped_column(Integer, nullable=False)
     original_filename: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
-    coach = relationship("Coach", back_populates="media_assets")
+    coach = relationship("Coach", back_populates="media_assets", foreign_keys=[coach_id])
     exercise_links = relationship("ExerciseMedia", back_populates="media_asset")
 
 

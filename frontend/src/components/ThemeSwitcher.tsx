@@ -1,5 +1,7 @@
-import { MoonOutlined, SunOutlined } from "@ant-design/icons";
-import { Button, Tooltip } from "antd";
+import DarkModeIcon from "@mui/icons-material/DarkMode";
+import LightModeIcon from "@mui/icons-material/LightMode";
+import IconButton from "@mui/material/IconButton";
+import Tooltip from "@mui/material/Tooltip";
 import { useTranslation } from "react-i18next";
 
 import { useThemeMode } from "../theme/ThemeModeContext";
@@ -12,13 +14,14 @@ export function ThemeSwitcher() {
 
   return (
     <Tooltip title={isDark ? t("theme.switchToLight") : t("theme.switchToDark")}>
-      <Button
-        type="text"
+      <IconButton
         size="small"
-        icon={isDark ? <SunOutlined /> : <MoonOutlined />}
         onClick={toggleMode}
         aria-label={isDark ? t("theme.switchToLight") : t("theme.switchToDark")}
-      />
+        color="inherit"
+      >
+        {isDark ? <LightModeIcon fontSize="small" /> : <DarkModeIcon fontSize="small" />}
+      </IconButton>
     </Tooltip>
   );
 }

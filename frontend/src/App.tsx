@@ -1,24 +1,24 @@
-import {
-  AppleOutlined,
-  BgColorsOutlined,
-  BookOutlined,
-  DashboardOutlined,
-  FileTextOutlined,
-  FireOutlined,
-  HomeOutlined,
-  ReadOutlined,
-  TeamOutlined,
-  UnorderedListOutlined,
-} from "@ant-design/icons";
-import { useNotificationProvider, ThemedLayoutV2 } from "@refinedev/antd";
+import AppleIcon from "@mui/icons-material/Apple";
+import MenuBookIcon from "@mui/icons-material/MenuBook";
+import PaletteIcon from "@mui/icons-material/Palette";
+import DashboardIcon from "@mui/icons-material/Dashboard";
+import DescriptionIcon from "@mui/icons-material/Description";
+import LocalFireDepartmentIcon from "@mui/icons-material/LocalFireDepartment";
+import HomeIcon from "@mui/icons-material/Home";
+import LibraryBooksIcon from "@mui/icons-material/LibraryBooks";
+import GroupsIcon from "@mui/icons-material/Groups";
+import ViewListIcon from "@mui/icons-material/ViewList";
+import CssBaseline from "@mui/material/CssBaseline";
+import Typography from "@mui/material/Typography";
+import { ThemeProvider } from "@mui/material/styles";
+import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
+import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+import { RefineSnackbarProvider, useNotificationProvider, ThemedLayoutV2 } from "@refinedev/mui";
 import { Authenticated, Refine } from "@refinedev/core";
 import routerProvider, {
   DocumentTitleHandler,
   UnsavedChangesNotifier,
 } from "@refinedev/react-router-v6";
-import { App as AntdApp, ConfigProvider, Typography } from "antd";
-import enUS from "antd/locale/en_US";
-import faIR from "antd/locale/fa_IR";
 import dayjs from "dayjs";
 import "dayjs/locale/en";
 import "dayjs/locale/fa";
@@ -28,8 +28,9 @@ import { BrowserRouter, Navigate, Outlet, Route, Routes } from "react-router-dom
 
 import { authProvider } from "./authProvider";
 import {
-  BrandedAntdOverride,
+  BrandedMuiOverride,
   CoachBrandingProvider,
+  EmotionDirectionBridge,
   useCoachBranding,
 } from "./contexts/CoachBrandingContext";
 import { DesktopSiderPinned } from "./components/DesktopSiderPinned";
@@ -44,7 +45,7 @@ import { ClientShow } from "./pages/clients/show";
 import { ClientWorkoutDietPlansPage } from "./pages/clients/workout-diet-plans";
 import { CoachDeskPage } from "./pages/coach-desk";
 import { DashboardPage } from "./pages/dashboard";
-import { buildCoachTheme } from "./theme/antdCoachTheme";
+import { buildCoachMuiTheme } from "./theme/muiCoachTheme";
 import { ThemeModeProvider, useThemeMode } from "./theme/ThemeModeContext";
 import { ExerciseCreate } from "./pages/exercises/create";
 import { InvoiceCreate } from "./pages/invoices/create";
@@ -96,9 +97,9 @@ function AppLayoutTitle() {
       <span style={{ display: "inline-flex", flexDirection: "column", justifyContent: "center", lineHeight: 1.25 }}>
         <span>{displayName}</span>
         {branding.tagline && !branding.loading ? (
-          <Typography.Text type="secondary" style={{ fontSize: 11 }}>
+          <Typography variant="body2" color="text.secondary" sx={{ fontSize: 11 }}>
             {branding.tagline}
-          </Typography.Text>
+          </Typography>
         ) : null}
       </span>
       <ThemeSwitcher />
@@ -107,11 +108,10 @@ function AppLayoutTitle() {
   );
 }
 
-function AntdLocaleBridge({ children }: { children: ReactNode }) {
+function MuiLocaleBridge({ children }: { children: ReactNode }) {
   const { i18n } = useTranslation();
   const { mode } = useThemeMode();
   const isFa = i18n.language.startsWith("fa");
-  const antdLocale = isFa ? faIR : enUS;
   const direction = isFa ? "rtl" : "ltr";
 
   useEffect(() => {
@@ -124,10 +124,20 @@ function AntdLocaleBridge({ children }: { children: ReactNode }) {
     ? '"Vazirmatn", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif'
     : '"Inter", "Vazirmatn", system-ui, -apple-system, sans-serif';
 
+  const theme = useMemo(
+    () => buildCoachMuiTheme(fontFamily, mode, direction, null),
+    [fontFamily, mode, direction],
+  );
+
   return (
-    <ConfigProvider locale={antdLocale} direction={direction} theme={buildCoachTheme(fontFamily, mode)}>
-      {children}
-    </ConfigProvider>
+    <EmotionDirectionBridge direction={direction}>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale={isFa ? "fa" : "en"}>
+          <RefineSnackbarProvider>{children}</RefineSnackbarProvider>
+        </LocalizationProvider>
+      </ThemeProvider>
+    </EmotionDirectionBridge>
   );
 }
 
@@ -140,12 +150,12 @@ function RefineShell() {
       {
         name: "coach-desk",
         list: "/",
-        meta: { label: t("nav.coachDesk"), icon: <HomeOutlined /> },
+        meta: { label: t("nav.coachDesk"), icon: <HomeIcon /> },
       },
       {
         name: "dashboard",
         list: "/dashboard",
-        meta: { label: t("nav.dashboard"), icon: <DashboardOutlined /> },
+        meta: { label: t("nav.dashboard"), icon: <DashboardIcon /> },
       },
       {
         name: "clients",
@@ -153,28 +163,28 @@ function RefineShell() {
         create: "/clients/create",
         edit: "/clients/edit/:id",
         show: "/clients/show/:id",
-        meta: { label: t("nav.clients"), icon: <TeamOutlined /> },
+        meta: { label: t("nav.clients"), icon: <GroupsIcon /> },
       },
       {
         name: "invoices",
         list: "/invoices",
         create: "/invoices/create",
         edit: "/invoices/edit/:id",
-        meta: { label: t("nav.invoices"), icon: <FileTextOutlined /> },
+        meta: { label: t("nav.invoices"), icon: <DescriptionIcon /> },
       },
       {
         name: "plan-templates",
         list: "/plan-templates",
         create: "/plan-templates/create",
         edit: "/plan-templates/edit/:id",
-        meta: { label: t("nav.planTemplates"), icon: <BookOutlined /> },
+        meta: { label: t("nav.planTemplates"), icon: <MenuBookIcon /> },
       },
       {
         name: "exercises",
         list: "/exercises",
         create: "/exercises/create",
         edit: "/exercises/edit/:id",
-        meta: { label: t("nav.exercises"), icon: <FireOutlined /> },
+        meta: { label: t("nav.exercises"), icon: <LocalFireDepartmentIcon /> },
       },
       {
         name: "training-plans",
@@ -182,34 +192,34 @@ function RefineShell() {
         create: "/training-plans/create",
         edit: "/training-plans/edit/:id",
         show: "/training-plans/show/:id",
-        meta: { label: t("nav.trainingPlans"), icon: <UnorderedListOutlined /> },
+        meta: { label: t("nav.trainingPlans"), icon: <ViewListIcon /> },
       },
       {
         name: "nutrition-templates",
         list: "/nutrition-templates",
         create: "/nutrition-templates/create",
         edit: "/nutrition-templates/edit/:id",
-        meta: { label: t("nav.nutritionTemplates"), icon: <AppleOutlined /> },
+        meta: { label: t("nav.nutritionTemplates"), icon: <AppleIcon /> },
       },
       {
         name: "directory-exercises",
         list: "/library/exercises",
-        meta: { label: t("nav.libraryExercises"), icon: <ReadOutlined /> },
+        meta: { label: t("nav.libraryExercises"), icon: <LibraryBooksIcon /> },
       },
       {
         name: "directory-training-plans",
         list: "/library/training-plans",
-        meta: { label: t("nav.libraryPlans"), icon: <ReadOutlined /> },
+        meta: { label: t("nav.libraryPlans"), icon: <LibraryBooksIcon /> },
       },
       {
         name: "directory-nutrition-templates",
         list: "/library/nutrition-templates",
-        meta: { label: t("nav.libraryNutritionTemplates"), icon: <ReadOutlined /> },
+        meta: { label: t("nav.libraryNutritionTemplates"), icon: <LibraryBooksIcon /> },
       },
       {
         name: "branding",
         list: "/settings/branding",
-        meta: { label: t("nav.branding"), icon: <BgColorsOutlined /> },
+        meta: { label: t("nav.branding"), icon: <PaletteIcon /> },
       },
     ],
     [t, i18n.language],
@@ -236,12 +246,12 @@ function RefineShell() {
           element={
             <Authenticated key="app-gate" fallback={<Navigate to="/login" replace />}>
               <CoachBrandingProvider>
-                <BrandedAntdOverride>
+                <BrandedMuiOverride>
                   <ThemedLayoutV2 Title={AppLayoutTitle} initialSiderCollapsed={false}>
                     <DesktopSiderPinned />
                     <Outlet />
                   </ThemedLayoutV2>
-                </BrandedAntdOverride>
+                </BrandedMuiOverride>
               </CoachBrandingProvider>
             </Authenticated>
           }
@@ -287,11 +297,9 @@ export default function App() {
   return (
     <BrowserRouter>
       <ThemeModeProvider>
-        <AntdLocaleBridge>
-          <AntdApp>
-            <RefineShell />
-          </AntdApp>
-        </AntdLocaleBridge>
+        <MuiLocaleBridge>
+          <RefineShell />
+        </MuiLocaleBridge>
       </ThemeModeProvider>
     </BrowserRouter>
   );

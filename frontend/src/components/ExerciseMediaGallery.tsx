@@ -1,14 +1,20 @@
-import {
-  ArrowDownOutlined,
-  ArrowUpOutlined,
-  DeleteOutlined,
-  UploadOutlined,
-} from "@ant-design/icons";
-import { Button, Card, Select, Space, Spin, Typography, Upload, message } from "antd";
-import type { UploadRequestOption } from "rc-upload/lib/interface";
-import { useCallback, useEffect, useState } from "react";
+import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
+import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import UploadFileIcon from "@mui/icons-material/UploadFile";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Card from "@mui/material/Card";
+import CardContent from "@mui/material/CardContent";
+import CircularProgress from "@mui/material/CircularProgress";
+import MenuItem from "@mui/material/MenuItem";
+import Select from "@mui/material/Select";
+import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { useAppMessage } from "../lib/useAppMessage";
 import {
   type ExerciseMediaItemDTO,
   type MediaRole,
@@ -36,10 +42,12 @@ export function ExerciseMediaGallery({
   refreshSignal?: number;
 }) {
   const { t } = useTranslation();
+  const message = useAppMessage();
   const eidNum = Number(exerciseId);
   const [items, setItems] = useState<ExerciseMediaItemDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
     if (!exerciseId || Number.isNaN(eidNum)) return;
@@ -53,26 +61,26 @@ export function ExerciseMediaGallery({
     } finally {
       setLoading(false);
     }
-  }, [exerciseId, eidNum]);
+  }, [exerciseId, eidNum, message]);
 
   useEffect(() => {
     void load();
   }, [load, refreshSignal]);
 
-  const handleUpload = async (options: UploadRequestOption) => {
-    const file = options.file as File;
+  const handleUploadFiles = async (files: FileList | null) => {
+    const file = files?.[0];
+    if (!file) return;
     setUploading(true);
     try {
       const asset = await uploadMediaFile(file);
       await linkMediaToExercise(exerciseId, { media_asset_id: asset.id, role: "gallery" });
-      options.onSuccess?.({ ok: true });
       await load();
     } catch (e) {
       const err = e as Error;
-      options.onError?.(err);
       message.error(err.message);
     } finally {
       setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
@@ -89,7 +97,7 @@ export function ExerciseMediaGallery({
     const j = idx + dir;
     if (idx < 0 || j < 0 || j >= ids.length) return;
     const nextIds = [...ids];
-    [nextIds[idx], nextIds[j]] = [nextIds[j], nextIds[idx]];
+    [nextIds[idx], nextIds[j]] = [nextIds[j]!, nextIds[idx]!];
     try {
       const next = await reorderExerciseMedia(exerciseId, nextIds);
       setItems([...next].sort((a, b) => a.sort_order - b.sort_order || a.id - b.id));
@@ -117,85 +125,110 @@ export function ExerciseMediaGallery({
   };
 
   return (
-    <Card title={t("exercises.mediaGallery.title")} style={{ marginTop: 24 }}>
-      <Space direction="vertical" style={{ width: "100%" }} size="middle">
-        <Typography.Text type="secondary">{t("exercises.mediaGallery.hint")}</Typography.Text>
-        <Upload
-          accept={ACCEPT}
-          multiple
-          customRequest={handleUpload}
-          showUploadList={false}
-          disabled={uploading}
-        >
-          <Button icon={<UploadOutlined />} loading={uploading}>
+    <Card sx={{ mt: 3 }}>
+      <CardContent>
+        <Typography variant="h6" gutterBottom>
+          {t("exercises.mediaGallery.title")}
+        </Typography>
+        <Stack spacing={2}>
+          <Typography variant="body2" color="text.secondary">
+            {t("exercises.mediaGallery.hint")}
+          </Typography>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept={ACCEPT}
+            multiple
+            hidden
+            onChange={(e) => void handleUploadFiles(e.target.files)}
+          />
+          <Button
+            variant="outlined"
+            startIcon={<UploadFileIcon />}
+            disabled={uploading}
+            onClick={() => fileInputRef.current?.click()}
+          >
             {t("exercises.mediaGallery.upload")}
           </Button>
-        </Upload>
-        {loading ? (
-          <Spin />
-        ) : items.length === 0 ? (
-          <Typography.Text type="secondary">{t("exercises.mediaGallery.empty")}</Typography.Text>
-        ) : (
-          <Space direction="vertical" style={{ width: "100%" }} size="small">
-            {items.map((row) => (
-              <Card key={row.id} size="small" styles={{ body: { padding: 12 } }}>
-                <Space align="start" wrap>
-                  <div style={{ width: 120, flexShrink: 0 }}>
-                    {isVideo(row.asset.content_type) ? (
-                      <video
-                        src={mediaSrc(row.asset.public_url)}
-                        controls
-                        muted
-                        style={{ width: "100%", maxHeight: 90, objectFit: "cover", borderRadius: 4 }}
-                      />
-                    ) : (
-                      <img
-                        src={mediaSrc(row.asset.public_url)}
-                        alt=""
-                        style={{ width: "100%", maxHeight: 90, objectFit: "cover", borderRadius: 4 }}
-                      />
-                    )}
-                  </div>
-                  <Space direction="vertical" style={{ flex: 1, minWidth: 200 }}>
-                    <Select
-                      value={row.role}
-                      options={roleOptions}
-                      style={{ width: "100%", maxWidth: 280 }}
-                      onChange={(v) => onRoleChange(row.id, v as MediaRole)}
-                    />
-                    <Space>
-                      <Button
-                        size="small"
-                        icon={<ArrowUpOutlined />}
-                        onClick={() => move(row.id, -1)}
-                        aria-label={t("exercises.mediaGallery.moveUp")}
-                      />
-                      <Button
-                        size="small"
-                        icon={<ArrowDownOutlined />}
-                        onClick={() => move(row.id, 1)}
-                        aria-label={t("exercises.mediaGallery.moveDown")}
-                      />
-                      <Button
-                        size="small"
-                        danger
-                        icon={<DeleteOutlined />}
-                        onClick={() => onDelete(row.id)}
-                        aria-label={t("exercises.mediaGallery.remove")}
-                      />
-                    </Space>
-                    {row.asset.original_filename ? (
-                      <Typography.Text type="secondary" ellipsis>
-                        {row.asset.original_filename}
-                      </Typography.Text>
-                    ) : null}
-                  </Space>
-                </Space>
-              </Card>
-            ))}
-          </Space>
-        )}
-      </Space>
+          {loading ? (
+            <CircularProgress size={28} />
+          ) : items.length === 0 ? (
+            <Typography variant="body2" color="text.secondary">
+              {t("exercises.mediaGallery.empty")}
+            </Typography>
+          ) : (
+            <Stack spacing={1}>
+              {items.map((row) => (
+                <Card key={row.id} variant="outlined">
+                  <CardContent sx={{ py: 1.5, "&:last-child": { pb: 1.5 } }}>
+                    <Stack direction="row" alignItems="flex-start" flexWrap="wrap" gap={2}>
+                      <Box sx={{ width: 120, flexShrink: 0 }}>
+                        {isVideo(row.asset.content_type) ? (
+                          <video
+                            src={mediaSrc(row.asset.public_url)}
+                            controls
+                            muted
+                            style={{ width: "100%", maxHeight: 90, objectFit: "cover", borderRadius: 4 }}
+                          />
+                        ) : (
+                          <img
+                            src={mediaSrc(row.asset.public_url)}
+                            alt=""
+                            style={{ width: "100%", maxHeight: 90, objectFit: "cover", borderRadius: 4 }}
+                          />
+                        )}
+                      </Box>
+                      <Stack spacing={1} sx={{ flex: 1, minWidth: 200 }}>
+                        <Select
+                          size="small"
+                          value={row.role}
+                          onChange={(e) => onRoleChange(row.id, e.target.value as MediaRole)}
+                          sx={{ width: "100%", maxWidth: 280 }}
+                        >
+                          {roleOptions.map((o) => (
+                            <MenuItem key={o.value} value={o.value}>
+                              {o.label}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                        <Stack direction="row" gap={0.5} flexWrap="wrap">
+                          <Button
+                            size="small"
+                            onClick={() => move(row.id, -1)}
+                            aria-label={t("exercises.mediaGallery.moveUp")}
+                          >
+                            <ArrowUpwardIcon fontSize="small" />
+                          </Button>
+                          <Button
+                            size="small"
+                            onClick={() => move(row.id, 1)}
+                            aria-label={t("exercises.mediaGallery.moveDown")}
+                          >
+                            <ArrowDownwardIcon fontSize="small" />
+                          </Button>
+                          <Button
+                            size="small"
+                            color="error"
+                            onClick={() => onDelete(row.id)}
+                            aria-label={t("exercises.mediaGallery.remove")}
+                          >
+                            <DeleteOutlineIcon fontSize="small" />
+                          </Button>
+                        </Stack>
+                        {row.asset.original_filename ? (
+                          <Typography variant="caption" color="text.secondary" noWrap>
+                            {row.asset.original_filename}
+                          </Typography>
+                        ) : null}
+                      </Stack>
+                    </Stack>
+                  </CardContent>
+                </Card>
+              ))}
+            </Stack>
+          )}
+        </Stack>
+      </CardContent>
     </Card>
   );
 }

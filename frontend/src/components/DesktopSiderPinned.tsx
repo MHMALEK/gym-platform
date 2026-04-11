@@ -1,12 +1,11 @@
-import { useThemedLayoutContext } from "@refinedev/antd";
-import { Grid } from "antd";
+import { useMediaQuery } from "@mui/material";
+import { useThemedLayoutContext } from "@refinedev/mui";
 import { useEffect } from "react";
 
 /** Keeps the nav rail expanded on large viewports (Refine defaults to a collapsible Sider on desktop). */
 export function DesktopSiderPinned() {
   const { siderCollapsed, setSiderCollapsed } = useThemedLayoutContext();
-  const screens = Grid.useBreakpoint();
-  const isDesktop = screens.lg === true;
+  const isDesktop = useMediaQuery("(min-width:992px)");
 
   useEffect(() => {
     if (isDesktop && siderCollapsed) setSiderCollapsed(false);

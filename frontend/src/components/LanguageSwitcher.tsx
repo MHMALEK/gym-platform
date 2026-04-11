@@ -1,4 +1,6 @@
-import { Select } from "antd";
+import FormControl from "@mui/material/FormControl";
+import MenuItem from "@mui/material/MenuItem";
+import Select from "@mui/material/Select";
 import { useTranslation } from "react-i18next";
 
 /** Compact language control; Persian default, English ready for future use. */
@@ -8,16 +10,16 @@ export function LanguageSwitcher() {
   const value = i18n.language.startsWith("fa") ? "fa" : "en";
 
   return (
-    <Select
-      size="small"
-      value={value}
-      onChange={(v) => void i18n.changeLanguage(v)}
-      options={[
-        { value: "fa", label: t("language.fa") },
-        { value: "en", label: t("language.en") },
-      ]}
-      style={{ width: 118 }}
-      aria-label={t("language.switch")}
-    />
+    <FormControl size="small" sx={{ minWidth: 118 }}>
+      <Select
+        value={value}
+        onChange={(e) => void i18n.changeLanguage(String(e.target.value))}
+        displayEmpty
+        inputProps={{ "aria-label": t("language.switch") }}
+      >
+        <MenuItem value="fa">{t("language.fa")}</MenuItem>
+        <MenuItem value="en">{t("language.en")}</MenuItem>
+      </Select>
+    </FormControl>
   );
 }

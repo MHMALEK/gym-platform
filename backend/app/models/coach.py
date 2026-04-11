@@ -27,7 +27,12 @@ class Coach(Base, TimestampMixin):
         "NutritionTemplate", back_populates="coach", foreign_keys="NutritionTemplate.coach_id"
     )
     device_tokens = relationship("CoachDeviceToken", back_populates="coach", cascade="all, delete-orphan")
-    media_assets = relationship("MediaAsset", back_populates="coach", cascade="all, delete-orphan")
+    media_assets = relationship(
+        "MediaAsset",
+        back_populates="coach",
+        foreign_keys="MediaAsset.coach_id",
+        cascade="all, delete-orphan",
+    )
     logo_asset = relationship(
         "MediaAsset",
         foreign_keys=[logo_media_asset_id],

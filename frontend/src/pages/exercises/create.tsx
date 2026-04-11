@@ -1,14 +1,27 @@
-import { Create, useForm } from "@refinedev/antd";
-import { Form, Input, Select, Typography } from "antd";
+import Box from "@mui/material/Box";
+import MenuItem from "@mui/material/MenuItem";
+import TextField from "@mui/material/TextField";
+import Typography from "@mui/material/Typography";
+import { Create } from "@refinedev/mui";
+import { useForm } from "@refinedev/react-hook-form";
+import { Controller } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
 import { ExerciseFormMediaUpload } from "../../components/ExerciseFormMediaUpload";
 import { MuscleGroupSelect } from "../../components/MuscleGroupSelect";
 
+type ExerciseFormValues = Record<string, unknown>;
+
 export function ExerciseCreate() {
   const { t } = useTranslation();
-  const { formProps, saveButtonProps } = useForm({ resource: "exercises" });
+  const { control, saveButtonProps } = useForm<ExerciseFormValues>({
+    refineCoreProps: { resource: "exercises" },
+    defaultValues: {
+      muscle_group_ids: [] as number[],
+      venue_type: "both",
+    },
+  });
 
   const venueOptions = [
     { value: "both", label: t("workouts.venue.both") },
@@ -18,54 +31,144 @@ export function ExerciseCreate() {
 
   return (
     <Create saveButtonProps={saveButtonProps}>
-      <Typography.Paragraph type="secondary" style={{ marginBottom: 16 }}>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
         {t("exercises.form.createHint")}{" "}
         <Link to="/library/exercises">{t("exercises.list.openCatalog")}</Link>
-      </Typography.Paragraph>
-      <Typography.Paragraph type="secondary" style={{ marginBottom: 16 }}>
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
         {t("exercises.mediaGallery.afterCreateHint")}
-      </Typography.Paragraph>
-      <Form {...formProps} layout="vertical">
-        <Form.Item name="name" label={t("exercises.form.name")} rules={[{ required: true }]}>
-          <Input />
-        </Form.Item>
-        <Form.Item name="description" label={t("exercises.form.description")}>
-          <Input.TextArea rows={2} />
-        </Form.Item>
-        <Form.Item name="category" label={t("exercises.form.category")}>
-          <Input />
-        </Form.Item>
-        <Form.Item name="muscle_group_ids" label={t("exercises.form.muscleGroups")} initialValue={[]}>
-          <MuscleGroupSelect />
-        </Form.Item>
-        <Form.Item name="equipment" label={t("exercises.form.equipment")}>
-          <Input />
-        </Form.Item>
-        <Form.Item name="venue_type" label={t("exercises.form.venue")} initialValue="both">
-          <Select options={venueOptions} />
-        </Form.Item>
-        <Form.Item name="tips" label={t("exercises.form.tips")}>
-          <Input.TextArea rows={3} />
-        </Form.Item>
-        <Form.Item name="common_mistakes" label={t("exercises.form.commonMistakes")}>
-          <Input.TextArea rows={3} />
-        </Form.Item>
-        <Form.Item name="correct_form_cues" label={t("exercises.form.correctFormCues")}>
-          <Input.TextArea rows={3} />
-        </Form.Item>
-        <Form.Item name="thumbnail_url" label={t("exercises.form.thumbnailUrl")}>
-          <ExerciseFormMediaUpload
-            variant="thumbnail"
-            accept="image/jpeg,image/png,image/webp,image/gif"
-          />
-        </Form.Item>
-        <Form.Item name="demo_media_url" label={t("exercises.form.demoMediaUrl")}>
-          <ExerciseFormMediaUpload
-            variant="demo"
-            accept="video/mp4,video/webm,image/jpeg,image/png,image/webp,image/gif"
-          />
-        </Form.Item>
-      </Form>
+      </Typography>
+      <Box component="form" sx={{ maxWidth: 720 }}>
+        <Controller
+          name="name"
+          control={control}
+          rules={{ required: true }}
+          render={({ field, fieldState }) => (
+            <TextField
+              {...field}
+              value={field.value ?? ""}
+              label={t("exercises.form.name")}
+              fullWidth
+              margin="normal"
+              required
+              error={!!fieldState.error}
+              helperText={fieldState.error?.message}
+            />
+          )}
+        />
+        <Controller
+          name="description"
+          control={control}
+          render={({ field }) => (
+            <TextField {...field} value={field.value ?? ""} label={t("exercises.form.description")} fullWidth margin="normal" multiline minRows={2} />
+          )}
+        />
+        <Controller
+          name="category"
+          control={control}
+          render={({ field }) => (
+            <TextField {...field} value={field.value ?? ""} label={t("exercises.form.category")} fullWidth margin="normal" />
+          )}
+        />
+        <Controller
+          name="muscle_group_ids"
+          control={control}
+          render={({ field }) => (
+            <Box sx={{ mt: 2, mb: 1 }}>
+              <Typography variant="body2" sx={{ mb: 1 }}>
+                {t("exercises.form.muscleGroups")}
+              </Typography>
+              <MuscleGroupSelect value={(field.value as number[] | undefined) ?? []} onChange={field.onChange} />
+            </Box>
+          )}
+        />
+        <Controller
+          name="equipment"
+          control={control}
+          render={({ field }) => (
+            <TextField {...field} value={field.value ?? ""} label={t("exercises.form.equipment")} fullWidth margin="normal" />
+          )}
+        />
+        <Controller
+          name="venue_type"
+          control={control}
+          render={({ field }) => (
+            <TextField {...field} value={field.value ?? "both"} label={t("exercises.form.venue")} fullWidth margin="normal" select>
+              {venueOptions.map((o) => (
+                <MenuItem key={o.value} value={o.value}>
+                  {o.label}
+                </MenuItem>
+              ))}
+            </TextField>
+          )}
+        />
+        <Controller
+          name="tips"
+          control={control}
+          render={({ field }) => (
+            <TextField {...field} value={field.value ?? ""} label={t("exercises.form.tips")} fullWidth margin="normal" multiline minRows={3} />
+          )}
+        />
+        <Controller
+          name="common_mistakes"
+          control={control}
+          render={({ field }) => (
+            <TextField
+              {...field}
+              value={field.value ?? ""}
+              label={t("exercises.form.commonMistakes")}
+              fullWidth
+              margin="normal"
+              multiline
+              minRows={3}
+            />
+          )}
+        />
+        <Controller
+          name="correct_form_cues"
+          control={control}
+          render={({ field }) => (
+            <TextField
+              {...field}
+              value={field.value ?? ""}
+              label={t("exercises.form.correctFormCues")}
+              fullWidth
+              margin="normal"
+              multiline
+              minRows={3}
+            />
+          )}
+        />
+        <Controller
+          name="thumbnail_url"
+          control={control}
+          render={({ field }) => (
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="body2" sx={{ mb: 1 }}>
+                {t("exercises.form.thumbnailUrl")}
+              </Typography>
+              <ExerciseFormMediaUpload variant="thumbnail" accept="image/jpeg,image/png,image/webp,image/gif" value={field.value as string | null} onChange={field.onChange} />
+            </Box>
+          )}
+        />
+        <Controller
+          name="demo_media_url"
+          control={control}
+          render={({ field }) => (
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="body2" sx={{ mb: 1 }}>
+                {t("exercises.form.demoMediaUrl")}
+              </Typography>
+              <ExerciseFormMediaUpload
+                variant="demo"
+                accept="video/mp4,video/webm,image/jpeg,image/png,image/webp,image/gif"
+                value={field.value as string | null}
+                onChange={field.onChange}
+              />
+            </Box>
+          )}
+        />
+      </Box>
     </Create>
   );
 }

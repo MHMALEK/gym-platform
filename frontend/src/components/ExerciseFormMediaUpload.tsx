@@ -1,9 +1,13 @@
-import { DeleteOutlined, UploadOutlined } from "@ant-design/icons";
-import { App, Button, Space, Typography, Upload } from "antd";
-import type { UploadRequestOption } from "rc-upload/lib/interface";
-import { useState } from "react";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import UploadFileIcon from "@mui/icons-material/UploadFile";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { useAppMessage } from "../lib/useAppMessage";
 import { linkMediaToExercise, mediaSrc, uploadMediaFile } from "../lib/exerciseMediaApi";
 import type { MediaRole } from "../types/media";
 
@@ -37,11 +41,13 @@ export function ExerciseFormMediaUpload({
   emptyHint,
 }: ExerciseFormMediaUploadProps) {
   const { t } = useTranslation();
-  const { message } = App.useApp();
+  const message = useAppMessage();
   const [uploading, setUploading] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  const handleUpload = async (options: UploadRequestOption) => {
-    const file = options.file as File;
+  const handleFiles = async (files: FileList | null) => {
+    const file = files?.[0];
+    if (!file) return;
     setUploading(true);
     try {
       const asset = await uploadMediaFile(file);
@@ -50,14 +56,13 @@ export function ExerciseFormMediaUpload({
       }
       onChange?.(asset.public_url);
       onUploaded?.();
-      options.onSuccess?.({ ok: true });
       message.success(t("exercises.form.mediaUploadSuccess"));
     } catch (e) {
       const err = e as Error;
       message.error(err.message);
-      options.onError?.(err);
     } finally {
       setUploading(false);
+      if (inputRef.current) inputRef.current.value = "";
     }
   };
 
@@ -68,15 +73,16 @@ export function ExerciseFormMediaUpload({
   const url = value?.trim() || null;
 
   return (
-    <Space direction="vertical" style={{ width: "100%" }} size="middle">
+    <Stack spacing={2} sx={{ width: "100%" }}>
       {url ? (
-        <div
-          style={{
-            border: "1px solid var(--ant-color-border, #d9d9d9)",
-            borderRadius: 8,
-            padding: 8,
+        <Box
+          sx={{
+            border: "1px solid",
+            borderColor: "divider",
+            borderRadius: 1,
+            p: 1,
             maxWidth: 360,
-            background: "var(--ant-color-fill-quaternary, rgba(0,0,0,0.02))",
+            bgcolor: "action.hover",
           }}
         >
           {variant === "thumbnail" || (variant === "demo" && !isProbablyVideoUrl(url)) ? (
@@ -94,26 +100,36 @@ export function ExerciseFormMediaUpload({
               style={{ width: "100%", maxHeight: 220, display: "block" }}
             />
           )}
-        </div>
+        </Box>
       ) : (
-        <Typography.Text type="secondary" style={{ fontSize: 13 }}>
+        <Typography variant="body2" color="text.secondary" sx={{ fontSize: 13 }}>
           {variant === "thumbnail"
             ? emptyHint ?? t("exercises.form.thumbnailEmpty")
             : t("exercises.form.demoEmpty")}
-        </Typography.Text>
+        </Typography>
       )}
-      <Space wrap>
-        <Upload accept={accept} showUploadList={false} customRequest={handleUpload} disabled={uploading}>
-          <Button icon={<UploadOutlined />} loading={uploading}>
-            {t("exercises.form.mediaChooseFile")}
-          </Button>
-        </Upload>
+      <input
+        ref={inputRef}
+        type="file"
+        accept={accept}
+        hidden
+        onChange={(e) => void handleFiles(e.target.files)}
+      />
+      <Stack direction="row" flexWrap="wrap" gap={1}>
+        <Button
+          variant="outlined"
+          startIcon={<UploadFileIcon />}
+          disabled={uploading}
+          onClick={() => inputRef.current?.click()}
+        >
+          {t("exercises.form.mediaChooseFile")}
+        </Button>
         {url ? (
-          <Button icon={<DeleteOutlined />} onClick={clear}>
+          <Button variant="outlined" color="inherit" startIcon={<DeleteOutlineIcon />} onClick={clear}>
             {t("exercises.form.mediaRemove")}
           </Button>
         ) : null}
-      </Space>
-    </Space>
+      </Stack>
+    </Stack>
   );
 }

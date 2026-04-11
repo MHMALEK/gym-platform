@@ -1,16 +1,32 @@
-import { Card, Col, Divider, Form, Input, InputNumber, Row, Select, Space, Typography } from "antd";
-import type { SelectProps } from "antd/es/select";
+import Card from "@mui/material/Card";
+import CardContent from "@mui/material/CardContent";
+import CardHeader from "@mui/material/CardHeader";
+import Divider from "@mui/material/Divider";
+import FormControl from "@mui/material/FormControl";
+import FormHelperText from "@mui/material/FormHelperText";
+import InputLabel from "@mui/material/InputLabel";
+import MenuItem from "@mui/material/MenuItem";
+import Select from "@mui/material/Select";
+import Stack from "@mui/material/Stack";
+import TextField from "@mui/material/TextField";
+import Grid from "@mui/material/Grid2";
+import Typography from "@mui/material/Typography";
+import { type Control, Controller } from "react-hook-form";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
+import { RefineAsyncSelect, type RefineAsyncSelectBind } from "../../components/RefineAsyncSelect";
 import { ClientPlansCta } from "./ClientPlansCta";
 
+export type ClientFormValues = Record<string, unknown>;
+
 type ClientFormSectionsProps = {
-  goalTypeSelectProps: SelectProps;
-  planSelectProps: SelectProps;
+  control: Control<ClientFormValues>;
+  goalTypeSelect: RefineAsyncSelectBind;
+  planSelect: RefineAsyncSelectBind;
   isCreate: boolean;
-  /** Create wizard: show only one step at a time. Omit for edit (all sections visible). */
-  createWizardStep?: 0 | 1 | 2 | 3;
+  /** Create wizard: show only one step at a time (steps 0–2; step 3 is coaching plans in create.tsx). */
+  createWizardStep?: 0 | 1 | 2;
   /** Edit flow: link to workout & diet plans for this client */
   coachingPlansClientId?: number;
 };
@@ -18,26 +34,27 @@ type ClientFormSectionsProps = {
 function SectionHead({ title, hint }: { title: string; hint: string }) {
   return (
     <header className="client-form-section__head">
-      <Typography.Title level={5} className="client-form-section__title">
+      <Typography variant="h6" component="h2" className="client-form-section__title" sx={{ mb: 0.5 }}>
         {title}
-      </Typography.Title>
-      <Typography.Text type="secondary" className="client-form-section__hint">
+      </Typography>
+      <Typography variant="body2" color="text.secondary" className="client-form-section__hint">
         {hint}
-      </Typography.Text>
+      </Typography>
     </header>
   );
 }
 
 export function ClientFormSections({
-  goalTypeSelectProps,
-  planSelectProps,
+  control,
+  goalTypeSelect,
+  planSelect,
   isCreate,
   createWizardStep,
   coachingPlansClientId,
 }: ClientFormSectionsProps) {
   const { t } = useTranslation();
   const wizard = createWizardStep !== undefined;
-  const stepHidden = (s: 0 | 1 | 2 | 3) => Boolean(wizard && createWizardStep !== s);
+  const stepHidden = (s: 0 | 1 | 2) => Boolean(wizard && createWizardStep !== s);
   const unifiedLayout = !wizard;
 
   const statusOptions = useMemo(
@@ -63,109 +80,262 @@ export function ClientFormSections({
   const contactBlock = (
     <>
       <SectionHead title={t("clients.form.contactTitle")} hint={t("clients.form.contactHint")} />
-      <Form.Item name="name" label={t("clients.form.name")} rules={[{ required: true }]}>
-        <Input placeholder={t("clients.form.namePh")} />
-      </Form.Item>
-      <Row gutter={[16, 0]}>
-        <Col xs={24} md={12}>
-          <Form.Item name="email" label={t("clients.form.email")}>
-            <Input type="email" placeholder={t("clients.form.emailPh")} />
-          </Form.Item>
-        </Col>
-        <Col xs={24} md={12}>
-          <Form.Item name="phone" label={t("clients.form.phone")}>
-            <Input placeholder={t("clients.form.phonePh")} />
-          </Form.Item>
-        </Col>
-      </Row>
+      <Controller
+        name="name"
+        control={control}
+        rules={{ required: true }}
+        render={({ field, fieldState }) => (
+          <TextField
+            {...field}
+            value={field.value ?? ""}
+            label={t("clients.form.name")}
+            placeholder={t("clients.form.namePh")}
+            required
+            fullWidth
+            margin="normal"
+            error={!!fieldState.error}
+            helperText={fieldState.error?.message}
+          />
+        )}
+      />
+      <Grid container spacing={2}>
+        <Grid size={{ xs: 12, md: 6 }}>
+          <Controller
+            name="email"
+            control={control}
+            render={({ field, fieldState }) => (
+              <TextField
+                {...field}
+                value={field.value ?? ""}
+                type="email"
+                label={t("clients.form.email")}
+                placeholder={t("clients.form.emailPh")}
+                fullWidth
+                margin="normal"
+                error={!!fieldState.error}
+                helperText={fieldState.error?.message}
+              />
+            )}
+          />
+        </Grid>
+        <Grid size={{ xs: 12, md: 6 }}>
+          <Controller
+            name="phone"
+            control={control}
+            render={({ field, fieldState }) => (
+              <TextField
+                {...field}
+                value={field.value ?? ""}
+                label={t("clients.form.phone")}
+                placeholder={t("clients.form.phonePh")}
+                fullWidth
+                margin="normal"
+                error={!!fieldState.error}
+                helperText={fieldState.error?.message}
+              />
+            )}
+          />
+        </Grid>
+      </Grid>
     </>
   );
 
   const bodyBlock = (
     <>
       <SectionHead title={t("clients.form.bodyTitle")} hint={t("clients.form.bodyHint")} />
-      <Row gutter={[16, 0]}>
-        <Col xs={24} sm={12}>
-          <Form.Item name="weight_kg" label={t("clients.form.weight")}>
-            <InputNumber min={0} step={0.1} style={{ width: "100%" }} placeholder={t("common.dash")} />
-          </Form.Item>
-        </Col>
-        <Col xs={24} sm={12}>
-          <Form.Item name="height_cm" label={t("clients.form.height")}>
-            <InputNumber min={0} step={0.1} style={{ width: "100%" }} placeholder={t("common.dash")} />
-          </Form.Item>
-        </Col>
-      </Row>
+      <Grid container spacing={2}>
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <Controller
+            name="weight_kg"
+            control={control}
+            render={({ field, fieldState }) => (
+              <TextField
+                {...field}
+                value={field.value ?? ""}
+                type="number"
+                inputProps={{ min: 0, step: 0.1 }}
+                label={t("clients.form.weight")}
+                placeholder={t("common.dash")}
+                fullWidth
+                margin="normal"
+                error={!!fieldState.error}
+                helperText={fieldState.error?.message}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  field.onChange(v === "" ? null : Number(v));
+                }}
+              />
+            )}
+          />
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <Controller
+            name="height_cm"
+            control={control}
+            render={({ field, fieldState }) => (
+              <TextField
+                {...field}
+                value={field.value ?? ""}
+                type="number"
+                inputProps={{ min: 0, step: 0.1 }}
+                label={t("clients.form.height")}
+                placeholder={t("common.dash")}
+                fullWidth
+                margin="normal"
+                error={!!fieldState.error}
+                helperText={fieldState.error?.message}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  field.onChange(v === "" ? null : Number(v));
+                }}
+              />
+            )}
+          />
+        </Grid>
+      </Grid>
     </>
   );
 
   const goalsBlock = (
     <>
       <SectionHead title={t("clients.form.goalsTitle")} hint={t("clients.form.goalsHint")} />
-      <Form.Item name="goal_type_id" label={t("clients.form.primaryGoal")}>
-        <Select
-          {...goalTypeSelectProps}
-          allowClear
-          style={{ width: "100%" }}
-          placeholder={t("clients.form.goalCatalogPh")}
-        />
-      </Form.Item>
-      <Form.Item name="goal" label={t("clients.form.goalDetails")}>
-        <Input.TextArea rows={3} placeholder={t("clients.form.goalDetailsPh")} showCount maxLength={500} />
-      </Form.Item>
+      <Controller
+        name="goal_type_id"
+        control={control}
+        render={({ field, fieldState }) => (
+          <RefineAsyncSelect
+            bind={goalTypeSelect}
+            value={field.value}
+            onChange={field.onChange}
+            label={t("clients.form.primaryGoal")}
+            placeholder={t("clients.form.goalCatalogPh")}
+            error={!!fieldState.error}
+            helperText={fieldState.error?.message}
+          />
+        )}
+      />
+      <Controller
+        name="goal"
+        control={control}
+        render={({ field, fieldState }) => (
+          <TextField
+            {...field}
+            value={field.value ?? ""}
+            label={t("clients.form.goalDetails")}
+            placeholder={t("clients.form.goalDetailsPh")}
+            fullWidth
+            margin="normal"
+            multiline
+            minRows={3}
+            inputProps={{ maxLength: 500 }}
+            error={!!fieldState.error}
+            helperText={fieldState.error?.message}
+          />
+        )}
+      />
     </>
   );
 
   const membershipBlock = (
     <>
       <SectionHead title={t("clients.form.membershipTitle")} hint={t("clients.form.membershipHint")} />
-      <Form.Item
+      <Controller
         name="subscription_plan_template_id"
-        label={t("clients.form.planTemplate")}
-        tooltip={t("clients.form.planTemplateTooltip")}
-      >
-        <Select
-          {...planSelectProps}
-          allowClear
-          style={{ width: "100%" }}
-          placeholder={t("clients.form.planTemplatePh")}
-        />
-      </Form.Item>
+        control={control}
+        render={({ field, fieldState }) => (
+          <RefineAsyncSelect
+            bind={planSelect}
+            value={field.value}
+            onChange={field.onChange}
+            label={t("clients.form.planTemplate")}
+            placeholder={t("clients.form.planTemplatePh")}
+            error={!!fieldState.error}
+            helperText={fieldState.error?.message}
+          />
+        )}
+      />
     </>
   );
 
   const accountBlock = (
     <>
       <SectionHead title={t("clients.form.accountTitle")} hint={t("clients.form.accountHint")} />
-      <Row gutter={[16, 0]}>
-        <Col xs={24} sm={12}>
-          <Form.Item
+      <Grid container spacing={2}>
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <Controller
             name="status"
-            label={t("clients.form.roster")}
-            {...(isCreate ? { initialValue: "active" } : {})}
-          >
-            <Select options={statusOptions} placeholder={t("clients.form.rosterPh")} />
-          </Form.Item>
-        </Col>
-        <Col xs={24} sm={12}>
-          <Form.Item
+            control={control}
+            defaultValue={isCreate ? "active" : undefined}
+            render={({ field, fieldState }) => (
+              <FormControl fullWidth margin="normal" error={!!fieldState.error}>
+                <InputLabel id="client-status-label">{t("clients.form.roster")}</InputLabel>
+                <Select
+                  {...field}
+                  labelId="client-status-label"
+                  label={t("clients.form.roster")}
+                  value={field.value ?? ""}
+                >
+                  {statusOptions.map((o) => (
+                    <MenuItem key={o.value} value={o.value}>
+                      {o.label}
+                    </MenuItem>
+                  ))}
+                </Select>
+                {fieldState.error ? <FormHelperText>{fieldState.error.message}</FormHelperText> : null}
+              </FormControl>
+            )}
+          />
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <Controller
             name="account_status"
-            label={t("clients.form.clientStatus")}
-            {...(isCreate ? { initialValue: "good_standing" } : {})}
-          >
-            <Select options={accountStatusOptions} placeholder={t("clients.form.clientStatusPh")} />
-          </Form.Item>
-        </Col>
-      </Row>
+            control={control}
+            defaultValue={isCreate ? "good_standing" : undefined}
+            render={({ field, fieldState }) => (
+              <FormControl fullWidth margin="normal" error={!!fieldState.error}>
+                <InputLabel id="client-account-status-label">{t("clients.form.clientStatus")}</InputLabel>
+                <Select
+                  {...field}
+                  labelId="client-account-status-label"
+                  label={t("clients.form.clientStatus")}
+                  value={field.value ?? ""}
+                >
+                  {accountStatusOptions.map((o) => (
+                    <MenuItem key={o.value} value={o.value}>
+                      {o.label}
+                    </MenuItem>
+                  ))}
+                </Select>
+                {fieldState.error ? <FormHelperText>{fieldState.error.message}</FormHelperText> : null}
+              </FormControl>
+            )}
+          />
+        </Grid>
+      </Grid>
     </>
   );
 
   const notesBlock = (
     <>
       <SectionHead title={t("clients.form.notesTitle")} hint={t("clients.form.notesHint")} />
-      <Form.Item name="notes" label={t("clients.form.notesLabel")}>
-        <Input.TextArea rows={4} placeholder={t("clients.form.notesPh")} />
-      </Form.Item>
+      <Controller
+        name="notes"
+        control={control}
+        render={({ field, fieldState }) => (
+          <TextField
+            {...field}
+            value={field.value ?? ""}
+            label={t("clients.form.notesLabel")}
+            placeholder={t("clients.form.notesPh")}
+            fullWidth
+            margin="normal"
+            multiline
+            minRows={4}
+            error={!!fieldState.error}
+            helperText={fieldState.error?.message}
+          />
+        )}
+      />
     </>
   );
 
@@ -173,18 +343,20 @@ export function ClientFormSections({
     return (
       <>
         <div className="client-form-unified">
-          <Card bordered={false} className="client-profile-editor-surface" size="small">
-            <section className="client-form-section">{contactBlock}</section>
-            <Divider className="client-form-section-divider" />
-            <section className="client-form-section">{bodyBlock}</section>
-            <Divider className="client-form-section-divider" />
-            <section className="client-form-section">{goalsBlock}</section>
-            <Divider className="client-form-section-divider" />
-            <section className="client-form-section">{membershipBlock}</section>
-            <Divider className="client-form-section-divider" />
-            <section className="client-form-section">{accountBlock}</section>
-            <Divider className="client-form-section-divider" />
-            <section className="client-form-section">{notesBlock}</section>
+          <Card variant="outlined" className="client-profile-editor-surface">
+            <CardContent>
+              <section className="client-form-section">{contactBlock}</section>
+              <Divider className="client-form-section-divider" sx={{ my: 2 }} />
+              <section className="client-form-section">{bodyBlock}</section>
+              <Divider className="client-form-section-divider" sx={{ my: 2 }} />
+              <section className="client-form-section">{goalsBlock}</section>
+              <Divider className="client-form-section-divider" sx={{ my: 2 }} />
+              <section className="client-form-section">{membershipBlock}</section>
+              <Divider className="client-form-section-divider" sx={{ my: 2 }} />
+              <section className="client-form-section">{accountBlock}</section>
+              <Divider className="client-form-section-divider" sx={{ my: 2 }} />
+              <section className="client-form-section">{notesBlock}</section>
+            </CardContent>
           </Card>
         </div>
         {coachingPlansClientId != null ? <ClientPlansCta clientId={coachingPlansClientId} compact /> : null}
@@ -194,168 +366,299 @@ export function ClientFormSections({
 
   return (
     <>
-    <Space direction="vertical" size={16} style={{ width: "100%", maxWidth: 840 }}>
-      <div hidden={stepHidden(0)}>
-        <Card size="small" className={sectionCardClass} title={t("clients.form.contactTitle")}>
-          <Typography.Paragraph
-            type="secondary"
-            style={{ marginTop: 0, marginBottom: 14, fontSize: 13, lineHeight: 1.5 }}
-          >
-            {t("clients.form.contactHint")}
-          </Typography.Paragraph>
-          <Form.Item name="name" label={t("clients.form.name")} rules={[{ required: true }]}>
-            <Input placeholder={t("clients.form.namePh")} />
-          </Form.Item>
-          <Row gutter={[16, 0]}>
-            <Col xs={24} md={12}>
-              <Form.Item name="email" label={t("clients.form.email")}>
-                <Input type="email" placeholder={t("clients.form.emailPh")} />
-              </Form.Item>
-            </Col>
-            <Col xs={24} md={12}>
-              <Form.Item name="phone" label={t("clients.form.phone")}>
-                <Input placeholder={t("clients.form.phonePh")} />
-              </Form.Item>
-            </Col>
-          </Row>
-        </Card>
-      </div>
+      <Stack spacing={2} sx={{ width: "100%", maxWidth: 840 }}>
+        <div hidden={stepHidden(0)}>
+          <Card variant="outlined" className={sectionCardClass}>
+            <CardHeader title={t("clients.form.contactTitle")} />
+            <CardContent>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                {t("clients.form.contactHint")}
+              </Typography>
+              <Controller
+                name="name"
+                control={control}
+                rules={{ required: true }}
+                render={({ field, fieldState }) => (
+                  <TextField
+                    {...field}
+                    value={field.value ?? ""}
+                    label={t("clients.form.name")}
+                    placeholder={t("clients.form.namePh")}
+                    required
+                    fullWidth
+                    margin="dense"
+                    error={!!fieldState.error}
+                    helperText={fieldState.error?.message}
+                  />
+                )}
+              />
+              <Grid container spacing={2}>
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <Controller
+                    name="email"
+                    control={control}
+                    render={({ field, fieldState }) => (
+                      <TextField
+                        {...field}
+                        value={field.value ?? ""}
+                        type="email"
+                        label={t("clients.form.email")}
+                        placeholder={t("clients.form.emailPh")}
+                        fullWidth
+                        margin="dense"
+                        error={!!fieldState.error}
+                        helperText={fieldState.error?.message}
+                      />
+                    )}
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <Controller
+                    name="phone"
+                    control={control}
+                    render={({ field, fieldState }) => (
+                      <TextField
+                        {...field}
+                        value={field.value ?? ""}
+                        label={t("clients.form.phone")}
+                        placeholder={t("clients.form.phonePh")}
+                        fullWidth
+                        margin="dense"
+                        error={!!fieldState.error}
+                        helperText={fieldState.error?.message}
+                      />
+                    )}
+                  />
+                </Grid>
+              </Grid>
+            </CardContent>
+          </Card>
+        </div>
 
-      <div hidden={stepHidden(1)}>
-        <Card size="small" className={sectionCardClass} title={t("clients.form.bodyTitle")}>
-          <Typography.Paragraph
-            type="secondary"
-            style={{ marginTop: 0, marginBottom: 14, fontSize: 13, lineHeight: 1.5 }}
-          >
-            {t("clients.form.bodyHint")}
-          </Typography.Paragraph>
-          <Row gutter={[16, 0]}>
-            <Col xs={24} sm={12}>
-              <Form.Item name="weight_kg" label={t("clients.form.weight")}>
-                <InputNumber min={0} step={0.1} style={{ width: "100%" }} placeholder={t("common.dash")} />
-              </Form.Item>
-            </Col>
-            <Col xs={24} sm={12}>
-              <Form.Item name="height_cm" label={t("clients.form.height")}>
-                <InputNumber min={0} step={0.1} style={{ width: "100%" }} placeholder={t("common.dash")} />
-              </Form.Item>
-            </Col>
-          </Row>
-        </Card>
-      </div>
+        <div hidden={stepHidden(1)}>
+          <Card variant="outlined" className={sectionCardClass}>
+            <CardHeader title={t("clients.form.bodyTitle")} />
+            <CardContent>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                {t("clients.form.bodyHint")}
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Controller
+                    name="weight_kg"
+                    control={control}
+                    render={({ field, fieldState }) => (
+                      <TextField
+                        {...field}
+                        value={field.value ?? ""}
+                        type="number"
+                        inputProps={{ min: 0, step: 0.1 }}
+                        label={t("clients.form.weight")}
+                        placeholder={t("common.dash")}
+                        fullWidth
+                        margin="dense"
+                        error={!!fieldState.error}
+                        helperText={fieldState.error?.message}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          field.onChange(v === "" ? null : Number(v));
+                        }}
+                      />
+                    )}
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Controller
+                    name="height_cm"
+                    control={control}
+                    render={({ field, fieldState }) => (
+                      <TextField
+                        {...field}
+                        value={field.value ?? ""}
+                        type="number"
+                        inputProps={{ min: 0, step: 0.1 }}
+                        label={t("clients.form.height")}
+                        placeholder={t("common.dash")}
+                        fullWidth
+                        margin="dense"
+                        error={!!fieldState.error}
+                        helperText={fieldState.error?.message}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          field.onChange(v === "" ? null : Number(v));
+                        }}
+                      />
+                    )}
+                  />
+                </Grid>
+              </Grid>
+            </CardContent>
+          </Card>
+        </div>
 
-      <div hidden={stepHidden(1)}>
-        <Card size="small" className={sectionCardClass} title={t("clients.form.goalsTitle")}>
-          <Typography.Paragraph
-            type="secondary"
-            style={{ marginTop: 0, marginBottom: 14, fontSize: 13, lineHeight: 1.5 }}
-          >
-            {t("clients.form.goalsHint")}
-          </Typography.Paragraph>
-          <Form.Item name="goal_type_id" label={t("clients.form.primaryGoal")}>
-            <Select
-              {...goalTypeSelectProps}
-              allowClear
-              style={{ width: "100%" }}
-              placeholder={t("clients.form.goalCatalogPh")}
-            />
-          </Form.Item>
-          <Form.Item name="goal" label={t("clients.form.goalDetails")}>
-            <Input.TextArea
-              rows={3}
-              placeholder={t("clients.form.goalDetailsPh")}
-              showCount
-              maxLength={500}
-            />
-          </Form.Item>
-        </Card>
-      </div>
+        <div hidden={stepHidden(1)}>
+          <Card variant="outlined" className={sectionCardClass}>
+            <CardHeader title={t("clients.form.goalsTitle")} />
+            <CardContent>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                {t("clients.form.goalsHint")}
+              </Typography>
+              <Controller
+                name="goal_type_id"
+                control={control}
+                render={({ field, fieldState }) => (
+                  <RefineAsyncSelect
+                    bind={goalTypeSelect}
+                    value={field.value}
+                    onChange={field.onChange}
+                    label={t("clients.form.primaryGoal")}
+                    placeholder={t("clients.form.goalCatalogPh")}
+                    error={!!fieldState.error}
+                    helperText={fieldState.error?.message}
+                  />
+                )}
+              />
+              <Controller
+                name="goal"
+                control={control}
+                render={({ field, fieldState }) => (
+                  <TextField
+                    {...field}
+                    value={field.value ?? ""}
+                    label={t("clients.form.goalDetails")}
+                    placeholder={t("clients.form.goalDetailsPh")}
+                    fullWidth
+                    margin="normal"
+                    multiline
+                    minRows={3}
+                    inputProps={{ maxLength: 500 }}
+                    error={!!fieldState.error}
+                    helperText={fieldState.error?.message}
+                  />
+                )}
+              />
+            </CardContent>
+          </Card>
+        </div>
 
-      <div hidden={stepHidden(2)}>
-        <Card size="small" className={sectionCardClass} title={t("clients.form.membershipTitle")}>
-          <Typography.Paragraph
-            type="secondary"
-            style={{ marginTop: 0, marginBottom: 14, fontSize: 13, lineHeight: 1.5 }}
-          >
-            {t("clients.form.membershipHint")}
-          </Typography.Paragraph>
-          <Form.Item
-            name="subscription_plan_template_id"
-            label={t("clients.form.planTemplate")}
-            tooltip={t("clients.form.planTemplateTooltip")}
-          >
-            <Select
-              {...planSelectProps}
-              allowClear
-              style={{ width: "100%" }}
-              placeholder={t("clients.form.planTemplatePh")}
-            />
-          </Form.Item>
-        </Card>
-      </div>
+        <div hidden={stepHidden(2)}>
+          <Card variant="outlined" className={sectionCardClass}>
+            <CardHeader title={t("clients.form.membershipTitle")} />
+            <CardContent>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                {t("clients.form.membershipHint")}
+              </Typography>
+              <Controller
+                name="subscription_plan_template_id"
+                control={control}
+                render={({ field, fieldState }) => (
+                  <RefineAsyncSelect
+                    bind={planSelect}
+                    value={field.value}
+                    onChange={field.onChange}
+                    label={t("clients.form.planTemplate")}
+                    placeholder={t("clients.form.planTemplatePh")}
+                    error={!!fieldState.error}
+                    helperText={fieldState.error?.message}
+                  />
+                )}
+              />
+            </CardContent>
+          </Card>
+        </div>
 
-      <div hidden={stepHidden(2)}>
-        <Card size="small" className={sectionCardClass} title={t("clients.form.accountTitle")}>
-          <Typography.Paragraph
-            type="secondary"
-            style={{ marginTop: 0, marginBottom: 14, fontSize: 13, lineHeight: 1.5 }}
-          >
-            {t("clients.form.accountHint")}
-          </Typography.Paragraph>
-          <Row gutter={[16, 0]}>
-            <Col xs={24} sm={12}>
-              <Form.Item
-                name="status"
-                label={t("clients.form.roster")}
-                {...(isCreate ? { initialValue: "active" } : {})}
-              >
-                <Select options={statusOptions} placeholder={t("clients.form.rosterPh")} />
-              </Form.Item>
-            </Col>
-            <Col xs={24} sm={12}>
-              <Form.Item
-                name="account_status"
-                label={t("clients.form.clientStatus")}
-                {...(isCreate ? { initialValue: "good_standing" } : {})}
-              >
-                <Select options={accountStatusOptions} placeholder={t("clients.form.clientStatusPh")} />
-              </Form.Item>
-            </Col>
-          </Row>
-        </Card>
-      </div>
+        <div hidden={stepHidden(2)}>
+          <Card variant="outlined" className={sectionCardClass}>
+            <CardHeader title={t("clients.form.accountTitle")} />
+            <CardContent>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                {t("clients.form.accountHint")}
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Controller
+                    name="status"
+                    control={control}
+                    defaultValue={isCreate ? "active" : undefined}
+                    render={({ field, fieldState }) => (
+                      <FormControl fullWidth margin="dense" error={!!fieldState.error}>
+                        <InputLabel id="wiz-client-status-label">{t("clients.form.roster")}</InputLabel>
+                        <Select
+                          {...field}
+                          labelId="wiz-client-status-label"
+                          label={t("clients.form.roster")}
+                          value={field.value ?? ""}
+                        >
+                          {statusOptions.map((o) => (
+                            <MenuItem key={o.value} value={o.value}>
+                              {o.label}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                        {fieldState.error ? <FormHelperText>{fieldState.error.message}</FormHelperText> : null}
+                      </FormControl>
+                    )}
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Controller
+                    name="account_status"
+                    control={control}
+                    defaultValue={isCreate ? "good_standing" : undefined}
+                    render={({ field, fieldState }) => (
+                      <FormControl fullWidth margin="dense" error={!!fieldState.error}>
+                        <InputLabel id="wiz-account-status-label">{t("clients.form.clientStatus")}</InputLabel>
+                        <Select
+                          {...field}
+                          labelId="wiz-account-status-label"
+                          label={t("clients.form.clientStatus")}
+                          value={field.value ?? ""}
+                        >
+                          {accountStatusOptions.map((o) => (
+                            <MenuItem key={o.value} value={o.value}>
+                              {o.label}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                        {fieldState.error ? <FormHelperText>{fieldState.error.message}</FormHelperText> : null}
+                      </FormControl>
+                    )}
+                  />
+                </Grid>
+              </Grid>
+            </CardContent>
+          </Card>
+        </div>
 
-      <div hidden={stepHidden(2)}>
-        <Card size="small" className={sectionCardClass} title={t("clients.form.notesTitle")}>
-          <Typography.Paragraph
-            type="secondary"
-            style={{ marginTop: 0, marginBottom: 14, fontSize: 13, lineHeight: 1.5 }}
-          >
-            {t("clients.form.notesHint")}
-          </Typography.Paragraph>
-          <Form.Item name="notes" label={t("clients.form.notesLabel")} style={{ marginBottom: 0 }}>
-            <Input.TextArea rows={4} placeholder={t("clients.form.notesPh")} />
-          </Form.Item>
-        </Card>
-      </div>
-
-      <div hidden={stepHidden(3)}>
-        <Card size="small" className={sectionCardClass} title={t("clients.plans.pageTitle")}>
-          <Typography.Paragraph
-            type="secondary"
-            style={{ marginTop: 0, marginBottom: 14, fontSize: 13, lineHeight: 1.5 }}
-          >
-            {t("clients.wizard.stepWorkoutDietHint")}
-          </Typography.Paragraph>
-          <Form.Item name="workout_plan" label={t("clients.plans.workoutLabel")}>
-            <Input.TextArea rows={8} placeholder={t("clients.plans.workoutPlaceholder")} />
-          </Form.Item>
-          <Form.Item name="diet_plan" label={t("clients.plans.dietLabel")} style={{ marginBottom: 0 }}>
-            <Input.TextArea rows={8} placeholder={t("clients.plans.dietPlaceholder")} />
-          </Form.Item>
-        </Card>
-      </div>
-    </Space>
+        <div hidden={stepHidden(2)}>
+          <Card variant="outlined" className={sectionCardClass}>
+            <CardHeader title={t("clients.form.notesTitle")} />
+            <CardContent>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                {t("clients.form.notesHint")}
+              </Typography>
+              <Controller
+                name="notes"
+                control={control}
+                render={({ field, fieldState }) => (
+                  <TextField
+                    {...field}
+                    value={field.value ?? ""}
+                    label={t("clients.form.notesLabel")}
+                    placeholder={t("clients.form.notesPh")}
+                    fullWidth
+                    margin="dense"
+                    multiline
+                    minRows={4}
+                    error={!!fieldState.error}
+                    helperText={fieldState.error?.message}
+                  />
+                )}
+              />
+            </CardContent>
+          </Card>
+        </div>
+      </Stack>
     </>
   );
 }

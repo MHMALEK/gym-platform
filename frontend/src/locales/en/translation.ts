@@ -228,18 +228,22 @@ const translation = {
     },
     wizard: {
       intro:
-        "Last step is optional: add workout and diet plans now or skip. After save you’ll open the client on edit — invoices and subscriptions use the tabs there.",
+        "Last step is optional: browse your workout and nutrition libraries or open the pages to create new ones. After save you’ll land on edit — assign full plans from the client’s Workout & diet tab.",
       hintStep0: "Name and how to reach this client.",
       hintStep1: "Optional measurements and what they want to achieve.",
       hintStep2: "Default membership product, roster status, and internal notes.",
       hintStep3:
-        "Optional workout and diet notes — or skip and add full plans later from the client’s Workout & diet tab.",
+        "Browse your workout and nutrition libraries here, or open the pages below to create new ones. Assign plans to this client after save from their Workout & diet tab.",
       stepContact: "Contact",
       stepBodyGoals: "Body & goals",
       stepPlanAccount: "Plan & account",
       stepWorkoutDiet: "Workout & diet",
       stepWorkoutDietHint:
-        "Optional. You can fill this now or skip and add plans later from the client profile or edit screen.",
+        "Your saved workouts and nutrition templates are listed below. Use the buttons to create new items on their own pages — then assign them to this client after you save.",
+      workoutDietBrowseWorkoutsHint:
+        "These are your catalog workouts. Create a new one to use the full editor on its page.",
+      workoutDietBrowseNutritionHint:
+        "These are your nutrition templates. Create a new one to edit meals on its page.",
       next: "Next",
       back: "Back",
       skipPlans: "Skip for now",

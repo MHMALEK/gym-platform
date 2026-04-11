@@ -1,5 +1,12 @@
 import { useLogin } from "@refinedev/core";
-import { Button, Card, Form, Input, Typography, theme } from "antd";
+import LoadingButton from "@mui/lab/LoadingButton";
+import Box from "@mui/material/Box";
+import Card from "@mui/material/Card";
+import CardContent from "@mui/material/CardContent";
+import CardHeader from "@mui/material/CardHeader";
+import TextField from "@mui/material/TextField";
+import Typography from "@mui/material/Typography";
+import { useTheme } from "@mui/material/styles";
 import { useTranslation } from "react-i18next";
 
 import { LanguageSwitcher } from "../components/LanguageSwitcher";
@@ -12,7 +19,7 @@ const devAuth = import.meta.env.VITE_DEV_AUTH === "true";
 export function LoginPage() {
   const { mutate: login, isLoading } = useLogin();
   const { t } = useTranslation();
-  const { token } = theme.useToken();
+  const theme = useTheme();
   const { mode } = useThemeMode();
 
   const shellBg =
@@ -23,8 +30,8 @@ export function LoginPage() {
           linear-gradient(180deg, ${coachBrand.layoutBg} 0%, #07090d 55%, ${coachBrand.layoutBg} 100%)
         `
       : `
-          radial-gradient(ellipse 85% 50% at 50% -12%, ${token.colorPrimary}33 0%, transparent 52%),
-          linear-gradient(180deg, ${token.colorBgLayout} 0%, #e8eef5 50%, ${token.colorBgLayout} 100%)
+          radial-gradient(ellipse 85% 50% at 50% -12%, ${theme.palette.primary.main}33 0%, transparent 52%),
+          linear-gradient(180deg, ${theme.palette.background.default} 0%, #e8eef5 50%, ${theme.palette.background.default} 100%)
         `;
 
   return (
@@ -39,53 +46,81 @@ export function LoginPage() {
         background: shellBg,
       }}
     >
-      <div
-        style={{
+      <Box
+        sx={{
           position: "fixed",
           top: 16,
           insetInlineEnd: 16,
           zIndex: 2,
           display: "inline-flex",
           alignItems: "center",
-          gap: 4,
+          gap: 0.5,
         }}
       >
         <ThemeSwitcher />
         <LanguageSwitcher />
-      </div>
-      <Card
-        title={t("login.title")}
-        style={{
-          width: "min(420px, 100%)",
-          borderRadius: token.borderRadiusLG,
-          boxShadow: token.boxShadowSecondary ?? "0 8px 24px rgba(15, 23, 42, 0.08)",
-        }}
-      >
-        {devAuth ? (
-          <>
-            <Typography.Paragraph type="secondary">
-              {t("login.devHint")} <code>DEV_BYPASS_AUTH</code>.
-            </Typography.Paragraph>
-            <Button type="primary" block loading={isLoading} onClick={() => login({})}>
-              {t("login.devLogin")}
-            </Button>
-          </>
-        ) : (
-          <Form
-            layout="vertical"
-            onFinish={(v) => login({ email: v.email, password: v.password })}
-          >
-            <Form.Item name="email" label={t("login.email")} rules={[{ required: true, type: "email" }]}>
-              <Input />
-            </Form.Item>
-            <Form.Item name="password" label={t("login.password")} rules={[{ required: true }]}>
-              <Input.Password />
-            </Form.Item>
-            <Button type="primary" htmlType="submit" block loading={isLoading}>
-              {t("login.signIn")}
-            </Button>
-          </Form>
-        )}
+      </Box>
+      <Card sx={{ width: "min(420px, 100%)", borderRadius: 3, boxShadow: 6 }}>
+        <CardHeader title={t("login.title")} />
+        <CardContent>
+          {devAuth ? (
+            <>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                {t("login.devHint")} <code>DEV_BYPASS_AUTH</code>.
+              </Typography>
+              <LoadingButton
+                variant="contained"
+                color="primary"
+                fullWidth
+                loading={isLoading}
+                onClick={() => login({})}
+              >
+                {t("login.devLogin")}
+              </LoadingButton>
+            </>
+          ) : (
+            <Box
+              component="form"
+              onSubmit={(e) => {
+                e.preventDefault();
+                const fd = new FormData(e.currentTarget);
+                login({
+                  email: String(fd.get("email") ?? ""),
+                  password: String(fd.get("password") ?? ""),
+                });
+              }}
+            >
+              <TextField
+                name="email"
+                label={t("login.email")}
+                type="email"
+                required
+                fullWidth
+                margin="normal"
+                autoComplete="email"
+              />
+              <TextField
+                name="password"
+                label={t("login.password")}
+                type="password"
+                required
+                fullWidth
+                margin="normal"
+                autoComplete="current-password"
+              />
+              <LoadingButton
+                type="submit"
+                variant="contained"
+                color="primary"
+                fullWidth
+                sx={{ mt: 2 }}
+                loading={isLoading}
+              >
+                {t("login.signIn")}
+              </LoadingButton>
+            </Box>
+          )}
+        </CardContent>
       </Card>
     </div>
   );

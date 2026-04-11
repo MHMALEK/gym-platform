@@ -1,4 +1,8 @@
-import { ConfigProvider } from "antd";
+import createCache from "@emotion/cache";
+import { CacheProvider } from "@emotion/react";
+import { createTheme, ThemeProvider, useTheme } from "@mui/material/styles";
+import { prefixer } from "stylis";
+import rtlPlugin from "stylis-plugin-rtl";
 import {
   createContext,
   useCallback,
@@ -80,24 +84,35 @@ export function useCoachBranding(): CoachBrandingContextValue {
   return ctx;
 }
 
-/** Merges coach accent color into Ant Design theme (nested ConfigProvider). */
-export function BrandedAntdOverride({ children }: { children: ReactNode }) {
+const rtlCache = createCache({
+  key: "muirtl",
+  stylisPlugins: [prefixer, rtlPlugin],
+});
+
+const ltrCache = createCache({
+  key: "muiltr",
+});
+
+/** Emotion cache: RTL stylis plugin for Persian, plain LTR for English. */
+export function EmotionDirectionBridge({ direction, children }: { direction: "ltr" | "rtl"; children: ReactNode }) {
+  return <CacheProvider value={direction === "rtl" ? rtlCache : ltrCache}>{children}</CacheProvider>;
+}
+
+/** Merges coach accent from API into the active MUI theme (nested ThemeProvider). */
+export function BrandedMuiOverride({ children }: { children: ReactNode }) {
   const { branding } = useCoachBranding();
-  const { mode } = useThemeMode();
+  const parentTheme = useTheme();
+
   const theme = useMemo(() => {
     const primary = branding.primaryColor?.trim();
-    if (!primary) return undefined;
-    return {
-      token: { colorPrimary: primary },
-      components: {
-        Button: {
-          primaryShadow:
-            mode === "dark" ? "0 2px 0 rgba(0, 0, 0, 0.2)" : `0 2px 0 ${primary}33`,
-        },
+    if (!primary) return null;
+    return createTheme(parentTheme, {
+      palette: {
+        primary: { main: primary },
       },
-    };
-  }, [branding.primaryColor, mode]);
+    });
+  }, [branding.primaryColor, parentTheme]);
 
   if (!theme) return <>{children}</>;
-  return <ConfigProvider theme={theme}>{children}</ConfigProvider>;
+  return <ThemeProvider theme={theme}>{children}</ThemeProvider>;
 }
