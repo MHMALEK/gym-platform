@@ -608,7 +608,7 @@ const translation = {
   workouts: {
     builderTitle: "Workout builder",
     builderHint:
-      "Use the button below your workout list to open the exercise library (search, filter, Add). Each row is one set. Add set below duplicates a set line. When an exercise has multiple set rows, drag them by the handle to reorder only within that exercise. Drag onto the dashed strip under another row to group (superset, dropset, …). Inside a block, Add linked below opens the library for the next exercise. Otherwise drag moves whole blocks or single exercises.",
+      "Use Add exercise below the list to open the picker modal (search, filter, Add). Each row is one set. Add set below duplicates a set line. When an exercise has multiple set rows, drag by the handle to reorder only within that exercise. Drag onto the dashed strip under another row to group (superset, dropset, …). Add linked below opens the same modal for the next exercise in a block. Otherwise drag moves whole blocks or single exercises.",
     mergeDropHint: "Drop to group after this row",
     mergeModalTitle: "Group exercises",
     mergeModalHint:
@@ -665,6 +665,7 @@ const translation = {
     colSet: "Set",
     extraSetExerciseLabel: "Same exercise",
     setNumber: "{{n}}",
+    setsGroupedSubtitle: "Multiple sets for this exercise",
     addSetBelow: "Add set below",
     colSets: "Sets",
     colReps: "Reps",
