@@ -1,5 +1,5 @@
 import type { ExerciseMediaItemDTO, MediaAssetDTO, MediaRole } from "../types/media";
-import { apiPrefix, authBearerHeaders, authHeaders } from "./api";
+import { apiPrefix, authBearerHeaders, authHeaders, httpErrorFromResponse } from "./api";
 import { canUseFirebaseStorage, uploadMediaViaFirebaseAndRegister } from "./firebaseStorageUpload";
 import { registerRemoteMedia as registerRemoteMediaRequest } from "./mediaRegisterApi";
 
@@ -7,7 +7,7 @@ export type { ExerciseMediaItemDTO, MediaAssetDTO, MediaRole } from "../types/me
 
 async function parseErr(res: Response): Promise<never> {
   const t = await res.text();
-  throw new Error(t || res.statusText);
+  throw httpErrorFromResponse(res, t);
 }
 
 /** Use for <img src> / <video src> in the browser (dev proxy serves /uploads). */

@@ -18,7 +18,7 @@ import type {
   UpdateResponse,
 } from "@refinedev/core";
 
-import { apiPrefix, authHeaders } from "./lib/api";
+import { apiPrefix, authHeaders, httpErrorFromResponse } from "./lib/api";
 
 function pathForResource(resource: string): string {
   const m: Record<string, string> = {
@@ -33,7 +33,7 @@ function pathForResource(resource: string): string {
 
 async function parseErr(res: Response): Promise<never> {
   const t = await res.text();
-  throw new Error(t || res.statusText);
+  throw httpErrorFromResponse(res, t);
 }
 
 function isLogicalFilter(f: CrudFilter): f is LogicalFilter {

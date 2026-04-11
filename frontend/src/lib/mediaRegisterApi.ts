@@ -1,9 +1,9 @@
-import { apiPrefix, authHeaders } from "./api";
+import { apiPrefix, authHeaders, httpErrorFromResponse } from "./api";
 import type { MediaAssetDTO } from "../types/media";
 
 async function parseErr(res: Response): Promise<never> {
   const t = await res.text();
-  throw new Error(t || res.statusText);
+  throw httpErrorFromResponse(res, t);
 }
 
 export async function registerRemoteMedia(body: {
