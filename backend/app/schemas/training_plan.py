@@ -9,6 +9,8 @@ PlanVenue = Literal["home", "commercial_gym", "mixed"]
 
 WorkoutBlockType = Literal["superset", "circuit", "tri_set", "giant_set", "dropset"]
 
+WorkoutRowType = Literal["legacy_line", "exercise", "set"]
+
 
 class TrainingPlanCreate(BaseModel):
     name: str
@@ -34,6 +36,8 @@ class TrainingPlanItemWrite(BaseModel):
     notes: str | None = None
     block_id: str | None = None
     block_type: WorkoutBlockType | None = None
+    row_type: WorkoutRowType = "legacy_line"
+    exercise_instance_id: str | None = None
 
     @model_validator(mode="after")
     def block_consistency(self):
@@ -43,6 +47,22 @@ class TrainingPlanItemWrite(BaseModel):
             object.__setattr__(self, "block_type", None)
         elif self.block_type is None:
             object.__setattr__(self, "block_type", "superset")
+        return self
+
+    @model_validator(mode="after")
+    def row_structure(self):
+        rt = self.row_type
+        iid = (self.exercise_instance_id or "").strip() or None
+        object.__setattr__(self, "exercise_instance_id", iid)
+        if rt == "exercise":
+            if not iid:
+                raise ValueError("exercise_instance_id is required when row_type is exercise")
+        elif rt == "set":
+            if not iid:
+                raise ValueError("exercise_instance_id is required when row_type is set")
+        else:
+            if iid is not None:
+                object.__setattr__(self, "exercise_instance_id", None)
         return self
 
 
@@ -59,6 +79,8 @@ class TrainingPlanItemRead(ORMBase):
     block_id: str | None = None
     block_type: str | None = None
     block_sequence: int | None = None
+    row_type: str = "legacy_line"
+    exercise_instance_id: str | None = None
     exercise: ExerciseRead | None = None
 
 
