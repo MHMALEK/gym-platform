@@ -136,6 +136,8 @@ class ClientCoachingPlanRead(BaseModel):
     diet_meals: list[DietMeal] = Field(default_factory=list)
     workout_items: list[ClientWorkoutItemRead] = Field(default_factory=list)
     updated_at: datetime | None = None
+    assigned_training_plan_id: int | None = None
+    assigned_nutrition_template_id: int | None = None
 
 
 class ClientCoachingPlanUpsert(BaseModel):
@@ -145,6 +147,8 @@ class ClientCoachingPlanUpsert(BaseModel):
     diet_plan: str | None = None
     diet_meals: list[DietMeal] | None = Field(default=None, max_length=64)
     workout_items: list[ClientWorkoutItemWrite] | None = None
+    assigned_training_plan_id: int | None = None
+    assigned_nutrition_template_id: int | None = None
 
 
 class ClientCreate(BaseModel):

@@ -33,7 +33,6 @@ import {
   EmotionDirectionBridge,
   useCoachBranding,
 } from "./contexts/CoachBrandingContext";
-import { DesktopSiderPinned } from "./components/DesktopSiderPinned";
 import { LanguageSwitcher } from "./components/LanguageSwitcher";
 import { ThemeSwitcher } from "./components/ThemeSwitcher";
 import { dataProvider } from "./dataProvider";
@@ -248,7 +247,6 @@ function RefineShell() {
               <CoachBrandingProvider>
                 <BrandedMuiOverride>
                   <ThemedLayoutV2 Title={AppLayoutTitle} initialSiderCollapsed={false}>
-                    <DesktopSiderPinned />
                     <Outlet />
                   </ThemedLayoutV2>
                 </BrandedMuiOverride>

@@ -2,9 +2,11 @@ import Button from "@mui/material/Button";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { useOne } from "@refinedev/core";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
+import { ClientAssignedPlansSummary } from "./ClientAssignedPlansSummary";
 import { ClientCoachingPlansEditor } from "./ClientCoachingPlansEditor";
 
 export function ClientWorkoutDietPlansPage() {
@@ -13,6 +15,7 @@ export function ClientWorkoutDietPlansPage() {
   const valid = Number.isFinite(clientId);
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const [coachingSync, setCoachingSync] = useState(0);
 
   const clientQuery = useOne({
     resource: "clients",
@@ -52,8 +55,17 @@ export function ClientWorkoutDietPlansPage() {
           </Typography>
         </div>
 
+        <ClientAssignedPlansSummary
+          clientId={clientId}
+          variant="view"
+          refreshKey={coachingSync}
+          onMutated={() => setCoachingSync((k) => k + 1)}
+        />
+
         <ClientCoachingPlansEditor
           clientId={clientId}
+          reloadToken={coachingSync}
+          onCoachingPlansMutated={() => setCoachingSync((k) => k + 1)}
           extraActions={
             <Button variant="outlined" onClick={() => navigate(`/clients/show/${clientId}#workout`)}>
               {t("clients.plans.backToClient")}

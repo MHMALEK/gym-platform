@@ -157,11 +157,11 @@ export function ClientMembershipPanel({ clientId }: { clientId: number }) {
           </Link>
         }
       />
-      <CardContent>
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 0 }}>
+      <CardContent sx={{ "&:last-child": { pb: 2.5 } }}>
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 0, mb: 2.5, lineHeight: 1.55 }}>
           {t("clients.finance.membershipsCardIntro")}
         </Typography>
-        <ClientSubscriptionsPanel clientId={clientId} allowMutation compactHeader />
+        <ClientSubscriptionsPanel clientId={clientId} allowMutation compactHeader splitLayout />
       </CardContent>
     </Card>
   );

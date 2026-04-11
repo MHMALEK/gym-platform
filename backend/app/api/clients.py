@@ -17,7 +17,9 @@ from app.models.exercise import Exercise
 from app.models.client_subscription import ClientSubscription
 from app.models.goal_type import GoalType
 from app.models.invoice import Invoice
+from app.models.nutrition_template import NutritionTemplate
 from app.models.plan_template import PlanTemplate
+from app.models.training_plan import TrainingPlan
 from app.schemas.client import (
     ClientCoachingPlanRead,
     ClientCoachingPlanUpsert,
@@ -398,6 +400,28 @@ async def _require_client(db: DbSession, coach_id: int, client_id: int) -> Clien
     return c
 
 
+async def _ensure_owned_training_plan_id(db: DbSession, coach_id: int, plan_id: int | None) -> None:
+    if plan_id is None:
+        return
+    r = await db.execute(
+        select(TrainingPlan.id).where(TrainingPlan.id == plan_id, TrainingPlan.coach_id == coach_id)
+    )
+    if r.scalar_one_or_none() is None:
+        raise HTTPException(status_code=400, detail="Invalid training plan for assignment")
+
+
+async def _ensure_owned_nutrition_template_id(db: DbSession, coach_id: int, template_id: int | None) -> None:
+    if template_id is None:
+        return
+    r = await db.execute(
+        select(NutritionTemplate.id).where(
+            NutritionTemplate.id == template_id, NutritionTemplate.coach_id == coach_id
+        )
+    )
+    if r.scalar_one_or_none() is None:
+        raise HTTPException(status_code=400, detail="Invalid nutrition template for assignment")
+
+
 @router.get("/{client_id}/coaching-plans", response_model=ClientCoachingPlanRead)
 async def get_coaching_plans(client_id: int, coach: CurrentCoach, db: DbSession):
     await _require_client(db, coach.id, client_id)
@@ -412,6 +436,8 @@ async def get_coaching_plans(client_id: int, coach: CurrentCoach, db: DbSession)
             diet_meals=[],
             workout_items=[],
             updated_at=None,
+            assigned_training_plan_id=None,
+            assigned_nutrition_template_id=None,
         )
     items = await _enrich_client_workout_items(db, row.workout_items_json)
     diet_meals = parse_diet_meals_raw(row.diet_meals_json)
@@ -424,6 +450,8 @@ async def get_coaching_plans(client_id: int, coach: CurrentCoach, db: DbSession)
         diet_meals=diet_meals,
         workout_items=items,
         updated_at=row.updated_at,
+        assigned_training_plan_id=row.assigned_training_plan_id,
+        assigned_nutrition_template_id=row.assigned_nutrition_template_id,
     )
 
 
@@ -476,6 +504,12 @@ async def upsert_coaching_plans(
             row.workout_items_json = json.dumps(normalized)
         else:
             row.workout_items_json = None
+    if "assigned_training_plan_id" in dump:
+        await _ensure_owned_training_plan_id(db, coach.id, body.assigned_training_plan_id)
+        row.assigned_training_plan_id = body.assigned_training_plan_id
+    if "assigned_nutrition_template_id" in dump:
+        await _ensure_owned_nutrition_template_id(db, coach.id, body.assigned_nutrition_template_id)
+        row.assigned_nutrition_template_id = body.assigned_nutrition_template_id
     await db.commit()
     await db.refresh(row)
     items_out = await _enrich_client_workout_items(db, row.workout_items_json)
@@ -489,6 +523,8 @@ async def upsert_coaching_plans(
         diet_meals=diet_meals_out,
         workout_items=items_out,
         updated_at=row.updated_at,
+        assigned_training_plan_id=row.assigned_training_plan_id,
+        assigned_nutrition_template_id=row.assigned_nutrition_template_id,
     )
 
 

@@ -25,7 +25,7 @@ export function LoginPage() {
   const shellBg =
     mode === "dark"
       ? `
-          radial-gradient(ellipse 90% 55% at 50% -15%, rgba(20, 184, 166, 0.22) 0%, transparent 52%),
+          radial-gradient(ellipse 90% 55% at 50% -15%, rgba(34, 197, 94, 0.22) 0%, transparent 52%),
           radial-gradient(ellipse 70% 40% at 100% 100%, rgba(56, 189, 248, 0.08) 0%, transparent 45%),
           linear-gradient(180deg, ${coachBrand.layoutBg} 0%, #07090d 55%, ${coachBrand.layoutBg} 100%)
         `

@@ -92,6 +92,7 @@ export function TrainingPlanCreate() {
   return (
     <Create
       title={t("trainingPlans.create.pageTitle")}
+      saveButtonProps={saveButtonProps}
       contentProps={{
         sx: { pt: 1, px: 1.5 },
       }}

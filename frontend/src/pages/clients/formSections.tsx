@@ -1,3 +1,5 @@
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import CardHeader from "@mui/material/CardHeader";
@@ -14,9 +16,9 @@ import Typography from "@mui/material/Typography";
 import { type Control, Controller } from "react-hook-form";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 
 import { RefineAsyncSelect, type RefineAsyncSelectBind } from "../../components/RefineAsyncSelect";
-import { ClientPlansCta } from "./ClientPlansCta";
 
 export type ClientFormValues = Record<string, unknown>;
 
@@ -27,8 +29,6 @@ type ClientFormSectionsProps = {
   isCreate: boolean;
   /** Create wizard: show only one step at a time (steps 0–2; step 3 is coaching plans in create.tsx). */
   createWizardStep?: 0 | 1 | 2;
-  /** Edit flow: link to workout & diet plans for this client */
-  coachingPlansClientId?: number;
 };
 
 function SectionHead({ title, hint }: { title: string; hint: string }) {
@@ -50,7 +50,6 @@ export function ClientFormSections({
   planSelect,
   isCreate,
   createWizardStep,
-  coachingPlansClientId,
 }: ClientFormSectionsProps) {
   const { t } = useTranslation();
   const wizard = createWizardStep !== undefined;
@@ -239,7 +238,14 @@ export function ClientFormSections({
   const membershipBlock = (
     <>
       <SectionHead title={t("clients.form.membershipTitle")} hint={t("clients.form.membershipHint")} />
-      <Controller
+      {isCreate ? (
+        <Box sx={{ mb: 2 }}>
+          <Button component={Link} to="/plan-templates/create" variant="outlined" size="small">
+            {t("clients.form.createMembershipPlan")}
+          </Button>
+        </Box>
+      ) : null}
+       <Controller
         name="subscription_plan_template_id"
         control={control}
         render={({ field, fieldState }) => (
@@ -359,7 +365,6 @@ export function ClientFormSections({
             </CardContent>
           </Card>
         </div>
-        {coachingPlansClientId != null ? <ClientPlansCta clientId={coachingPlansClientId} compact /> : null}
       </>
     );
   }
@@ -548,6 +553,13 @@ export function ClientFormSections({
               <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                 {t("clients.form.membershipHint")}
               </Typography>
+              {isCreate ? (
+                <Box sx={{ mb: 2 }}>
+                  <Button component={Link} to="/plan-templates/create" variant="outlined" size="small">
+                    {t("clients.form.createMembershipPlan")}
+                  </Button>
+                </Box>
+              ) : null}
               <Controller
                 name="subscription_plan_template_id"
                 control={control}
@@ -563,69 +575,6 @@ export function ClientFormSections({
                   />
                 )}
               />
-            </CardContent>
-          </Card>
-        </div>
-
-        <div hidden={stepHidden(2)}>
-          <Card variant="outlined" className={sectionCardClass}>
-            <CardHeader title={t("clients.form.accountTitle")} />
-            <CardContent>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                {t("clients.form.accountHint")}
-              </Typography>
-              <Grid container spacing={2}>
-                <Grid size={{ xs: 12, sm: 6 }}>
-                  <Controller
-                    name="status"
-                    control={control}
-                    defaultValue={isCreate ? "active" : undefined}
-                    render={({ field, fieldState }) => (
-                      <FormControl fullWidth margin="dense" error={!!fieldState.error}>
-                        <InputLabel id="wiz-client-status-label">{t("clients.form.roster")}</InputLabel>
-                        <Select
-                          {...field}
-                          labelId="wiz-client-status-label"
-                          label={t("clients.form.roster")}
-                          value={field.value ?? ""}
-                        >
-                          {statusOptions.map((o) => (
-                            <MenuItem key={o.value} value={o.value}>
-                              {o.label}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                        {fieldState.error ? <FormHelperText>{fieldState.error.message}</FormHelperText> : null}
-                      </FormControl>
-                    )}
-                  />
-                </Grid>
-                <Grid size={{ xs: 12, sm: 6 }}>
-                  <Controller
-                    name="account_status"
-                    control={control}
-                    defaultValue={isCreate ? "good_standing" : undefined}
-                    render={({ field, fieldState }) => (
-                      <FormControl fullWidth margin="dense" error={!!fieldState.error}>
-                        <InputLabel id="wiz-account-status-label">{t("clients.form.clientStatus")}</InputLabel>
-                        <Select
-                          {...field}
-                          labelId="wiz-account-status-label"
-                          label={t("clients.form.clientStatus")}
-                          value={field.value ?? ""}
-                        >
-                          {accountStatusOptions.map((o) => (
-                            <MenuItem key={o.value} value={o.value}>
-                              {o.label}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                        {fieldState.error ? <FormHelperText>{fieldState.error.message}</FormHelperText> : null}
-                      </FormControl>
-                    )}
-                  />
-                </Grid>
-              </Grid>
             </CardContent>
           </Card>
         </div>

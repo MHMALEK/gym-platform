@@ -13,7 +13,9 @@ import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
+import { apiPrefix, authHeaders } from "../../lib/api";
 import { useAppMessage } from "../../lib/useAppMessage";
+import { assignInitialCoachingPlans } from "./assignInitialCoachingPlans";
 import { ClientCreateCoachingPlansStep } from "./ClientCreateCoachingPlansStep";
 import { ClientFormSections, type ClientFormValues } from "./formSections";
 
@@ -47,6 +49,8 @@ export function ClientCreate() {
   const navigate = useNavigate();
   const isMdUp = useMediaQuery("(min-width:900px)");
   const [step, setStep] = useState(0);
+  const [selectedTrainingPlanId, setSelectedTrainingPlanId] = useState<number | null>(null);
+  const [selectedNutritionTemplateId, setSelectedNutritionTemplateId] = useState<number | null>(null);
 
   const { control, trigger, getValues } = useForm<ClientFormValues>({
     defaultValues: {
@@ -97,7 +101,31 @@ export function ClientCreate() {
         return;
       }
 
-      message.success(t("clients.wizard.created"));
+      const hasPlans = selectedTrainingPlanId != null || selectedNutritionTemplateId != null;
+      if (hasPlans) {
+        const planResult = await assignInitialCoachingPlans(
+          id,
+          {
+            trainingPlanId: selectedTrainingPlanId,
+            nutritionTemplateId: selectedNutritionTemplateId,
+          },
+          apiPrefix,
+          authHeaders,
+        );
+        if (!planResult.ok) {
+          const detail = "message" in planResult ? planResult.message.trim() : "";
+          message.error(
+            detail && detail.length > 0 && detail.length < 400
+              ? `${t("clients.wizard.plansSaveFailed")} (${detail})`
+              : t("clients.wizard.plansSaveFailed"),
+          );
+          navigate(`/clients/edit/${id}`);
+          return;
+        }
+        message.success(t("clients.wizard.createdWithPlans"));
+      } else {
+        message.success(t("clients.wizard.created"));
+      }
       navigate(`/clients/edit/${id}`);
     } catch (e: unknown) {
       const msg =
@@ -106,7 +134,16 @@ export function ClientCreate() {
           : t("clients.wizard.createFailed");
       message.error(msg);
     }
-  }, [createClient, getValues, message, navigate, t, trigger]);
+  }, [
+    createClient,
+    getValues,
+    message,
+    navigate,
+    t,
+    trigger,
+    selectedTrainingPlanId,
+    selectedNutritionTemplateId,
+  ]);
 
   return (
     <Create
@@ -164,7 +201,12 @@ export function ClientCreate() {
               createWizardStep={step as 0 | 1 | 2}
             />
           ) : (
-            <ClientCreateCoachingPlansStep />
+            <ClientCreateCoachingPlansStep
+              selectedTrainingPlanId={selectedTrainingPlanId}
+              selectedNutritionTemplateId={selectedNutritionTemplateId}
+              onSelectTrainingPlan={setSelectedTrainingPlanId}
+              onSelectNutritionTemplate={setSelectedNutritionTemplateId}
+            />
           )}
         </Box>
       </Stack>

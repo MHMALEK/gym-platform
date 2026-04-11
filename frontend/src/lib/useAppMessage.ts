@@ -1,17 +1,18 @@
-import { useSnackbar, type VariantType } from "notistack";
+import { useSnackbar } from "notistack";
+import { useMemo } from "react";
 
 /** Replaces Ant Design `App.useApp().message` with notistack (requires `RefineSnackbarProvider` above). */
 export function useAppMessage() {
   const { enqueueSnackbar } = useSnackbar();
 
-  const push = (variant: VariantType) => (msg: string) => {
-    enqueueSnackbar(msg, { variant });
-  };
-
-  return {
-    success: push("success"),
-    error: push("error"),
-    warning: push("warning"),
-    info: push("info"),
-  };
+  /** Memoized so deps like `useCallback(..., [message])` do not change every render (avoids fetch loops). */
+  return useMemo(
+    () => ({
+      success: (msg: string) => enqueueSnackbar(msg, { variant: "success" }),
+      error: (msg: string) => enqueueSnackbar(msg, { variant: "error" }),
+      warning: (msg: string) => enqueueSnackbar(msg, { variant: "warning" }),
+      info: (msg: string) => enqueueSnackbar(msg, { variant: "info" }),
+    }),
+    [enqueueSnackbar],
+  );
 }

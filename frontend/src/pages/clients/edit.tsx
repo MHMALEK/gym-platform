@@ -1,28 +1,41 @@
-import DescriptionIcon from "@mui/icons-material/Description";
-import IdcardIcon from "@mui/icons-material/Badge";
-import SnippetsIcon from "@mui/icons-material/Article";
-import PersonIcon from "@mui/icons-material/Person";
-import VisibilityIcon from "@mui/icons-material/Visibility";
+import ArticleOutlinedIcon from "@mui/icons-material/ArticleOutlined";
+import CreditCardOutlinedIcon from "@mui/icons-material/CreditCardOutlined";
+import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
+import PersonOutlinedIcon from "@mui/icons-material/PersonOutlined";
+import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
+import Alert from "@mui/material/Alert";
+import AlertTitle from "@mui/material/AlertTitle";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
+import Paper from "@mui/material/Paper";
+import Stack from "@mui/material/Stack";
 import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
 import Typography from "@mui/material/Typography";
-import { Edit } from "@refinedev/mui";
 import { useSelect } from "@refinedev/core";
+import { Edit } from "@refinedev/mui";
 import { useForm } from "@refinedev/react-hook-form";
-import { useState } from "react";
+import { type SyntheticEvent, useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 
+import { ClientCoachingPlanAssignmentPanel } from "./ClientCoachingPlanAssignmentPanel";
+import {
+  type ClientDetailTab,
+  clientDetailTabsSx,
+  clientTabScrollIds,
+  hashForTab,
+  tabFromHash,
+} from "./clientTabNav";
 import { ClientInvoicesPanel, ClientMembershipPanel } from "./finance";
-import { clientWorkoutDietPath } from "./ClientPlansCta";
 import { ClientFormSections, type ClientFormValues } from "./formSections";
 
 export function ClientEdit() {
   const { t } = useTranslation();
   const { id: idFromRoute } = useParams<{ id: string }>();
-  const [activeTab, setActiveTab] = useState("profile");
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState<ClientDetailTab>(() => tabFromHash(window.location.hash));
 
   const {
     control,
@@ -51,6 +64,39 @@ export function ClientEdit() {
     rawId != null && String(rawId).length > 0 ? Number(rawId) : Number.NaN;
   const validId = Number.isFinite(clientId);
 
+  useEffect(() => {
+    setActiveTab(tabFromHash(location.hash));
+  }, [location.hash]);
+
+  useEffect(() => {
+    const h = location.hash.replace(/^#/, "");
+    if (h !== "invoices" && h !== "membership" && h !== "financial" && h !== "workout") return;
+    const id =
+      h === "membership"
+        ? clientTabScrollIds.membership
+        : h === "workout"
+          ? clientTabScrollIds.workout
+          : clientTabScrollIds.invoices;
+    requestAnimationFrame(() => {
+      document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }, [activeTab, location.hash]);
+
+  const onTabChange = (_: SyntheticEvent, key: ClientDetailTab) => {
+    setActiveTab(key);
+    navigate(
+      { pathname: location.pathname, search: location.search, hash: hashForTab(key) },
+      { replace: true },
+    );
+  };
+
+  const goWorkoutTab = useCallback(() => {
+    navigate(
+      { pathname: location.pathname, search: location.search, hash: "workout" },
+      { replace: true },
+    );
+  }, [location.pathname, location.search, navigate]);
+
   return (
     <Edit
       saveButtonProps={saveButtonProps}
@@ -61,103 +107,121 @@ export function ClientEdit() {
             {t("common.quickLinks.newClient")}
           </Button>
           {validId ? (
-            <Button
-              component={Link}
-              to={clientWorkoutDietPath(clientId)}
-              variant="outlined"
-              size="medium"
-              startIcon={<SnippetsIcon />}
-            >
-              {t("clients.plans.headerButton")}
-            </Button>
+            <Stack direction="row" spacing={0.5} alignItems="center" flexWrap="wrap">
+              <Button
+                variant="outlined"
+                size="medium"
+                startIcon={<ArticleOutlinedIcon />}
+                onClick={goWorkoutTab}
+              >
+                {t("clients.plans.headerButton")}
+              </Button>
+              <Button
+                component={Link}
+                to={`/clients/show/${clientId}`}
+                variant="outlined"
+                size="medium"
+                startIcon={<VisibilityOutlinedIcon />}
+              >
+                {t("clients.edit.openView")}
+              </Button>
+            </Stack>
           ) : null}
         </>
       )}
       contentProps={{ sx: { pt: 1, px: 1.5 } }}
     >
-      <div className="client-page-shell">
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            gap: 1,
-            borderBottom: 1,
-            borderColor: "divider",
-            mb: 2,
-            flexWrap: "wrap",
-          }}
-        >
-          <Tabs
-            value={activeTab}
-            onChange={(_, v) => setActiveTab(v)}
-            variant="scrollable"
-            scrollButtons="auto"
-            sx={{ flex: 1, minHeight: 48 }}
-          >
-            <Tab
-              icon={<PersonIcon fontSize="small" />}
-              iconPosition="start"
-              value="profile"
-              label={t("clients.edit.tabProfile")}
-            />
-            {validId ? (
-              <Tab
-                icon={<DescriptionIcon fontSize="small" />}
-                iconPosition="start"
-                value="invoices"
-                label={t("clients.edit.tabInvoices")}
-              />
-            ) : null}
-            {validId ? (
-              <Tab
-                icon={<IdcardIcon fontSize="small" />}
-                iconPosition="start"
-                value="membership"
-                label={t("clients.edit.tabMembership")}
-              />
-            ) : null}
-          </Tabs>
-          {validId ? (
-            <Button
-              component={Link}
-              to={`/clients/show/${clientId}`}
-              variant="outlined"
-              size="small"
-              startIcon={<VisibilityIcon />}
-              sx={{ mb: 0.5 }}
-            >
-              {t("clients.edit.openView")}
-            </Button>
-          ) : null}
-        </Box>
-
-        {activeTab === "profile" ? (
-          <>
-            <Typography variant="body2" color="text.secondary" className="client-edit-profile-hint" sx={{ mb: 2 }}>
-              {t("clients.edit.profileEditHint")}
-            </Typography>
-            <ClientFormSections
-              control={control}
-              goalTypeSelect={goalTypeSelect}
-              planSelect={planSelect}
-              isCreate={false}
-              coachingPlansClientId={validId ? clientId : undefined}
-            />
-          </>
+      <Box className="client-page-shell">
+        {validId ? (
+          <Alert severity="info" sx={{ mb: 2 }}>
+            <AlertTitle>{t("clients.edit.editModeTitle")}</AlertTitle>
+            <Stack spacing={1}>
+              <Typography variant="body2" component="span" sx={{ lineHeight: 1.55 }}>
+                {t("clients.edit.editModeDescription")}
+              </Typography>
+            </Stack>
+          </Alert>
         ) : null}
 
-        {activeTab === "invoices" && validId ? (
-          <Box sx={{ pt: 0.5 }}>
+        <Tabs value={activeTab} onChange={onTabChange} variant="scrollable" scrollButtons="auto" sx={clientDetailTabsSx}>
+          <Tab
+            icon={<PersonOutlinedIcon fontSize="small" />}
+            iconPosition="start"
+            label={t("clients.show.tabProfile")}
+            value="profile"
+          />
+          {validId ? (
+            <Tab
+              icon={<DescriptionOutlinedIcon fontSize="small" />}
+              iconPosition="start"
+              label={t("clients.show.tabWorkout")}
+              value="workout"
+            />
+          ) : null}
+          {validId ? (
+            <Tab
+              icon={<ArticleOutlinedIcon fontSize="small" />}
+              iconPosition="start"
+              label={t("clients.show.tabInvoices")}
+              value="invoices"
+            />
+          ) : null}
+          {validId ? (
+            <Tab
+              icon={<CreditCardOutlinedIcon fontSize="small" />}
+              iconPosition="start"
+              label={t("clients.show.tabMembership")}
+              value="membership"
+            />
+          ) : null}
+        </Tabs>
+
+        <Box sx={{ display: activeTab === "profile" ? "block" : "none" }}>
+          <Paper
+            variant="outlined"
+            sx={{
+              p: 2,
+              mb: 2.5,
+              maxWidth: 720,
+              borderRadius: 2,
+              bgcolor: (theme) =>
+                theme.palette.mode === "dark" ? "rgba(255,255,255,0.04)" : "rgba(15, 23, 42, 0.04)",
+              borderColor: "divider",
+            }}
+          >
+            <Typography variant="body2" color="text.secondary" sx={{ m: 0, lineHeight: 1.6 }}>
+              {t("clients.edit.profileEditHint")}
+            </Typography>
+          </Paper>
+          <ClientFormSections
+            control={control}
+            goalTypeSelect={goalTypeSelect}
+            planSelect={planSelect}
+            isCreate={false}
+          />
+        </Box>
+
+        {validId ? (
+          <Box id={clientTabScrollIds.workout} sx={{ display: activeTab === "workout" ? "block" : "none", pt: 0.5 }}>
+            <ClientCoachingPlanAssignmentPanel clientId={clientId} />
+          </Box>
+        ) : null}
+
+        {validId ? (
+          <Box id={clientTabScrollIds.invoices} sx={{ display: activeTab === "invoices" ? "block" : "none", pt: 0.5 }}>
             <ClientInvoicesPanel clientId={clientId} />
           </Box>
         ) : null}
 
-        {activeTab === "membership" && validId ? (
-          <Box sx={{ pt: 0.5 }}>
+        {validId ? (
+          <Box
+            id={clientTabScrollIds.membership}
+            sx={{ display: activeTab === "membership" ? "block" : "none", pt: 0.5 }}
+          >
             <ClientMembershipPanel clientId={clientId} />
           </Box>
         ) : null}
-      </div>
+      </Box>
     </Edit>
   );
 }

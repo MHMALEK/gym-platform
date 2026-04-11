@@ -1,45 +1,63 @@
-import { SaveOutlined, UploadOutlined } from "@ant-design/icons";
-import { App, Button, Card, ColorPicker, Form, Input, Space, Spin, Typography, Upload } from "antd";
-import { useEffect, useState } from "react";
+import SaveIcon from "@mui/icons-material/Save";
+import UploadFileIcon from "@mui/icons-material/UploadFile";
+import LoadingButton from "@mui/lab/LoadingButton";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Card from "@mui/material/Card";
+import CardContent from "@mui/material/CardContent";
+import CircularProgress from "@mui/material/CircularProgress";
+import Stack from "@mui/material/Stack";
+import TextField from "@mui/material/TextField";
+import Typography from "@mui/material/Typography";
+import { useEffect, useRef, useState } from "react";
+import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 
 import { useCoachBranding } from "../../contexts/CoachBrandingContext";
 import { patchCoachProfile } from "../../lib/coachProfileApi";
 import { mediaSrc, uploadMediaFile } from "../../lib/exerciseMediaApi";
+import { useAppMessage } from "../../lib/useAppMessage";
+
+type BrandForm = {
+  name: string;
+  tagline: string;
+  primary_color: string;
+};
 
 export function BrandingSettingsPage() {
   const { t } = useTranslation();
   const { branding, refresh } = useCoachBranding();
-  const { notification, message } = App.useApp();
-  const [form] = Form.useForm<{
-    name: string;
-    tagline: string;
-    primary_color?: string;
-  }>();
+  const message = useAppMessage();
+  const { register, handleSubmit, reset, watch, setValue } = useForm<BrandForm>({
+    defaultValues: { name: "", tagline: "", primary_color: "" },
+  });
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const primaryColor = watch("primary_color");
 
   useEffect(() => {
     if (branding.loading) return;
-    form.setFieldsValue({
+    reset({
       name: branding.name,
       tagline: branding.tagline ?? "",
-      primary_color: branding.primaryColor ?? undefined,
+      primary_color: branding.primaryColor?.replace(/^#/, "") ? branding.primaryColor ?? "" : "",
     });
-  }, [branding, form]);
+  }, [branding, reset]);
 
-  const onFinish = async (values: { name: string; tagline: string; primary_color?: string | null }) => {
+  const onSubmit = async (values: BrandForm) => {
     setSaving(true);
     try {
       const tag = values.tagline?.trim() ?? "";
-      const hex = values.primary_color?.trim();
+      let hex = values.primary_color?.trim() ?? "";
+      if (hex && !hex.startsWith("#")) hex = `#${hex}`;
       await patchCoachProfile({
         name: values.name.trim(),
         tagline: tag.length ? tag : null,
-        primary_color: hex && hex.length ? hex : null,
+        primary_color: hex && hex.length > 1 ? hex : null,
       });
       await refresh();
-      notification.success({ message: t("branding.saved") });
+      message.success(t("branding.saved"));
     } catch (e: unknown) {
       const msg = e && typeof e === "object" && "message" in e ? String((e as { message: unknown }).message) : "";
       message.error(msg || t("branding.saveFailed"));
@@ -53,7 +71,7 @@ export function BrandingSettingsPage() {
     try {
       await patchCoachProfile({ logo_media_asset_id: null });
       await refresh();
-      notification.success({ message: t("branding.logoRemoved") });
+      message.success(t("branding.logoRemoved"));
     } catch (e: unknown) {
       const msg = e && typeof e === "object" && "message" in e ? String((e as { message: unknown }).message) : "";
       message.error(msg || t("branding.saveFailed"));
@@ -62,120 +80,127 @@ export function BrandingSettingsPage() {
     }
   };
 
+  const onPickFile = () => fileInputRef.current?.click();
+
+  const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const asset = await uploadMediaFile(file);
+      await patchCoachProfile({ logo_media_asset_id: asset.id });
+      await refresh();
+      message.success(t("branding.logoUpdated"));
+    } catch (e: unknown) {
+      const msg = e && typeof e === "object" && "message" in e ? String((e as { message: unknown }).message) : "";
+      message.error(msg || t("branding.uploadFailed"));
+    } finally {
+      setUploading(false);
+      if (e.target) e.target.value = "";
+    }
+  };
+
   if (branding.loading) {
     return (
-      <div style={{ display: "flex", justifyContent: "center", padding: 48 }}>
-        <Spin />
-      </div>
+      <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}>
+        <CircularProgress />
+      </Box>
     );
   }
 
+  const colorValue = primaryColor?.startsWith("#") ? primaryColor : primaryColor ? `#${primaryColor}` : "#22c55e";
+
   return (
-    <div style={{ maxWidth: 640, margin: "0 auto", padding: "16px 24px 48px" }}>
-      <Typography.Title level={3} style={{ marginBottom: 8 }}>
+    <Box sx={{ maxWidth: 640, mx: "auto", py: 2, px: 3, pb: 6 }}>
+      <Typography variant="h5" sx={{ mb: 1 }}>
         {t("branding.title")}
-      </Typography.Title>
-      <Typography.Paragraph type="secondary" style={{ marginBottom: 24 }}>
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
         {t("branding.subtitle")}
-      </Typography.Paragraph>
+      </Typography>
 
-      <Card>
-        <Form form={form} layout="vertical" onFinish={onFinish} requiredMark="optional">
-          <Form.Item
-            name="name"
-            label={t("branding.displayName")}
-            rules={[{ required: true, message: t("branding.nameRequired") }]}
-          >
-            <Input maxLength={255} showCount />
-          </Form.Item>
-          <Form.Item name="tagline" label={t("branding.tagline")}>
-            <Input maxLength={500} showCount placeholder={t("branding.taglinePh")} />
-          </Form.Item>
-          <Form.Item
-            name="primary_color"
-            label={t("branding.accentColor")}
-            getValueFromEvent={(color) => {
-              if (color == null) return null;
-              if (typeof color === "string") return color;
-              // antd Color object
-              return color.toHexString?.() ?? null;
-            }}
-          >
-            <ColorPicker
-              showText
-              format="hex"
-              disabledAlpha
-              allowClear
-              presets={[
-                { label: "Teal", colors: ["#0d9488", "#14b8a6", "#2dd4bf"] },
-                { label: "Blue", colors: ["#2563eb", "#3b82f6", "#0ea5e9"] },
-              ]}
+      <Card variant="outlined">
+        <CardContent>
+          <Box component="form" onSubmit={handleSubmit(onSubmit)}>
+            <TextField
+              {...register("name", { required: t("branding.nameRequired") })}
+              label={t("branding.displayName")}
+              fullWidth
+              margin="normal"
+              required
+              inputProps={{ maxLength: 255 }}
             />
-          </Form.Item>
+            <TextField
+              {...register("tagline")}
+              label={t("branding.tagline")}
+              fullWidth
+              margin="normal"
+              placeholder={t("branding.taglinePh")}
+              inputProps={{ maxLength: 500 }}
+            />
+            <Stack direction="row" spacing={2} alignItems="center" sx={{ mt: 2, mb: 1 }}>
+              <Typography variant="body2" sx={{ minWidth: 100 }}>
+                {t("branding.accentColor")}
+              </Typography>
+              <Box
+                component="input"
+                type="color"
+                value={colorValue}
+                onChange={(e) => setValue("primary_color", e.target.value, { shouldDirty: true })}
+                sx={{ width: 48, height: 40, border: "none", p: 0, cursor: "pointer", bgcolor: "transparent" }}
+              />
+              <TextField
+                size="small"
+                label="Hex"
+                value={primaryColor ?? ""}
+                onChange={(e) => setValue("primary_color", e.target.value, { shouldDirty: true })}
+                placeholder="#22c55e"
+                sx={{ maxWidth: 140 }}
+              />
+            </Stack>
 
-          <Form.Item label={t("branding.logo")}>
-            <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+            <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>
+              {t("branding.logo")}
+            </Typography>
+            <Stack spacing={2} sx={{ width: "100%" }}>
               {branding.logoUrl ? (
-                <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-                  <img
+                <Stack direction="row" alignItems="center" spacing={2}>
+                  <Box
+                    component="img"
                     src={mediaSrc(branding.logoUrl)}
                     alt=""
-                    style={{
+                    sx={{
                       width: 96,
                       height: 96,
                       objectFit: "contain",
-                      borderRadius: 8,
-                      border: "1px solid var(--ant-color-border-secondary, #f0f0f0)",
-                      padding: 8,
-                      background: "var(--ant-color-bg-container, #fff)",
+                      borderRadius: 1,
+                      border: "1px solid",
+                      borderColor: "divider",
+                      p: 1,
+                      bgcolor: "background.paper",
                     }}
                   />
-                  <Button danger onClick={() => void removeLogo()} disabled={saving || uploading}>
+                  <Button color="error" onClick={() => void removeLogo()} disabled={saving || uploading}>
                     {t("branding.removeLogo")}
                   </Button>
-                </div>
+                </Stack>
               ) : (
-                <Typography.Text type="secondary">{t("branding.noLogo")}</Typography.Text>
+                <Typography variant="body2" color="text.secondary">
+                  {t("branding.noLogo")}
+                </Typography>
               )}
-              <Upload
-                accept="image/jpeg,image/png,image/webp,image/gif"
-                maxCount={1}
-                showUploadList={false}
-                beforeUpload={(file) => {
-                  void (async () => {
-                    setUploading(true);
-                    try {
-                      const asset = await uploadMediaFile(file);
-                      await patchCoachProfile({ logo_media_asset_id: asset.id });
-                      await refresh();
-                      notification.success({ message: t("branding.logoUpdated") });
-                    } catch (e: unknown) {
-                      const msg =
-                        e && typeof e === "object" && "message" in e
-                          ? String((e as { message: unknown }).message)
-                          : "";
-                      message.error(msg || t("branding.uploadFailed"));
-                    } finally {
-                      setUploading(false);
-                    }
-                  })();
-                  return false;
-                }}
-              >
-                <Button icon={<UploadOutlined />} loading={uploading} disabled={saving}>
-                  {t("branding.uploadLogo")}
-                </Button>
-              </Upload>
-            </Space>
-          </Form.Item>
+              <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden onChange={(e) => void onFileChange(e)} />
+              <LoadingButton variant="outlined" startIcon={<UploadFileIcon />} loading={uploading} disabled={saving} onClick={onPickFile}>
+                {t("branding.uploadLogo")}
+              </LoadingButton>
+            </Stack>
 
-          <Form.Item>
-            <Button type="primary" htmlType="submit" icon={<SaveOutlined />} loading={saving}>
+            <LoadingButton type="submit" variant="contained" startIcon={<SaveIcon />} loading={saving} sx={{ mt: 3 }}>
               {t("actions.save")}
-            </Button>
-          </Form.Item>
-        </Form>
+            </LoadingButton>
+          </Box>
+        </CardContent>
       </Card>
-    </div>
+    </Box>
   );
 }

@@ -3,6 +3,7 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
+import Chip from "@mui/material/Chip";
 import CircularProgress from "@mui/material/CircularProgress";
 import Divider from "@mui/material/Divider";
 import InputAdornment from "@mui/material/InputAdornment";
@@ -34,6 +35,7 @@ import {
   WorkoutItemsEditor,
 } from "../../components/WorkoutItemsEditor";
 import { apiPrefix, authHeaders } from "../../lib/api";
+import { REFINE_LIST_FIRST_PAGE_200 } from "../../lib/refineListPagination";
 import { useAppMessage } from "../../lib/useAppMessage";
 import { dietMealsFromApi, normalizeDietMealsForApi, type DietMeal } from "../../lib/nutritionTotals";
 
@@ -56,6 +58,8 @@ export type CoachingPayload = {
     exercise_name?: string | null;
   }>;
   updated_at: string | null;
+  assigned_training_plan_id?: number | null;
+  assigned_nutrition_template_id?: number | null;
 };
 
 type FormValues = {
@@ -69,11 +73,20 @@ type Props = {
   clientId: number;
   embed?: boolean;
   extraActions?: ReactNode;
+  /** Bump to reload coaching data from the server (e.g. after assignment cleared elsewhere). */
+  reloadToken?: number;
+  onCoachingPlansMutated?: () => void;
 };
 
 const TABLE_PAGE = 8;
 
-export function ClientCoachingPlansEditor({ clientId, embed, extraActions }: Props) {
+export function ClientCoachingPlansEditor({
+  clientId,
+  embed,
+  extraActions,
+  reloadToken = 0,
+  onCoachingPlansMutated,
+}: Props) {
   const { t } = useTranslation();
   const message = useAppMessage();
   const [loading, setLoading] = useState(true);
@@ -85,6 +98,8 @@ export function ClientCoachingPlansEditor({ clientId, embed, extraActions }: Pro
   const [trainingPlanFilter, setTrainingPlanFilter] = useState("");
   const [tpPage, setTpPage] = useState(0);
   const [ntPage, setNtPage] = useState(0);
+  const [assignedTrainingPlanId, setAssignedTrainingPlanId] = useState<number | null>(null);
+  const [assignedNutritionTemplateId, setAssignedNutritionTemplateId] = useState<number | null>(null);
 
   const { control, handleSubmit, reset, getValues } = useForm<FormValues>({
     defaultValues: {
@@ -101,7 +116,7 @@ export function ClientCoachingPlansEditor({ clientId, embed, extraActions }: Pro
 
   const { data: trainingPlanList, isLoading: trainingPlansLoading } = useList({
     resource: "training-plans",
-    pagination: { current: 1, pageSize: 500 },
+    pagination: REFINE_LIST_FIRST_PAGE_200,
   });
   const trainingPlanRows = useMemo(() => {
     const raw = (trainingPlanList?.data ?? []) as BaseRecord[];
@@ -113,7 +128,7 @@ export function ClientCoachingPlansEditor({ clientId, embed, extraActions }: Pro
 
   const { data: nutritionTemplateList, isLoading: nutritionTemplatesLoading } = useList({
     resource: "nutrition-templates",
-    pagination: { current: 1, pageSize: 500 },
+    pagination: REFINE_LIST_FIRST_PAGE_200,
   });
   const nutritionTemplateRows = useMemo(() => {
     const raw = (nutritionTemplateList?.data ?? []) as BaseRecord[];
@@ -144,6 +159,8 @@ export function ClientCoachingPlansEditor({ clientId, embed, extraActions }: Pro
       setLines(workoutLinesFromApiItems(data.workout_items ?? []));
       setDietMeals(dietMealsFromApi(data.diet_meals ?? []));
       setUpdatedAt(data.updated_at);
+      setAssignedTrainingPlanId(data.assigned_training_plan_id ?? null);
+      setAssignedNutritionTemplateId(data.assigned_nutrition_template_id ?? null);
     } catch {
       message.error(t("clients.plans.loadError"));
     } finally {
@@ -163,6 +180,7 @@ export function ClientCoachingPlansEditor({ clientId, embed, extraActions }: Pro
         }
         const json = (await res.json()) as { meals?: unknown[] };
         setDietMeals(dietMealsFromApi(json.meals ?? []));
+        setAssignedNutritionTemplateId(templateId);
         message.success(t("clients.plans.templateApplied"));
       } catch {
         message.error(t("clients.plans.templateApplyError"));
@@ -195,6 +213,7 @@ export function ClientCoachingPlansEditor({ clientId, embed, extraActions }: Pro
           workout_rich_html: data.workout_rich_html ?? "",
           program_venue: programVenueOut,
         });
+        setAssignedTrainingPlanId(planId);
         message.success(t("clients.plans.workoutTemplateApplied"));
       } catch {
         message.error(t("clients.plans.workoutTemplateApplyError"));
@@ -205,7 +224,7 @@ export function ClientCoachingPlansEditor({ clientId, embed, extraActions }: Pro
 
   useEffect(() => {
     void load();
-  }, [load]);
+  }, [load, reloadToken]);
 
   const onSubmit = async (values: FormValues) => {
     setSaving(true);
@@ -223,6 +242,8 @@ export function ClientCoachingPlansEditor({ clientId, embed, extraActions }: Pro
         diet_plan: values.diet_plan?.trim() ? values.diet_plan.trim() : null,
         diet_meals: normalizeDietMealsForApi(dietMeals),
         workout_items: normalizeWorkoutItemsForApi(lines),
+        assigned_training_plan_id: assignedTrainingPlanId,
+        assigned_nutrition_template_id: assignedNutritionTemplateId,
       };
       const res = await fetch(`${apiPrefix}/clients/${clientId}/coaching-plans`, {
         method: "PUT",
@@ -237,7 +258,10 @@ export function ClientCoachingPlansEditor({ clientId, embed, extraActions }: Pro
       setUpdatedAt(data.updated_at);
       setLines(workoutLinesFromApiItems(data.workout_items ?? []));
       setDietMeals(dietMealsFromApi(data.diet_meals ?? []));
+      setAssignedTrainingPlanId(data.assigned_training_plan_id ?? null);
+      setAssignedNutritionTemplateId(data.assigned_nutrition_template_id ?? null);
       message.success(t("clients.plans.saved"));
+      onCoachingPlansMutated?.();
     } catch {
       message.error(t("clients.plans.saveError"));
     } finally {
@@ -403,9 +427,23 @@ export function ClientCoachingPlansEditor({ clientId, embed, extraActions }: Pro
                       </TableCell>
                     </TableRow>
                   ) : (
-                    trainingPlanRows.slice(tpPage * TABLE_PAGE, tpPage * TABLE_PAGE + TABLE_PAGE).map((r) => (
-                      <TableRow key={String(r.id)}>
-                        <TableCell>{String(r.name ?? "")}</TableCell>
+                    trainingPlanRows.slice(tpPage * TABLE_PAGE, tpPage * TABLE_PAGE + TABLE_PAGE).map((r) => {
+                      const pid = Number(r.id);
+                      const isAssigned =
+                        assignedTrainingPlanId != null && pid === assignedTrainingPlanId;
+                      return (
+                      <TableRow
+                        key={String(r.id)}
+                        sx={isAssigned ? { bgcolor: (theme) => `${theme.palette.primary.main}14` } : undefined}
+                      >
+                        <TableCell>
+                          <Stack direction="row" alignItems="center" spacing={1} flexWrap="wrap">
+                            <span>{String(r.name ?? "")}</span>
+                            {isAssigned ? (
+                              <Chip size="small" label={t("clients.plans.rowAssignedBadge")} color="primary" variant="outlined" />
+                            ) : null}
+                          </Stack>
+                        </TableCell>
                         <TableCell sx={{ maxWidth: 280 }}>{String(r.description ?? "")}</TableCell>
                         <TableCell>{t(`workouts.venue.${(r as Record<string, unknown>).venue_type ?? "mixed"}`)}</TableCell>
                         <TableCell>
@@ -423,7 +461,8 @@ export function ClientCoachingPlansEditor({ clientId, embed, extraActions }: Pro
                           </Stack>
                         </TableCell>
                       </TableRow>
-                    ))
+                    );
+                    })
                   )}
                 </TableBody>
               </Table>
@@ -487,9 +526,23 @@ export function ClientCoachingPlansEditor({ clientId, embed, extraActions }: Pro
                       </TableCell>
                     </TableRow>
                   ) : (
-                    nutritionTemplateRows.slice(ntPage * TABLE_PAGE, ntPage * TABLE_PAGE + TABLE_PAGE).map((r) => (
-                      <TableRow key={String(r.id)}>
-                        <TableCell>{String(r.name ?? "")}</TableCell>
+                    nutritionTemplateRows.slice(ntPage * TABLE_PAGE, ntPage * TABLE_PAGE + TABLE_PAGE).map((r) => {
+                      const nid = Number(r.id);
+                      const isAssigned =
+                        assignedNutritionTemplateId != null && nid === assignedNutritionTemplateId;
+                      return (
+                      <TableRow
+                        key={String(r.id)}
+                        sx={isAssigned ? { bgcolor: (theme) => `${theme.palette.primary.main}14` } : undefined}
+                      >
+                        <TableCell>
+                          <Stack direction="row" alignItems="center" spacing={1} flexWrap="wrap">
+                            <span>{String(r.name ?? "")}</span>
+                            {isAssigned ? (
+                              <Chip size="small" label={t("clients.plans.rowAssignedBadge")} color="primary" variant="outlined" />
+                            ) : null}
+                          </Stack>
+                        </TableCell>
                         <TableCell>{Number((r as Record<string, unknown>).meal_count ?? 0)}</TableCell>
                         <TableCell>
                           <Stack direction="row" spacing={1} flexWrap="wrap">
@@ -506,7 +559,8 @@ export function ClientCoachingPlansEditor({ clientId, embed, extraActions }: Pro
                           </Stack>
                         </TableCell>
                       </TableRow>
-                    ))
+                    );
+                    })
                   )}
                 </TableBody>
               </Table>

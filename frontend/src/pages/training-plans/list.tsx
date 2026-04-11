@@ -1,79 +1,133 @@
+import Alert from "@mui/material/Alert";
+import AlertTitle from "@mui/material/AlertTitle";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import FormControl from "@mui/material/FormControl";
+import InputLabel from "@mui/material/InputLabel";
+import MenuItem from "@mui/material/MenuItem";
+import Select from "@mui/material/Select";
+import Stack from "@mui/material/Stack";
+import { DataGrid, type GridColDef } from "@mui/x-data-grid";
+import { type BaseRecord } from "@refinedev/core";
 import {
   CreateButton,
   DeleteButton,
   EditButton,
   List,
   ShowButton,
-  useTable,
-} from "@refinedev/antd";
-import { type BaseRecord } from "@refinedev/core";
-import { Alert, Button, Select, Space, Table } from "antd";
+  useDataGrid,
+} from "@refinedev/mui";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
+import { AssignPlanToClientsDialog } from "../../components/AssignPlanToClientsDialog";
+
 export function TrainingPlanList() {
   const { t } = useTranslation();
-  const { tableProps, setFilters } = useTable({ resource: "training-plans", syncWithLocation: true });
+  const [assignTarget, setAssignTarget] = useState<{ id: number; name: string } | null>(null);
+  const { dataGridProps, setFilters, filters } = useDataGrid({ resource: "training-plans", syncWithLocation: true });
+  const venueFilter = useMemo(
+    () => (filters as { field?: string; value?: unknown }[] | undefined)?.find((f) => f.field === "venue_type")?.value as string | undefined,
+    [filters],
+  );
 
   const venueOptions = [
-    { value: "", label: t("exercises.list.filterVenue") + " —" },
+    { value: "", label: `${t("exercises.list.filterVenue")} —` },
     { value: "mixed", label: t("workouts.venue.mixed") },
     { value: "home", label: t("workouts.venue.home") },
     { value: "commercial_gym", label: t("workouts.venue.commercial_gym") },
   ];
 
+  const columns: GridColDef<BaseRecord>[] = [
+    { field: "name", headerName: t("trainingPlans.list.name"), flex: 1, minWidth: 160 },
+    { field: "description", headerName: t("trainingPlans.list.description"), flex: 1, minWidth: 140 },
+    {
+      field: "venue_type",
+      headerName: t("trainingPlans.list.venue"),
+      width: 140,
+      renderCell: ({ row }) => t(`workouts.venue.${(row as BaseRecord).venue_type ?? "mixed"}`),
+    },
+    {
+      field: "source_catalog_plan_id",
+      headerName: t("trainingPlans.list.fromCatalog"),
+      width: 120,
+      renderCell: ({ row }) => {
+        const v = (row as BaseRecord).source_catalog_plan_id;
+        return v ?? t("common.dash");
+      },
+    },
+    {
+      field: "actions",
+      headerName: t("trainingPlans.list.actions"),
+      sortable: false,
+      filterable: false,
+      width: 360,
+      renderCell: ({ row }) => (
+        <Stack direction="row" flexWrap="wrap" gap={0.5} alignItems="center">
+          <Button component={Link} to={`/training-plans/edit/${row.id}`} variant="contained" size="small">
+            {t("trainingPlans.list.buildWorkout")}
+          </Button>
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={() =>
+              setAssignTarget({ id: Number(row.id), name: String((row as BaseRecord).name ?? "") })
+            }
+          >
+            {t("assignPlanToClients.assignToClientsButton")}
+          </Button>
+          <EditButton hideText size="small" recordItemId={row.id} />
+          <ShowButton hideText size="small" recordItemId={row.id} />
+          <DeleteButton hideText size="small" recordItemId={row.id} />
+        </Stack>
+      ),
+    },
+  ];
+
   return (
     <List headerButtons={<CreateButton />}>
-      <Alert
-        type="info"
-        showIcon
-        style={{ marginBottom: 16 }}
-        message={t("trainingPlans.list.builderIntroTitle")}
-        description={t("trainingPlans.list.builderIntroBody")}
-      />
-      <Space style={{ marginBottom: 12 }}>
-        <Select
-          allowClear
-          placeholder={t("trainingPlans.list.venue")}
-          style={{ minWidth: 200 }}
-          options={venueOptions.filter((o) => o.value !== "")}
-          onChange={(v) => {
-            setFilters(
-              v ? [{ field: "venue_type", operator: "eq", value: v }] : [],
-              "replace",
-            );
-          }}
+      <Stack spacing={2} sx={{ width: "100%" }}>
+        <Alert severity="info">
+          <AlertTitle>{t("trainingPlans.list.builderIntroTitle")}</AlertTitle>
+          {t("trainingPlans.list.builderIntroBody")}
+        </Alert>
+        <FormControl size="small" sx={{ minWidth: 200 }}>
+          <InputLabel id="tp-venue-filter">{t("trainingPlans.list.venue")}</InputLabel>
+          <Select
+            labelId="tp-venue-filter"
+            label={t("trainingPlans.list.venue")}
+            value={venueFilter ?? ""}
+            onChange={(e) => {
+              const v = e.target.value as string;
+              setFilters(v ? [{ field: "venue_type", operator: "eq", value: v }] : [], "replace");
+            }}
+          >
+            {venueOptions.map((o) => (
+              <MenuItem key={o.value || "all"} value={o.value}>
+                {o.label}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+        <Box sx={{ width: "100%" }}>
+          <DataGrid
+            {...dataGridProps}
+            columns={columns}
+            getRowId={(r) => r.id as string | number}
+            autoHeight
+            pageSizeOptions={[10, 25, 50]}
+            disableRowSelectionOnClick
+          />
+        </Box>
+        <AssignPlanToClientsDialog
+          open={assignTarget != null}
+          onClose={() => setAssignTarget(null)}
+          mode="training"
+          resourceId={assignTarget?.id ?? 0}
+          resourceName={assignTarget?.name}
         />
-      </Space>
-      <Table {...tableProps} rowKey="id">
-        <Table.Column dataIndex="name" title={t("trainingPlans.list.name")} />
-        <Table.Column dataIndex="description" title={t("trainingPlans.list.description")} ellipsis />
-        <Table.Column
-          dataIndex="venue_type"
-          title={t("trainingPlans.list.venue")}
-          render={(v: string) => t(`workouts.venue.${v ?? "mixed"}`)}
-        />
-        <Table.Column
-          dataIndex="source_catalog_plan_id"
-          title={t("trainingPlans.list.fromCatalog")}
-          render={(v) => v ?? t("common.dash")}
-        />
-        <Table.Column<BaseRecord>
-          title={t("trainingPlans.list.actions")}
-          render={(_, record: BaseRecord) => (
-            <Space wrap>
-              <Link to={`/training-plans/edit/${record.id}`}>
-                <Button type="primary" size="small">
-                  {t("trainingPlans.list.buildWorkout")}
-                </Button>
-              </Link>
-              <EditButton hideText size="small" recordItemId={record.id} />
-              <ShowButton hideText size="small" recordItemId={record.id} />
-              <DeleteButton hideText size="small" recordItemId={record.id} />
-            </Space>
-          )}
-        />
-      </Table>
+      </Stack>
     </List>
   );
 }

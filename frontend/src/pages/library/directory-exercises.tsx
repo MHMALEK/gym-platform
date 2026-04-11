@@ -1,21 +1,33 @@
-import { List, useTable } from "@refinedev/antd";
+import Alert from "@mui/material/Alert";
+import AlertTitle from "@mui/material/AlertTitle";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import FormControl from "@mui/material/FormControl";
+import InputLabel from "@mui/material/InputLabel";
+import MenuItem from "@mui/material/MenuItem";
+import Select from "@mui/material/Select";
+import Stack from "@mui/material/Stack";
+import TextField from "@mui/material/TextField";
+import Typography from "@mui/material/Typography";
+import { DataGrid, type GridColDef } from "@mui/x-data-grid";
 import { useInvalidate } from "@refinedev/core";
-import type { BaseRecord } from "@refinedev/core";
-import { Alert, App, Button, Input, Select, Space, Table, Typography } from "antd";
+import { type BaseRecord } from "@refinedev/core";
+import { List, useDataGrid } from "@refinedev/mui";
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
+import { useAppMessage } from "../../lib/useAppMessage";
 import { apiPrefix, authHeaders } from "../../lib/api";
 
 export function DirectoryExercisesPage() {
   const { t } = useTranslation();
-  const { message } = App.useApp();
+  const message = useAppMessage();
   const invalidate = useInvalidate();
   const [copyingId, setCopyingId] = useState<number | null>(null);
   const [q, setQ] = useState("");
   const [venue, setVenue] = useState<string | undefined>();
-  const { tableProps, setFilters } = useTable({
+  const { dataGridProps, setFilters } = useDataGrid({
     resource: "directory-exercises",
     syncWithLocation: true,
   });
@@ -60,77 +72,109 @@ export function DirectoryExercisesPage() {
     [invalidate, message, t],
   );
 
+  const columns: GridColDef<BaseRecord>[] = [
+    { field: "name", headerName: t("library.name"), flex: 1, minWidth: 140 },
+    { field: "category", headerName: t("library.category"), width: 120 },
+    {
+      field: "venue_type",
+      headerName: t("library.venueColumn"),
+      width: 140,
+      renderCell: ({ value }) => t(`workouts.venue.${(value as string) ?? "both"}`),
+    },
+    {
+      field: "muscle_groups",
+      headerName: t("library.muscles"),
+      flex: 1,
+      minWidth: 160,
+      sortable: false,
+      renderCell: ({ row }) => {
+        const m = row.muscle_groups as { label?: string }[] | undefined;
+        if (m?.length) return m.map((x) => x.label).filter(Boolean).join(", ");
+        return "—";
+      },
+    },
+    { field: "equipment", headerName: t("library.equipment"), width: 120 },
+    { field: "description", headerName: t("library.description"), flex: 1, minWidth: 120 },
+    {
+      field: "actions",
+      headerName: t("library.actions"),
+      width: 180,
+      sortable: false,
+      filterable: false,
+      renderCell: ({ row }) => (
+        <Button
+          variant="contained"
+          size="small"
+          disabled={copyingId === Number(row.id)}
+          onClick={() => void copyToMine(Number(row.id))}
+        >
+          {t("library.copyExerciseToMine")}
+        </Button>
+      ),
+    },
+  ];
+
   return (
     <List title={t("library.exercisesTitle")} breadcrumb={false}>
-      <Space direction="vertical" size="middle" style={{ width: "100%" }}>
-        <Alert
-          type="info"
-          showIcon
-          message={t("library.catalogIntroTitle")}
-          description={t("library.catalogIntroBody")}
-        />
-        <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
+      <Stack spacing={2} sx={{ width: "100%" }}>
+        <Alert severity="info">
+          <AlertTitle>{t("library.catalogIntroTitle")}</AlertTitle>
+          {t("library.catalogIntroBody")}
+        </Alert>
+        <Typography variant="body2" color="text.secondary">
           {t("library.readOnlyHint")}
-        </Typography.Paragraph>
-        <Space wrap style={{ width: "100%", justifyContent: "space-between", alignItems: "center" }}>
-          <Space wrap>
-            <Input.Search
-              allowClear
+        </Typography>
+        <Stack direction="row" flexWrap="wrap" gap={2} alignItems="center" justifyContent="space-between">
+          <Stack direction="row" flexWrap="wrap" gap={1} alignItems="center">
+            <TextField
+              size="small"
               placeholder={t("library.searchCatalog")}
-              onSearch={(v) => {
-                setQ(v);
-                applyFilters(v, venue);
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") applyFilters(q, venue);
               }}
-              style={{ maxWidth: 360 }}
+              sx={{ maxWidth: 360 }}
             />
-            <Select
-              allowClear
-              placeholder={t("library.filterVenue")}
-              style={{ minWidth: 200 }}
-              options={venueFilterOptions}
-              value={venue}
-              onChange={(v) => {
-                setVenue(v);
-                applyFilters(q, v);
-              }}
-            />
-          </Space>
-          <Link to="/exercises">{t("library.goToMyExercises")}</Link>
-        </Space>
-        <Table {...tableProps} rowKey="id" locale={{ emptyText: t("library.catalogEmpty") }}>
-          <Table.Column dataIndex="name" title={t("library.name")} />
-          <Table.Column dataIndex="category" title={t("library.category")} />
-          <Table.Column
-            dataIndex="venue_type"
-            title={t("library.venueColumn")}
-            render={(v: string) => t(`workouts.venue.${v ?? "both"}`)}
-          />
-          <Table.Column
-            title={t("library.muscles")}
-            render={(_: unknown, record: BaseRecord) => {
-              const m = record.muscle_groups as { label?: string }[] | undefined;
-              if (m?.length) return m.map((x) => x.label).filter(Boolean).join(", ");
-              return "—";
-            }}
-          />
-          <Table.Column dataIndex="equipment" title={t("library.equipment")} />
-          <Table.Column dataIndex="description" title={t("library.description")} ellipsis />
-          <Table.Column<BaseRecord>
-            title={t("library.actions")}
-            width={160}
-            render={(_, record: BaseRecord) => (
-              <Button
-                type="primary"
-                size="small"
-                loading={copyingId === Number(record.id)}
-                onClick={() => void copyToMine(Number(record.id))}
+            <FormControl size="small" sx={{ minWidth: 200 }}>
+              <InputLabel id="dir-ex-venue">{t("library.filterVenue")}</InputLabel>
+              <Select
+                labelId="dir-ex-venue"
+                label={t("library.filterVenue")}
+                value={venue ?? ""}
+                displayEmpty
+                onChange={(e) => {
+                  const v = e.target.value as string | undefined;
+                  const next = v || undefined;
+                  setVenue(next);
+                  applyFilters(q, next);
+                }}
               >
-                {t("library.copyExerciseToMine")}
-              </Button>
-            )}
+                <MenuItem value="">
+                  <em>—</em>
+                </MenuItem>
+                {venueFilterOptions.map((o) => (
+                  <MenuItem key={o.value} value={o.value}>
+                    {o.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Stack>
+          <Link to="/exercises">{t("library.goToMyExercises")}</Link>
+        </Stack>
+        <Box sx={{ width: "100%" }}>
+          <DataGrid
+            {...dataGridProps}
+            columns={columns}
+            getRowId={(r) => r.id as string | number}
+            autoHeight
+            pageSizeOptions={[10, 25, 50]}
+            disableRowSelectionOnClick
+            localeText={{ noRowsLabel: t("library.catalogEmpty") }}
           />
-        </Table>
-      </Space>
+        </Box>
+      </Stack>
     </List>
   );
 }

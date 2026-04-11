@@ -1,11 +1,11 @@
-/* Mirrors theme/brand.ts — CSS variables follow html[data-theme] (see index.html bootstrap script). */
+/* Mirrors theme/brand.ts (arena + field green) — CSS variables follow html[data-theme] (see index.html bootstrap script). */
 :root {
-  --app-layout-bg: #0b0e13;
-  --app-surface: #121826;
-  --app-surface-elevated: #1a2234;
+  --app-layout-bg: #0a0d0c;
+  --app-surface: #131a17;
+  --app-surface-elevated: #1a2420;
   --app-border: rgba(148, 163, 184, 0.16);
   --app-border-strong: rgba(148, 163, 184, 0.22);
-  --app-accent: #14b8a6;
+  --app-accent: #22c55e;
   --app-text-heading: #f1f5f9;
   --app-text-body: #e2e8f0;
   --app-text-muted: #94a3b8;
@@ -17,7 +17,7 @@ html[data-theme="light"] {
   --app-surface-elevated: #f8fafc;
   --app-border: rgba(15, 23, 42, 0.12);
   --app-border-strong: rgba(15, 23, 42, 0.18);
-  --app-accent: #0d9488;
+  --app-accent: #16a34a;
   --app-text-heading: #0f172a;
   --app-text-body: #1e293b;
   --app-text-muted: #64748b;
@@ -36,20 +36,20 @@ body {
   min-height: 100vh;
 }
 
-/* Shell: separate header from content */
-.ant-layout .ant-layout-header {
+/* Refine / MUI layout: separate header from main content */
+.refine-layout .MuiAppBar-root,
+.refine-themed-layout .MuiAppBar-root {
   border-bottom: 1px solid var(--app-border);
-  line-height: 56px;
 }
 
-/* Primary focus visibility (keyboard / a11y) */
-.ant-btn-primary:focus-visible {
-  outline: 2px solid rgba(45, 212, 191, 0.55);
+/* Primary focus visibility (keyboard / a11y) — matches contained buttons */
+.MuiButton-containedPrimary:focus-visible {
+  outline: 2px solid rgba(74, 222, 128, 0.55);
   outline-offset: 2px;
 }
 
-html[data-theme="light"] .ant-btn-primary:focus-visible {
-  outline-color: rgba(13, 148, 136, 0.5);
+html[data-theme="light"] .MuiButton-containedPrimary:focus-visible {
+  outline-color: rgba(22, 163, 74, 0.5);
 }
 
 /* English: Inter for Latin UI; Persian glyphs still fall back to Vazirmatn when needed */
@@ -67,9 +67,10 @@ html[lang="fa"] #root {
   font-family: "Vazirmatn", "Inter", "Tahoma", system-ui, sans-serif;
 }
 
-/* Ant Design lg breakpoint — keep the main nav fully open; hide collapse control */
+/* lg breakpoint — keep desktop sider fully open when layout uses a collapse trigger */
 @media (min-width: 992px) {
-  .ant-layout > .ant-layout-sider .ant-layout-sider-trigger {
+  .refine-themed-layout .MuiDrawer-root ~ .MuiBox-root .MuiIconButton-root[aria-label*="menu" i],
+  .refine-layout .MuiDrawer-root ~ * .layout-sider-collapse-trigger {
     display: none;
   }
 }
@@ -80,66 +81,59 @@ html[lang="fa"] #root {
   margin: 0 auto;
 }
 
-.client-section-card--readonly.ant-card {
+.client-section-card--readonly.MuiCard-root {
   border: 1px solid var(--app-border);
   box-shadow: none;
 }
 
-.client-section-card--readonly .ant-card-head {
+.client-section-card--readonly .MuiCardHeader-root {
   background: rgba(255, 255, 255, 0.03);
   border-bottom: 1px solid var(--app-border);
 }
 
-html[data-theme="light"] .client-section-card--readonly .ant-card-head {
+html[data-theme="light"] .client-section-card--readonly .MuiCardHeader-root {
   background: rgba(15, 23, 42, 0.04);
 }
 
-.client-section-card--editable.ant-card {
+.client-section-card--editable.MuiCard-root {
   border: 1px solid var(--app-border);
   border-inline-start: 3px solid var(--app-accent);
   box-shadow: none;
 }
 
-.client-section-card--editable .ant-card-head {
-  background: rgba(20, 184, 166, 0.1);
-  border-bottom: 1px solid rgba(20, 184, 166, 0.22);
+.client-section-card--editable .MuiCardHeader-root {
+  background: rgba(34, 197, 94, 0.1);
+  border-bottom: 1px solid rgba(34, 197, 94, 0.22);
 }
 
-html[data-theme="light"] .client-section-card--editable .ant-card-head {
-  background: rgba(13, 148, 136, 0.09);
-  border-bottom: 1px solid rgba(13, 148, 136, 0.22);
+html[data-theme="light"] .client-section-card--editable .MuiCardHeader-root {
+  background: rgba(22, 163, 74, 0.09);
+  border-bottom: 1px solid rgba(22, 163, 74, 0.22);
 }
 
-.client-feed-card.ant-card {
+.client-feed-card.MuiCard-root {
   border: 1px solid var(--app-border);
   box-shadow: none;
 }
 
 /* Single-surface profile editor (edit client) */
-.client-edit-profile-hint {
-  margin: 0 0 16px !important;
-  font-size: 13px;
-  line-height: 1.5;
-  max-width: 720px;
-}
-
 .client-form-unified {
   width: 100%;
   max-width: 720px;
 }
 
-.client-profile-editor-surface.ant-card {
+.client-profile-editor-surface.MuiCard-root {
   border: 1px solid var(--app-border-strong);
   border-radius: 12px;
   background: var(--app-surface);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
 }
 
-html[data-theme="light"] .client-profile-editor-surface.ant-card {
+html[data-theme="light"] .client-profile-editor-surface.MuiCard-root {
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
 }
 
-.client-profile-editor-surface .ant-card-body {
+.client-profile-editor-surface .MuiCardContent-root {
   padding: 20px 22px 22px;
 }
 
@@ -151,7 +145,7 @@ html[data-theme="light"] .client-profile-editor-surface.ant-card {
   margin-bottom: 14px;
 }
 
-.client-form-section__title.ant-typography {
+.client-form-section__title {
   margin: 0 0 6px !important;
   font-size: 15px !important;
   font-weight: 600 !important;
@@ -165,16 +159,12 @@ html[data-theme="light"] .client-profile-editor-surface.ant-card {
   line-height: 1.45;
 }
 
-.client-form-section-divider.ant-divider {
+.client-form-section-divider.MuiDivider-root {
   margin: 18px 0;
   border-color: var(--app-border);
 }
 
-.client-profile-editor-surface .ant-form-item {
-  margin-bottom: 13px;
-}
-
-.client-profile-editor-surface .ant-form-item-with-help {
+.client-profile-editor-surface .MuiFormControl-root {
   margin-bottom: 4px;
 }
 
@@ -220,22 +210,22 @@ html[data-theme="light"] .client-profile-editor-surface.ant-card {
   max-width: 820px;
 }
 
-.workout-items-editor__dnd-tip.ant-alert {
+.workout-items-editor__dnd-tip.MuiAlert-root {
   border-radius: 14px;
   border: 1px solid var(--app-border);
   background: color-mix(in srgb, var(--app-accent) 7%, var(--app-surface-elevated));
 }
 
-html[data-theme="light"] .workout-items-editor__dnd-tip.ant-alert {
+html[data-theme="light"] .workout-items-editor__dnd-tip.MuiAlert-root {
   background: color-mix(in srgb, var(--app-accent) 9%, #fff);
 }
 
-.workout-items-editor__banner.ant-alert {
+.workout-items-editor__banner.MuiAlert-root {
   border-radius: 12px;
   border: 1px solid var(--app-border);
 }
 
-.workout-items-editor__modal .ant-modal-content {
+.workout-items-editor__modal .MuiDialog-paper {
   border-radius: 16px;
   overflow: hidden;
 }

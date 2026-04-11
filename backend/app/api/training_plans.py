@@ -56,7 +56,7 @@ def _plan_to_read(plan: TrainingPlan) -> TrainingPlanRead:
 async def list_my_training_plans(
     coach: CurrentCoach,
     db: DbSession,
-    limit: int = Query(50, ge=1, le=200),
+    limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
     venue_type: str | None = None,
 ):

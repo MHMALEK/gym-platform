@@ -5,6 +5,7 @@ import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import CardHeader from "@mui/material/CardHeader";
 import InputAdornment from "@mui/material/InputAdornment";
+import Radio from "@mui/material/Radio";
 import Stack from "@mui/material/Stack";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
@@ -17,11 +18,25 @@ import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { type BaseRecord, useList } from "@refinedev/core";
 import { useMemo, useState } from "react";
+
+import { REFINE_LIST_FIRST_PAGE_200 } from "../../lib/refineListPagination";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
-/** Final create-client step: browse workout & nutrition libraries and open create pages — no inline builder. */
-export function ClientCreateCoachingPlansStep() {
+type Props = {
+  selectedTrainingPlanId: number | null;
+  selectedNutritionTemplateId: number | null;
+  onSelectTrainingPlan: (id: number | null) => void;
+  onSelectNutritionTemplate: (id: number | null) => void;
+};
+
+/** Final create-client step: optionally assign one saved workout and/or one nutrition template when the client is created. */
+export function ClientCreateCoachingPlansStep({
+  selectedTrainingPlanId,
+  selectedNutritionTemplateId,
+  onSelectTrainingPlan,
+  onSelectNutritionTemplate,
+}: Props) {
   const { t } = useTranslation();
   const [nutritionTemplateFilter, setNutritionTemplateFilter] = useState("");
   const [trainingPlanFilter, setTrainingPlanFilter] = useState("");
@@ -31,7 +46,7 @@ export function ClientCreateCoachingPlansStep() {
 
   const { data: trainingPlanList, isLoading: trainingPlansLoading } = useList({
     resource: "training-plans",
-    pagination: { current: 1, pageSize: 500 },
+    pagination: REFINE_LIST_FIRST_PAGE_200,
   });
   const trainingPlanRows = useMemo(() => {
     const raw = (trainingPlanList?.data ?? []) as BaseRecord[];
@@ -43,7 +58,7 @@ export function ClientCreateCoachingPlansStep() {
 
   const { data: nutritionTemplateList, isLoading: nutritionTemplatesLoading } = useList({
     resource: "nutrition-templates",
-    pagination: { current: 1, pageSize: 500 },
+    pagination: REFINE_LIST_FIRST_PAGE_200,
   });
   const nutritionTemplateRows = useMemo(() => {
     const raw = (nutritionTemplateList?.data ?? []) as BaseRecord[];
@@ -78,6 +93,9 @@ export function ClientCreateCoachingPlansStep() {
       <CardContent>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2, fontSize: 13, lineHeight: 1.55 }}>
           {t("clients.wizard.stepWorkoutDietHint")}
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2, fontSize: 13, lineHeight: 1.55 }}>
+          {t("clients.wizard.assignPlansHint")}
         </Typography>
 
         <Typography variant="h6" sx={{ mt: 0, mb: 1 }}>
@@ -115,6 +133,9 @@ export function ClientCreateCoachingPlansStep() {
             <Table size="small">
               <TableHead>
                 <TableRow>
+                  <TableCell padding="checkbox" width={52}>
+                    {t("clients.wizard.assignColumn")}
+                  </TableCell>
                   <TableCell>{t("trainingPlans.list.name")}</TableCell>
                   <TableCell>{t("trainingPlans.list.description")}</TableCell>
                   <TableCell width={140}>{t("trainingPlans.list.venue")}</TableCell>
@@ -126,25 +147,42 @@ export function ClientCreateCoachingPlansStep() {
               <TableBody>
                 {trainingPlansLoading ? (
                   <TableRow>
-                    <TableCell colSpan={4}>{t("common.loading", { defaultValue: "…" })}</TableCell>
+                    <TableCell colSpan={5}>{t("common.loading", { defaultValue: "…" })}</TableCell>
                   </TableRow>
                 ) : tpSlice.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={4}>{tpEmpty}</TableCell>
+                    <TableCell colSpan={5}>{tpEmpty}</TableCell>
                   </TableRow>
                 ) : (
-                  tpSlice.map((r) => (
-                    <TableRow key={String(r.id)}>
-                      <TableCell>{String(r.name ?? "")}</TableCell>
-                      <TableCell sx={{ maxWidth: 280 }}>{String(r.description ?? "")}</TableCell>
-                      <TableCell>{t(`workouts.venue.${String(r.venue_type ?? "mixed")}`)}</TableCell>
-                      <TableCell align="center">
-                        <Button component={Link} to={`/training-plans/edit/${r.id}`} size="small">
-                          {t("actions.edit")}
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
+                  tpSlice.map((r) => {
+                    const id = Number(r.id);
+                    return (
+                      <TableRow key={String(r.id)} hover selected={selectedTrainingPlanId === id}>
+                        <TableCell padding="checkbox">
+                          <Radio
+                            size="small"
+                            checked={selectedTrainingPlanId === id}
+                            onChange={() =>
+                              onSelectTrainingPlan(selectedTrainingPlanId === id ? null : id)
+                            }
+                            inputProps={{
+                              "aria-label": t("clients.wizard.assignWorkoutAria", {
+                                name: String(r.name ?? ""),
+                              }),
+                            }}
+                          />
+                        </TableCell>
+                        <TableCell>{String(r.name ?? "")}</TableCell>
+                        <TableCell sx={{ maxWidth: 280 }}>{String(r.description ?? "")}</TableCell>
+                        <TableCell>{t(`workouts.venue.${String(r.venue_type ?? "mixed")}`)}</TableCell>
+                        <TableCell align="center">
+                          <Button component={Link} to={`/training-plans/edit/${r.id}`} size="small">
+                            {t("actions.edit")}
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
                 )}
               </TableBody>
             </Table>
@@ -195,6 +233,9 @@ export function ClientCreateCoachingPlansStep() {
             <Table size="small">
               <TableHead>
                 <TableRow>
+                  <TableCell padding="checkbox" width={52}>
+                    {t("clients.wizard.assignColumn")}
+                  </TableCell>
                   <TableCell>{t("nutritionTemplates.list.name")}</TableCell>
                   <TableCell width={88}>{t("nutritionTemplates.list.meals")}</TableCell>
                   <TableCell width={100} align="center">
@@ -205,24 +246,41 @@ export function ClientCreateCoachingPlansStep() {
               <TableBody>
                 {nutritionTemplatesLoading ? (
                   <TableRow>
-                    <TableCell colSpan={3}>{t("common.loading", { defaultValue: "…" })}</TableCell>
+                    <TableCell colSpan={4}>{t("common.loading", { defaultValue: "…" })}</TableCell>
                   </TableRow>
                 ) : ntSlice.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={3}>{ntEmpty}</TableCell>
+                    <TableCell colSpan={4}>{ntEmpty}</TableCell>
                   </TableRow>
                 ) : (
-                  ntSlice.map((r) => (
-                    <TableRow key={String(r.id)}>
-                      <TableCell>{String(r.name ?? "")}</TableCell>
-                      <TableCell>{Number(r.meal_count ?? 0)}</TableCell>
-                      <TableCell align="center">
-                        <Button component={Link} to={`/nutrition-templates/edit/${r.id}`} size="small">
-                          {t("actions.edit")}
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
+                  ntSlice.map((r) => {
+                    const id = Number(r.id);
+                    return (
+                      <TableRow key={String(r.id)} hover selected={selectedNutritionTemplateId === id}>
+                        <TableCell padding="checkbox">
+                          <Radio
+                            size="small"
+                            checked={selectedNutritionTemplateId === id}
+                            onChange={() =>
+                              onSelectNutritionTemplate(selectedNutritionTemplateId === id ? null : id)
+                            }
+                            inputProps={{
+                              "aria-label": t("clients.wizard.assignNutritionAria", {
+                                name: String(r.name ?? ""),
+                              }),
+                            }}
+                          />
+                        </TableCell>
+                        <TableCell>{String(r.name ?? "")}</TableCell>
+                        <TableCell>{Number(r.meal_count ?? 0)}</TableCell>
+                        <TableCell align="center">
+                          <Button component={Link} to={`/nutrition-templates/edit/${r.id}`} size="small">
+                            {t("actions.edit")}
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
                 )}
               </TableBody>
             </Table>

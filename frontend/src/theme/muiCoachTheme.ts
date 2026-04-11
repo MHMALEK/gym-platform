@@ -23,11 +23,12 @@ export function buildCoachMuiTheme(
     palette: {
       mode,
       primary: { main: primary },
-      secondary: { main: mode === "dark" ? "#38bdf8" : "#0284c7" },
+      /** Warm contrast vs primary green — jersey / energy accent */
+      secondary: { main: mode === "dark" ? "#fb923c" : "#ea580c" },
       success: { main: mode === "dark" ? "#22c55e" : "#16a34a" },
       warning: { main: mode === "dark" ? "#f59e0b" : "#d97706" },
       error: { main: mode === "dark" ? "#f87171" : "#dc2626" },
-      info: { main: mode === "dark" ? "#38bdf8" : "#0284c7" },
+      info: { main: mode === "dark" ? "#38bdf8" : "#0369a1" },
       divider: mode === "dark" ? "rgba(148, 163, 184, 0.12)" : "rgba(15, 23, 42, 0.08)",
       text: {
         primary: brand.text,

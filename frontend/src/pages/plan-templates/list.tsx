@@ -1,11 +1,10 @@
-import {
-  CreateButton,
-  DeleteButton,
-  EditButton,
-  List,
-  useTable,
-} from "@refinedev/antd";
-import { Avatar, Space, Table, Typography } from "antd";
+import Avatar from "@mui/material/Avatar";
+import Box from "@mui/material/Box";
+import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
+import { DataGrid, type GridColDef } from "@mui/x-data-grid";
+import { type BaseRecord } from "@refinedev/core";
+import { CreateButton, DeleteButton, EditButton, List, useDataGrid } from "@refinedev/mui";
 import { useTranslation } from "react-i18next";
 
 import { formatMoney } from "../../lib/money";
@@ -25,73 +24,94 @@ type Pt = {
 export function PlanTemplateList() {
   const { t, i18n } = useTranslation();
   const loc = i18n.language;
-  const { tableProps } = useTable<Pt>({ resource: "plan-templates", syncWithLocation: true });
+  const { dataGridProps } = useDataGrid<Pt>({ resource: "plan-templates", syncWithLocation: true });
+
+  const columns: GridColDef<Pt>[] = [
+    {
+      field: "image_url",
+      headerName: "",
+      width: 56,
+      sortable: false,
+      filterable: false,
+      renderCell: ({ row }) => (
+        <Avatar src={row.image_url || undefined} sx={{ width: 40, height: 40, bgcolor: "action.disabledBackground" }}>
+          {(row.name || "?").slice(0, 1).toUpperCase()}
+        </Avatar>
+      ),
+    },
+    { field: "id", headerName: t("planTemplates.list.id"), width: 72 },
+    {
+      field: "code",
+      headerName: t("planTemplates.list.code"),
+      width: 120,
+      renderCell: ({ value }) => (value as string) || t("common.dash"),
+    },
+    { field: "name", headerName: t("planTemplates.list.name"), flex: 1, minWidth: 160 },
+    {
+      field: "duration_days",
+      headerName: t("planTemplates.list.duration"),
+      width: 100,
+      renderCell: ({ value }) => t("planTemplates.list.days", { n: value as number }),
+    },
+    {
+      field: "pricing",
+      headerName: t("planTemplates.list.pricing"),
+      width: 200,
+      sortable: false,
+      renderCell: ({ row }) => {
+        const cur = row.currency ?? "USD";
+        const disc = row.discount_price != null && row.discount_price !== "";
+        return (
+          <Stack spacing={0}>
+            {disc ? (
+              <>
+                <Typography variant="body2" color="text.secondary" sx={{ textDecoration: "line-through" }}>
+                  {formatMoney(row.price, cur, loc)}
+                </Typography>
+                <Typography variant="body2" fontWeight={600}>
+                  {formatMoney(row.discount_price, cur, loc)}
+                </Typography>
+              </>
+            ) : (
+              <Typography variant="body2">{formatMoney(row.price, cur, loc)}</Typography>
+            )}
+          </Stack>
+        );
+      },
+    },
+    {
+      field: "is_active",
+      headerName: t("planTemplates.list.active"),
+      width: 88,
+      renderCell: ({ value }) => ((value as boolean) ? t("planTemplates.list.yes") : t("planTemplates.list.no")),
+    },
+    {
+      field: "actions",
+      headerName: t("planTemplates.list.actions"),
+      width: 100,
+      sortable: false,
+      filterable: false,
+      renderCell: ({ row }) => (
+        <Stack direction="row" spacing={0.5}>
+          <EditButton hideText size="small" recordItemId={row.id} />
+          <DeleteButton hideText size="small" recordItemId={row.id} />
+        </Stack>
+      ),
+    },
+  ];
 
   return (
     <List headerButtons={<CreateButton />}>
-      <Table<Pt> {...tableProps} rowKey="id" scroll={{ x: 960 }}>
-        <Table.Column<Pt>
-          title=""
-          width={56}
-          render={(_, r) => (
-            <Avatar src={r.image_url || undefined} size={40} style={{ backgroundColor: "#d9d9d9" }}>
-              {(r.name || "?").slice(0, 1).toUpperCase()}
-            </Avatar>
-          )}
+      <Box sx={{ width: "100%" }}>
+        <DataGrid
+          {...dataGridProps}
+          columns={columns as GridColDef<BaseRecord>[]}
+          getRowId={(r) => (r as Pt).id}
+          autoHeight
+          pageSizeOptions={[10, 25, 50]}
+          disableRowSelectionOnClick
         />
-        <Table.Column<Pt> dataIndex="id" title={t("planTemplates.list.id")} width={72} />
-        <Table.Column<Pt>
-          dataIndex="code"
-          title={t("planTemplates.list.code")}
-          render={(c) => c || t("common.dash")}
-          width={120}
-        />
-        <Table.Column<Pt> dataIndex="name" title={t("planTemplates.list.name")} ellipsis />
-        <Table.Column<Pt>
-          dataIndex="duration_days"
-          title={t("planTemplates.list.duration")}
-          width={100}
-          render={(d) => t("planTemplates.list.days", { n: d })}
-        />
-        <Table.Column<Pt>
-          title={t("planTemplates.list.pricing")}
-          width={200}
-          render={(_, r) => {
-            const cur = r.currency ?? "USD";
-            const disc = r.discount_price != null && r.discount_price !== "";
-            return (
-              <Space direction="vertical" size={0}>
-                {disc ? (
-                  <>
-                    <Typography.Text delete type="secondary">
-                      {formatMoney(r.price, cur, loc)}
-                    </Typography.Text>
-                    <Typography.Text strong>{formatMoney(r.discount_price, cur, loc)}</Typography.Text>
-                  </>
-                ) : (
-                  <Typography.Text>{formatMoney(r.price, cur, loc)}</Typography.Text>
-                )}
-              </Space>
-            );
-          }}
-        />
-        <Table.Column<Pt>
-          dataIndex="is_active"
-          title={t("planTemplates.list.active")}
-          width={88}
-          render={(v) => (v ? t("planTemplates.list.yes") : t("planTemplates.list.no"))}
-        />
-        <Table.Column<Pt>
-          title={t("planTemplates.list.actions")}
-          width={100}
-          render={(_, record) => (
-            <Space>
-              <EditButton hideText size="small" recordItemId={record.id} />
-              <DeleteButton hideText size="small" recordItemId={record.id} />
-            </Space>
-          )}
-        />
-      </Table>
+      </Box>
     </List>
   );
 }

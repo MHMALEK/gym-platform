@@ -1,10 +1,16 @@
-import { PlusOutlined } from "@ant-design/icons";
-import { Edit, useForm } from "@refinedev/antd";
-import { Button, Form, Space, Spin } from "antd";
-import { useMemo } from "react";
+import AddIcon from "@mui/icons-material/Add";
+import GroupAddIcon from "@mui/icons-material/GroupAdd";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import CircularProgress from "@mui/material/CircularProgress";
+import Stack from "@mui/material/Stack";
+import { Edit } from "@refinedev/mui";
+import { useForm } from "@refinedev/react-hook-form";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
+import { AssignPlanToClientsDialog } from "../../components/AssignPlanToClientsDialog";
 import { WorkoutItemsEditor, workoutLinesFromApiItems } from "../../components/WorkoutItemsEditor";
 import { TrainingPlanOverviewCard, TrainingPlanWorkoutRichField } from "./TrainingPlanSharedFields";
 
@@ -25,14 +31,26 @@ type Item = {
 
 type PlanRecord = {
   id?: number;
+  name?: string;
   venue_type?: string;
   workout_rich_html?: string | null;
   items?: Item[];
 };
 
+type FormValues = {
+  name: string;
+  description?: string;
+  venue_type: string;
+  workout_rich_html: string;
+};
+
 export function TrainingPlanEdit() {
   const { t } = useTranslation();
-  const { formProps, saveButtonProps, query, form } = useForm({ resource: "training-plans" });
+  const [assignOpen, setAssignOpen] = useState(false);
+  const { control, saveButtonProps, watch, refineCore } = useForm<FormValues>({
+    refineCoreProps: { resource: "training-plans" },
+  });
+  const query = refineCore.query;
   const record = query?.data?.data as PlanRecord | undefined;
 
   const initialLines = useMemo(
@@ -40,7 +58,7 @@ export function TrainingPlanEdit() {
     [record?.items],
   );
 
-  const venueLive = Form.useWatch("venue_type", form) ?? record?.venue_type ?? "mixed";
+  const venueLive = watch("venue_type") ?? record?.venue_type ?? "mixed";
 
   return (
     <Edit
@@ -48,28 +66,35 @@ export function TrainingPlanEdit() {
       headerButtons={({ defaultButtons }) => (
         <>
           {defaultButtons}
-          <Space wrap size="small">
-            <Link to="/training-plans/create">
-              <Button type="default" icon={<PlusOutlined />} size="middle">
-                {t("common.quickLinks.newWorkout")}
-              </Button>
-            </Link>
-            <Link to="/exercises/create">
-              <Button type="default" size="middle">
-                {t("common.quickLinks.newExercise")}
-              </Button>
-            </Link>
-          </Space>
+          <Stack direction="row" flexWrap="wrap" gap={1}>
+            <Button
+              variant="outlined"
+              size="medium"
+              startIcon={<GroupAddIcon />}
+              disabled={record?.id == null}
+              onClick={() => setAssignOpen(true)}
+            >
+              {t("assignPlanToClients.assignToClientsButton")}
+            </Button>
+            <Button component={Link} to="/training-plans/create" variant="outlined" size="medium" startIcon={<AddIcon />}>
+              {t("common.quickLinks.newWorkout")}
+            </Button>
+            <Button component={Link} to="/exercises/create" variant="outlined" size="medium">
+              {t("common.quickLinks.newExercise")}
+            </Button>
+          </Stack>
         </>
       )}
     >
-      <Form {...formProps} form={form} layout="vertical">
-        <TrainingPlanOverviewCard variant="edit" />
-        <TrainingPlanWorkoutRichField />
-      </Form>
+      <Box component="form" sx={{ maxWidth: 960 }}>
+        <TrainingPlanOverviewCard control={control} variant="edit" />
+        <TrainingPlanWorkoutRichField control={control} />
+      </Box>
 
       {query?.isLoading ? (
-        <Spin style={{ marginTop: 24 }} />
+        <Box sx={{ mt: 3, display: "flex", justifyContent: "center" }}>
+          <CircularProgress />
+        </Box>
       ) : record?.id ? (
         <WorkoutItemsEditor
           mode="training-plan"
@@ -79,6 +104,13 @@ export function TrainingPlanEdit() {
           showSaveButton
         />
       ) : null}
+      <AssignPlanToClientsDialog
+        open={assignOpen}
+        onClose={() => setAssignOpen(false)}
+        mode="training"
+        resourceId={record?.id ?? 0}
+        resourceName={record?.name}
+      />
     </Edit>
   );
 }

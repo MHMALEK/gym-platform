@@ -1,27 +1,35 @@
+import EventAvailableOutlinedIcon from "@mui/icons-material/EventAvailableOutlined";
+import Avatar from "@mui/material/Avatar";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Card from "@mui/material/Card";
+import CardContent from "@mui/material/CardContent";
+import CardHeader from "@mui/material/CardHeader";
+import Chip from "@mui/material/Chip";
+import Dialog from "@mui/material/Dialog";
+import DialogActions from "@mui/material/DialogActions";
+import DialogContent from "@mui/material/DialogContent";
+import DialogTitle from "@mui/material/DialogTitle";
+import FormControlLabel from "@mui/material/FormControlLabel";
+import Grid from "@mui/material/Grid2";
+import InputLabel from "@mui/material/InputLabel";
+import MenuItem from "@mui/material/MenuItem";
+import FormControl from "@mui/material/FormControl";
+import Select from "@mui/material/Select";
+import Skeleton from "@mui/material/Skeleton";
+import Stack from "@mui/material/Stack";
+import Switch from "@mui/material/Switch";
+import TextField from "@mui/material/TextField";
+import Typography from "@mui/material/Typography";
+import { DateTimePicker } from "@mui/x-date-pickers/DateTimePicker";
 import { useInvalidate } from "@refinedev/core";
-import {
-  Avatar,
-  Button,
-  Card,
-  Col,
-  DatePicker,
-  Form,
-  Input,
-  Modal,
-  Row,
-  Select,
-  Space,
-  Skeleton,
-  Switch,
-  Tag,
-  Typography,
-  message,
-} from "antd";
-import dayjs from "dayjs";
+import dayjs, { type Dayjs } from "dayjs";
 import { Link } from "react-router-dom";
 import { useCallback, useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 
+import { useAppMessage } from "../../lib/useAppMessage";
 import { apiPrefix, authBearerHeaders, authHeaders } from "../../lib/api";
 import { formatMoney } from "../../lib/money";
 
@@ -49,23 +57,54 @@ type Sub = {
 type Props = {
   clientId: number;
   allowMutation: boolean;
-  /** When the panel sits inside a parent Card, hide the duplicate section title. */
   compactHeader?: boolean;
-  /** Two titled cards: current memberships vs assign form (e.g. Quick desk). */
   splitLayout?: boolean;
+};
+
+type AssignFormValues = {
+  plan_template_id: number | "";
+  starts_at: Dayjs | null;
+  ends_at: Dayjs | null;
+  auto_end: boolean;
+  notes: string;
+};
+
+type EditFormValues = {
+  starts_at: Dayjs | null;
+  ends_at: Dayjs | null;
+  notes: string;
 };
 
 export function ClientSubscriptionsPanel({ clientId, allowMutation, compactHeader, splitLayout }: Props) {
   const { t, i18n } = useTranslation();
+  const message = useAppMessage();
   const invalidate = useInvalidate();
   const [subs, setSubs] = useState<Sub[]>([]);
   const [loadingSubs, setLoadingSubs] = useState(false);
   const [templates, setTemplates] = useState<PlanTemplate[]>([]);
-  const [assignForm] = Form.useForm();
-  const [editForm] = Form.useForm();
   const [editOpen, setEditOpen] = useState(false);
   const [editing, setEditing] = useState<Sub | null>(null);
   const loc = i18n.language;
+
+  const assignForm = useForm<AssignFormValues>({
+    defaultValues: {
+      plan_template_id: "",
+      starts_at: null,
+      ends_at: null,
+      auto_end: true,
+      notes: "",
+    },
+  });
+
+  const editForm = useForm<EditFormValues>({
+    defaultValues: { starts_at: null, ends_at: null, notes: "" },
+  });
+
+  const { watch: watchAssign, handleSubmit: submitAssign, reset: resetAssign, setValue: setAssignValue, getValues: getAssignValues } =
+    assignForm;
+  const selectedTplId = watchAssign("plan_template_id");
+  const startsWatch = watchAssign("starts_at");
+  const autoEnd = watchAssign("auto_end");
 
   const formatDt = useCallback(
     (iso: string | null | undefined) => {
@@ -83,6 +122,7 @@ export function ClientSubscriptionsPanel({ clientId, allowMutation, compactHeade
     });
   }, [invalidate, clientId]);
 
+  /** Only `clientId` — do not list `message` / `t` (identity can churn → `useEffect([loadSubs])` loops). */
   const loadSubs = useCallback(() => {
     setLoadingSubs(true);
     void (async () => {
@@ -108,7 +148,8 @@ export function ClientSubscriptionsPanel({ clientId, allowMutation, compactHeade
         setLoadingSubs(false);
       }
     })();
-  }, [clientId, t]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- message/t omitted to avoid refetch loops
+  }, [clientId]);
 
   useEffect(() => {
     loadSubs();
@@ -116,28 +157,39 @@ export function ClientSubscriptionsPanel({ clientId, allowMutation, compactHeade
 
   useEffect(() => {
     if (!allowMutation) return;
-    void fetch(`${apiPrefix}/plan-templates?limit=100&offset=0`, { headers: authHeaders() })
-      .then((r) => r.json())
-      .then((j) => setTemplates((j.items ?? []) as PlanTemplate[]));
+    void (async () => {
+      try {
+        const r = await fetch(`${apiPrefix}/plan-templates?limit=100&offset=0`, { headers: authHeaders() });
+        const j = (await r.json()) as { items?: PlanTemplate[]; detail?: unknown };
+        if (!r.ok) {
+          const detail =
+            typeof j.detail === "string"
+              ? j.detail
+              : Array.isArray(j.detail)
+                ? JSON.stringify(j.detail)
+                : r.statusText;
+          message.error(detail || t("memberships.panel.loadTemplatesError"));
+          setTemplates([]);
+          return;
+        }
+        setTemplates((j.items ?? []) as PlanTemplate[]);
+      } catch {
+        message.error(t("memberships.panel.loadTemplatesError"));
+        setTemplates([]);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- message/t would retrigger fetch every render
   }, [allowMutation]);
-
-  const selectedTplId = Form.useWatch("plan_template_id", assignForm);
-  const startsWatch = Form.useWatch("starts_at", assignForm);
-  const autoEnd = Form.useWatch("auto_end", assignForm);
 
   const selectedTpl = templates.find((x) => x.id === selectedTplId);
 
-  const assignSubscription = async (values: {
-    plan_template_id: number;
-    starts_at: dayjs.Dayjs;
-    ends_at?: dayjs.Dayjs | null;
-    auto_end?: boolean;
-    notes?: string;
-  }) => {
+  const assignSubscription = async (values: AssignFormValues) => {
+    if (values.plan_template_id === "") return;
+    if (!values.starts_at) return;
     const useDefaultEnd = values.auto_end !== false;
     const body = {
       plan_template_id: values.plan_template_id,
-      starts_at: values.starts_at.toISOString(),
+      starts_at: values.starts_at!.toISOString(),
       ends_at: useDefaultEnd ? null : values.ends_at ? values.ends_at.toISOString() : null,
       notes: values.notes?.trim() || null,
     };
@@ -151,68 +203,60 @@ export function ClientSubscriptionsPanel({ clientId, allowMutation, compactHeade
       return;
     }
     message.success(t("memberships.panel.assigned"));
-    assignForm.resetFields();
-    assignForm.setFieldsValue({ auto_end: true });
+    resetAssign({ plan_template_id: "", starts_at: null, ends_at: null, auto_end: true, notes: "" });
     loadSubs();
     refreshClientCaches();
   };
 
   const applyDurationEnd = () => {
-    const start = assignForm.getFieldValue("starts_at") as dayjs.Dayjs | undefined;
-    const tid = assignForm.getFieldValue("plan_template_id") as number | undefined;
+    const start = getAssignValues("starts_at") as Dayjs | null | undefined;
+    const tid = getAssignValues("plan_template_id");
     const tpl = templates.find((x) => x.id === tid);
     if (!start || !tpl?.duration_days) {
       message.warning(t("memberships.panel.pickPlanFirst"));
       return;
     }
-    assignForm.setFieldsValue({
-      ends_at: start.add(tpl.duration_days, "day"),
-      auto_end: false,
-    });
+    setAssignValue("ends_at", start.add(tpl.duration_days, "day"));
+    setAssignValue("auto_end", false);
   };
 
   const openEdit = (row: Sub) => {
     setEditing(row);
-    editForm.setFieldsValue({
-      starts_at: row.starts_at ? dayjs(row.starts_at) : undefined,
-      ends_at: row.ends_at ? dayjs(row.ends_at) : undefined,
+    editForm.reset({
+      starts_at: row.starts_at ? dayjs(row.starts_at) : null,
+      ends_at: row.ends_at ? dayjs(row.ends_at) : null,
       notes: row.notes ?? "",
     });
     setEditOpen(true);
   };
 
-  const saveEdit = async () => {
+  const saveEdit = editForm.handleSubmit(async (v) => {
     if (!editing) return;
-    try {
-      const v = await editForm.validateFields();
-      const res = await fetch(`${apiPrefix}/clients/${clientId}/subscriptions/${editing.id}`, {
-        method: "PATCH",
-        headers: authHeaders(),
-        body: JSON.stringify({
-          starts_at: (v.starts_at as dayjs.Dayjs).toISOString(),
-          ends_at: v.ends_at ? (v.ends_at as dayjs.Dayjs).toISOString() : null,
-          notes: typeof v.notes === "string" && v.notes.trim() ? v.notes.trim() : null,
-        }),
-      });
-      if (!res.ok) {
-        message.error(await res.text());
-        return;
-      }
-      message.success(t("memberships.panel.subscriptionUpdated"));
-      setEditOpen(false);
-      setEditing(null);
-      loadSubs();
-      refreshClientCaches();
-    } catch {
-      /* validation */
+    const res = await fetch(`${apiPrefix}/clients/${clientId}/subscriptions/${editing.id}`, {
+      method: "PATCH",
+      headers: authHeaders(),
+      body: JSON.stringify({
+        starts_at: v.starts_at!.toISOString(),
+        ends_at: v.ends_at ? v.ends_at.toISOString() : null,
+        notes: typeof v.notes === "string" && v.notes.trim() ? v.notes.trim() : null,
+      }),
+    });
+    if (!res.ok) {
+      message.error(await res.text());
+      return;
     }
-  };
+    message.success(t("memberships.panel.subscriptionUpdated"));
+    setEditOpen(false);
+    setEditing(null);
+    loadSubs();
+    refreshClientCaches();
+  });
 
-  const subStatusColor = (s: string) => {
+  const subStatusColor = (s: string): "success" | "default" | "warning" | "info" => {
     if (s === "active") return "success";
     if (s === "cancelled" || s === "canceled") return "default";
     if (s === "expired") return "warning";
-    return "processing";
+    return "info";
   };
 
   const renderPlanBlock = (r: Sub) => {
@@ -220,208 +264,241 @@ export function ClientSubscriptionsPanel({ clientId, allowMutation, compactHeade
     const cur = pt?.currency ?? "USD";
     const showDisc = pt?.discount_price != null && pt.discount_price !== "";
     return (
-      <Space align="start" size={12}>
-        <Avatar src={pt?.image_url || undefined} size={44} style={{ flexShrink: 0 }}>
+      <Stack direction="row" spacing={1.5} alignItems="flex-start">
+        <Avatar src={pt?.image_url || undefined} sx={{ width: 44, height: 44, flexShrink: 0 }}>
           {(pt?.name || "?").slice(0, 1).toUpperCase()}
         </Avatar>
-        <Space direction="vertical" size={2}>
-          <Typography.Text strong style={{ fontSize: 15 }}>
+        <Stack spacing={0.25}>
+          <Typography fontWeight={600} fontSize={15}>
             {pt?.name ?? t("common.dash")}
-          </Typography.Text>
-          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
             {t("memberships.panel.planId")} {r.plan_template_id}
             {pt?.code ? ` · ${pt.code}` : ""}
-          </Typography.Text>
+          </Typography>
           {pt ? (
-            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+            <Typography variant="caption" color="text.secondary">
               {showDisc ? (
-                <Space size={4}>
-                  <span style={{ textDecoration: "line-through" }}>{formatMoney(pt.price, cur, loc)}</span>
+                <Stack direction="row" spacing={0.5} component="span" alignItems="center">
+                  <Box component="span" sx={{ textDecoration: "line-through" }}>
+                    {formatMoney(pt.price, cur, loc)}
+                  </Box>
                   <span>{formatMoney(pt.discount_price, cur, loc)}</span>
-                </Space>
+                </Stack>
               ) : (
                 formatMoney(pt.price, cur, loc)
               )}
-            </Typography.Text>
+            </Typography>
           ) : null}
-        </Space>
-      </Space>
+        </Stack>
+      </Stack>
     );
   };
+
+  const emptySubscriptions = (
+    <Box
+      sx={{
+        py: 3.5,
+        px: 2,
+        textAlign: "center",
+        border: "1px dashed",
+        borderColor: "divider",
+        borderRadius: 2,
+        bgcolor: (theme) =>
+          theme.palette.mode === "dark" ? "rgba(255,255,255,0.04)" : "rgba(15, 23, 42, 0.04)",
+      }}
+    >
+      <EventAvailableOutlinedIcon sx={{ fontSize: 40, color: "text.secondary", mb: 1, opacity: 0.85 }} />
+      <Typography variant="subtitle2" component="p" sx={{ mb: 0.5 }}>
+        {t("memberships.panel.emptyStateTitle")}
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 420, mx: "auto", lineHeight: 1.5 }}>
+        {t("memberships.panel.emptyStateHint")}
+      </Typography>
+    </Box>
+  );
 
   const summaryBlock = (
     <>
       {loadingSubs ? (
-        <Skeleton active paragraph={{ rows: 3 }} />
+        <Skeleton variant="rounded" height={100} sx={{ borderRadius: 2 }} />
       ) : subs.length === 0 ? (
-        <Typography.Paragraph type="secondary" style={{ marginBottom: splitLayout ? 0 : 16 }}>
-          {t("memberships.panel.noSubscriptionsYet")}
-        </Typography.Paragraph>
+        emptySubscriptions
       ) : (
-        <Space direction="vertical" size="middle" style={{ width: "100%", marginBottom: splitLayout ? 0 : 8 }}>
+        <Stack spacing={2} sx={{ width: "100%", mb: splitLayout ? 0 : 1 }}>
           {subs.map((r) => (
-            <Card key={r.id} size="small" styles={{ body: { padding: "14px 16px" } }}>
-              <Row gutter={[16, 12]} align="top">
-                <Col xs={24} lg={10}>
-                  {renderPlanBlock(r)}
-                </Col>
-                <Col xs={12} sm={12} lg={6}>
-                  <Typography.Text type="secondary" style={{ fontSize: 12, display: "block" }}>
-                    {t("memberships.panel.starts")}
-                  </Typography.Text>
-                  <Typography.Text>{formatDt(r.starts_at)}</Typography.Text>
-                </Col>
-                <Col xs={12} sm={12} lg={6}>
-                  <Typography.Text type="secondary" style={{ fontSize: 12, display: "block" }}>
-                    {t("memberships.panel.ends")}
-                  </Typography.Text>
-                  <Typography.Text>{formatDt(r.ends_at)}</Typography.Text>
-                </Col>
-                <Col xs={24} lg={2} style={{ textAlign: "end" }}>
-                  <Tag color={subStatusColor(r.status)}>{r.status}</Tag>
-                </Col>
-                {allowMutation ? (
-                  <Col
-                    xs={24}
-                    style={{
-                      borderTop: "1px solid rgba(148, 163, 184, 0.12)",
-                      paddingTop: 12,
-                      marginTop: 4,
-                    }}
-                  >
-                    <Space wrap>
-                      <Button size="small" type="primary" ghost onClick={() => openEdit(r)}>
-                        {t("memberships.panel.editDates")}
-                      </Button>
-                      <Button
-                        size="small"
-                        onClick={async () => {
-                          const ends = dayjs(r.ends_at ?? undefined).add(30, "day");
-                          const res = await fetch(`${apiPrefix}/clients/${clientId}/subscriptions/${r.id}`, {
-                            method: "PATCH",
-                            headers: authHeaders(),
-                            body: JSON.stringify({ ends_at: ends.toISOString() }),
-                          });
-                          if (res.ok) {
-                            message.success(t("memberships.panel.extended"));
-                            loadSubs();
-                            refreshClientCaches();
-                          } else message.error(await res.text());
-                        }}
-                      >
-                        {t("memberships.panel.extend30")}
-                      </Button>
-                    </Space>
-                  </Col>
-                ) : null}
-              </Row>
+            <Card key={r.id} variant="outlined">
+              <CardContent sx={{ py: 1.75, px: 2 }}>
+                <Grid container spacing={2} alignItems="flex-start">
+                  <Grid size={{ xs: 12, lg: 10 }}>{renderPlanBlock(r)}</Grid>
+                  <Grid size={{ xs: 12, sm: 12, lg: 6 }}>
+                    <Typography variant="caption" color="text.secondary" display="block">
+                      {t("memberships.panel.starts")}
+                    </Typography>
+                    <Typography variant="body2">{formatDt(r.starts_at)}</Typography>
+                  </Grid>
+                  <Grid size={{ xs: 12, sm: 12, lg: 6 }}>
+                    <Typography variant="caption" color="text.secondary" display="block">
+                      {t("memberships.panel.ends")}
+                    </Typography>
+                    <Typography variant="body2">{formatDt(r.ends_at)}</Typography>
+                  </Grid>
+                  <Grid size={{ xs: 12, lg: 2 }} sx={{ textAlign: { lg: "end" } }}>
+                    <Chip size="small" label={r.status} color={subStatusColor(r.status)} variant="outlined" />
+                  </Grid>
+                  {allowMutation ? (
+                    <Grid size={{ xs: 12 }} sx={{ borderTop: 1, borderColor: "divider", pt: 1.5, mt: 0.5 }}>
+                      <Stack direction="row" flexWrap="wrap" gap={1}>
+                        <Button size="small" variant="outlined" onClick={() => openEdit(r)}>
+                          {t("memberships.panel.editDates")}
+                        </Button>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          onClick={async () => {
+                            const ends = dayjs(r.ends_at ?? undefined).add(30, "day");
+                            const res = await fetch(`${apiPrefix}/clients/${clientId}/subscriptions/${r.id}`, {
+                              method: "PATCH",
+                              headers: authHeaders(),
+                              body: JSON.stringify({ ends_at: ends.toISOString() }),
+                            });
+                            if (res.ok) {
+                              message.success(t("memberships.panel.extended"));
+                              loadSubs();
+                              refreshClientCaches();
+                            } else message.error(await res.text());
+                          }}
+                        >
+                          {t("memberships.panel.extend30")}
+                        </Button>
+                      </Stack>
+                    </Grid>
+                  ) : null}
+                </Grid>
+              </CardContent>
             </Card>
           ))}
-        </Space>
+        </Stack>
       )}
     </>
   );
 
   const assignCard = (
-    <Card
-      size="small"
-      title={t("memberships.panel.assignTitle")}
-      style={splitLayout ? undefined : { marginTop: 16 }}
-      styles={{ body: { paddingBottom: 16 } }}
-    >
-      <Form
-        form={assignForm}
-        layout="vertical"
-        onFinish={assignSubscription}
-        style={{ maxWidth: 480 }}
-        initialValues={{ auto_end: true }}
-      >
-        <Form.Item name="plan_template_id" label={t("memberships.panel.planField")} rules={[{ required: true }]}>
-          <Select
-            showSearch
-            placeholder={t("memberships.panel.planPh")}
-            filterOption={(input, option) => {
-              const id = option?.value as number | undefined;
-              const tpl = templates.find((x) => x.id === id);
-              if (!tpl) return false;
-              const q = input.toLowerCase();
-              return (
-                tpl.name.toLowerCase().includes(q) ||
-                String(tpl.id).includes(q) ||
-                (tpl.code?.toLowerCase().includes(q) ?? false)
-              );
-            }}
-            options={templates.map((tpl) => ({
-              value: tpl.id,
-              label: `${tpl.name} (#${tpl.id})${tpl.code ? ` · ${tpl.code}` : ""}`,
-            }))}
+    <Card variant="outlined" sx={splitLayout ? { borderColor: "divider" } : { mt: 2 }}>
+      <CardHeader
+        title={t("memberships.panel.assignTitle")}
+        subheader={t("memberships.panel.assignSubheader")}
+        subheaderTypographyProps={{ variant: "body2", color: "text.secondary" }}
+      />
+      <CardContent sx={{ pb: 2, pt: splitLayout ? 0 : undefined }}>
+        <Box component="form" onSubmit={submitAssign(assignSubscription)} sx={{ maxWidth: 560 }}>
+          <FormControl fullWidth margin="normal" required>
+            <InputLabel id="sub-plan-label">{t("memberships.panel.planField")}</InputLabel>
+            <Select
+              labelId="sub-plan-label"
+              label={t("memberships.panel.planField")}
+              value={selectedTplId === "" ? "" : selectedTplId}
+              onChange={(e) => {
+                const v = e.target.value;
+                setAssignValue("plan_template_id", v === "" ? "" : Number(v));
+              }}
+            >
+              <MenuItem value="">
+                <em>{t("memberships.panel.planPh")}</em>
+              </MenuItem>
+              {templates.map((tpl) => (
+                <MenuItem key={tpl.id} value={tpl.id}>
+                  {`${tpl.name} (#${tpl.id})${tpl.code ? ` · ${tpl.code}` : ""}`}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          {selectedTpl ? (
+            <Card variant="outlined" sx={{ mb: 2, mt: 1 }}>
+              <CardContent sx={{ py: 1.5 }}>
+                <Stack direction="row" spacing={1.5} alignItems="flex-start">
+                  <Avatar src={selectedTpl.image_url || undefined} sx={{ width: 48, height: 48 }}>
+                    {selectedTpl.name.slice(0, 1).toUpperCase()}
+                  </Avatar>
+                  <Box>
+                    <Typography fontWeight={600}>{selectedTpl.name}</Typography>
+                    <Typography variant="caption" color="text.secondary" display="block">
+                      {t("memberships.panel.templatePreview", {
+                        days: selectedTpl.duration_days,
+                        id: selectedTpl.id,
+                        codeSuffix: selectedTpl.code ? ` · ${selectedTpl.code}` : "",
+                      })}
+                    </Typography>
+                  </Box>
+                </Stack>
+              </CardContent>
+            </Card>
+          ) : null}
+
+          <DateTimePicker
+            label={t("memberships.panel.start")}
+            value={startsWatch}
+            onChange={(v) => setAssignValue("starts_at", v)}
+            slotProps={{ textField: { fullWidth: true, margin: "normal", required: true } }}
           />
-        </Form.Item>
 
-        {selectedTpl ? (
-          <Card size="small" style={{ marginBottom: 16 }} styles={{ body: { padding: 12 } }}>
-            <Space align="start">
-              <Avatar src={selectedTpl.image_url || undefined} size={48}>
-                {selectedTpl.name.slice(0, 1).toUpperCase()}
-              </Avatar>
-              <div>
-                <Typography.Text strong>{selectedTpl.name}</Typography.Text>
-                <div>
-                  <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                    {t("memberships.panel.templatePreview", {
-                      days: selectedTpl.duration_days,
-                      id: selectedTpl.id,
-                      codeSuffix: selectedTpl.code ? ` · ${selectedTpl.code}` : "",
-                    })}
-                  </Typography.Text>
-                </div>
-              </div>
-            </Space>
-          </Card>
-        ) : null}
-
-        <Form.Item name="starts_at" label={t("memberships.panel.start")} rules={[{ required: true }]}>
-          <DatePicker showTime style={{ width: "100%" }} />
-        </Form.Item>
-
-        <Form.Item
-          name="auto_end"
-          label={t("memberships.panel.endMode")}
-          valuePropName="checked"
-          extra={t("memberships.panel.endModeExtra")}
-        >
-          <Switch
-            checkedChildren={t("memberships.panel.usePlanDuration")}
-            unCheckedChildren={t("memberships.panel.customEnd")}
+          <FormControlLabel
+            sx={{ mt: 1, display: "flex", alignItems: "flex-start" }}
+            control={
+              <Switch
+                checked={autoEnd}
+                onChange={(_, v) => setAssignValue("auto_end", v)}
+              />
+            }
+            label={
+              <Box>
+                <Typography variant="body2">{t("memberships.panel.endMode")}</Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {t("memberships.panel.endModeExtra")}
+                </Typography>
+              </Box>
+            }
           />
-        </Form.Item>
 
-        {autoEnd === false ? (
-          <Form.Item name="ends_at" label={t("memberships.panel.customEndField")}>
-            <DatePicker showTime style={{ width: "100%" }} />
-          </Form.Item>
-        ) : null}
+          {autoEnd === false ? (
+            <DateTimePicker
+              label={t("memberships.panel.customEndField")}
+              value={watchAssign("ends_at")}
+              onChange={(v) => setAssignValue("ends_at", v)}
+              slotProps={{ textField: { fullWidth: true, margin: "normal" } }}
+            />
+          ) : null}
 
-        <Space wrap style={{ marginBottom: 16 }}>
-          <Button onClick={applyDurationEnd} disabled={!startsWatch || !selectedTpl}>
-            {t("memberships.panel.setEndButton", { days: selectedTpl?.duration_days ?? "…" })}
+          <Stack direction="row" flexWrap="wrap" gap={1} sx={{ mb: 2, mt: 1 }}>
+            <Button type="button" variant="outlined" onClick={applyDurationEnd} disabled={!startsWatch || !selectedTpl}>
+              {t("memberships.panel.setEndButton", { days: selectedTpl?.duration_days ?? "…" })}
+            </Button>
+          </Stack>
+
+          <TextField
+            label={t("memberships.panel.notes")}
+            fullWidth
+            margin="normal"
+            multiline
+            minRows={2}
+            placeholder={t("memberships.panel.notesPh")}
+            value={watchAssign("notes")}
+            onChange={(e) => setAssignValue("notes", e.target.value)}
+          />
+
+          <Button type="submit" variant="contained" sx={{ mt: 2 }}>
+            {t("memberships.panel.assign")}
           </Button>
-        </Space>
-
-        <Form.Item name="notes" label={t("memberships.panel.notes")}>
-          <Input.TextArea rows={2} placeholder={t("memberships.panel.notesPh")} />
-        </Form.Item>
-
-        <Button type="primary" htmlType="submit">
-          {t("memberships.panel.assign")}
-        </Button>
-      </Form>
+        </Box>
+      </CardContent>
     </Card>
   );
 
   const summarySection = splitLayout ? (
-    <Card size="small" title={t("memberships.panel.summarySectionTitle")} style={{ marginBottom: 0 }}>
-      {summaryBlock}
+    <Card variant="outlined" sx={{ mb: 0 }}>
+      <CardHeader title={t("memberships.panel.summarySectionTitle")} />
+      <CardContent>{summaryBlock}</CardContent>
     </Card>
   ) : (
     summaryBlock
@@ -429,44 +506,70 @@ export function ClientSubscriptionsPanel({ clientId, allowMutation, compactHeade
 
   return (
     <section id="client-financial-subscriptions">
-      {!compactHeader ? <Typography.Title level={5}>{t("memberships.panel.title")}</Typography.Title> : null}
+      {!compactHeader ? <Typography variant="h6">{t("memberships.panel.title")}</Typography> : null}
       {!allowMutation ? (
-        <Typography.Paragraph type="secondary" style={{ marginBottom: 12 }}>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
           {t("memberships.panel.readOnlyHint")}{" "}
           <Link to="/clients">{t("memberships.panel.readOnlyLink")}</Link>.
-        </Typography.Paragraph>
+        </Typography>
       ) : null}
 
-      <Space direction="vertical" size={splitLayout ? 16 : 0} style={{ width: "100%" }}>
+      <Stack spacing={splitLayout ? 2 : 0} sx={{ width: "100%" }}>
         {summarySection}
         {allowMutation ? (
           <>
             {assignCard}
-            <Modal
-              title={t("memberships.panel.modalTitle")}
+            <Dialog
               open={editOpen}
-              onCancel={() => {
+              onClose={() => {
                 setEditOpen(false);
                 setEditing(null);
               }}
-              onOk={saveEdit}
-              destroyOnClose
+              fullWidth
+              maxWidth="sm"
             >
-              <Form form={editForm} layout="vertical">
-                <Form.Item name="starts_at" label={t("memberships.panel.modalStarts")} rules={[{ required: true }]}>
-                  <DatePicker showTime style={{ width: "100%" }} />
-                </Form.Item>
-                <Form.Item name="ends_at" label={t("memberships.panel.modalEnds")}>
-                  <DatePicker showTime style={{ width: "100%" }} />
-                </Form.Item>
-                <Form.Item name="notes" label={t("memberships.panel.modalNotes")}>
-                  <Input.TextArea rows={2} />
-                </Form.Item>
-              </Form>
-            </Modal>
+              <DialogTitle>{t("memberships.panel.modalTitle")}</DialogTitle>
+              <DialogContent>
+                <Box component="form" id="edit-sub-form" sx={{ pt: 1 }}>
+                  <DateTimePicker
+                    label={t("memberships.panel.modalStarts")}
+                    value={editForm.watch("starts_at")}
+                    onChange={(v) => editForm.setValue("starts_at", v)}
+                    slotProps={{ textField: { fullWidth: true, margin: "normal", required: true } }}
+                  />
+                  <DateTimePicker
+                    label={t("memberships.panel.modalEnds")}
+                    value={editForm.watch("ends_at")}
+                    onChange={(v) => editForm.setValue("ends_at", v)}
+                    slotProps={{ textField: { fullWidth: true, margin: "normal" } }}
+                  />
+                  <TextField
+                    label={t("memberships.panel.modalNotes")}
+                    fullWidth
+                    margin="normal"
+                    multiline
+                    minRows={2}
+                    {...editForm.register("notes")}
+                  />
+                </Box>
+              </DialogContent>
+              <DialogActions>
+                <Button
+                  onClick={() => {
+                    setEditOpen(false);
+                    setEditing(null);
+                  }}
+                >
+                  {t("actions.cancel")}
+                </Button>
+                <Button variant="contained" onClick={() => void saveEdit()}>
+                  {t("actions.save")}
+                </Button>
+              </DialogActions>
+            </Dialog>
           </>
         ) : null}
-      </Space>
+      </Stack>
     </section>
   );
 }

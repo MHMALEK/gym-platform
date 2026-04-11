@@ -1,6 +1,16 @@
+import Box from "@mui/material/Box";
+import Card from "@mui/material/Card";
+import Chip from "@mui/material/Chip";
+import Stack from "@mui/material/Stack";
+import Table from "@mui/material/Table";
+import TableBody from "@mui/material/TableBody";
+import TableCell from "@mui/material/TableCell";
+import TableContainer from "@mui/material/TableContainer";
+import TableHead from "@mui/material/TableHead";
+import TableRow from "@mui/material/TableRow";
+import Typography from "@mui/material/Typography";
 import { useList } from "@refinedev/core";
 import type { BaseRecord } from "@refinedev/core";
-import { Card, Space, Table, Tag, Typography } from "antd";
 import dayjs from "dayjs";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
@@ -36,7 +46,6 @@ function lastInvoiceSummary(r: BaseRecord): LastInvoiceSummary | undefined {
   return (x.last_invoice_summary ?? x.lastInvoiceSummary) as LastInvoiceSummary | undefined;
 }
 
-/** Backend caps `limit` (e.g. le=200 on list endpoints). */
 const LIST_PAGE_SIZE = 200;
 
 function invoiceIsOverdue(inv: LastInvoiceSummary, today: dayjs.Dayjs): boolean {
@@ -49,10 +58,7 @@ function invoiceIsOverdue(inv: LastInvoiceSummary, today: dayjs.Dayjs): boolean 
 
 function sortTier(r: BaseRecord): number {
   const inv = lastInvoiceSummary(r);
-  if (
-    inv?.status === "overdue" ||
-    (inv?.status === "pending" && inv.due_date)
-  ) {
+  if (inv?.status === "overdue" || (inv?.status === "pending" && inv.due_date)) {
     return 0;
   }
   if (inv?.status === "pending") return 1;
@@ -73,9 +79,6 @@ function sortDateValue(r: BaseRecord): number {
   return Number.POSITIVE_INFINITY;
 }
 
-/**
- * Trainer home: roster at a glance — client status, last invoice, what is due next.
- */
 export function CoachDeskPage() {
   const { t, i18n } = useTranslation();
   const { data: clientsData, isLoading } = useList({
@@ -103,151 +106,167 @@ export function CoachDeskPage() {
   }
 
   return (
-    <div style={{ maxWidth: 1120, margin: "0 auto" }}>
-      <Space direction="vertical" size="middle" style={{ width: "100%" }}>
-        <div>
-          <Typography.Title level={3} style={{ marginBottom: 4 }}>
+    <Box sx={{ maxWidth: 1120, mx: "auto" }}>
+      <Stack spacing={2} sx={{ width: "100%" }}>
+        <Box>
+          <Typography variant="h5" sx={{ mb: 0.5 }}>
             {t("coachDesk.title")}
-          </Typography.Title>
-          <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
             {t("coachDesk.subtitle")}
-          </Typography.Paragraph>
-        </div>
+          </Typography>
+        </Box>
 
-        <Card size="small">
-          <Table<BaseRecord>
-            size="middle"
-            rowKey="id"
-            loading={isLoading}
-            pagination={false}
-            dataSource={sortedClients}
-            locale={{ emptyText: t("coachDesk.emptyRoster") }}
-            scroll={{ x: 720 }}
-            columns={[
-              {
-                title: t("clients.client"),
-                width: 220,
-                fixed: "left" as const,
-                render: (_, r) => (
-                  <Link to={`/clients/show/${r.id}`}>
-                    <Typography.Text strong>{String(r.name ?? "")}</Typography.Text>
-                  </Link>
-                ),
-              },
-              {
-                title: t("coachDesk.colStatus"),
-                width: 130,
-                render: (_, r) => {
-                  const st = String(r.status ?? "active");
-                  const roster =
-                    st === "inactive"
-                      ? t("clients.roster.inactive")
-                      : st === "archived"
-                        ? t("clients.roster.archived")
-                        : t("clients.roster.active");
-                  const color =
-                    st === "inactive" ? "orange" : st === "archived" ? "default" : "green";
-                  return <Tag color={color}>{roster}</Tag>;
-                },
-              },
-              {
-                title: t("coachDesk.colInvoice"),
-                width: 220,
-                render: (_, r) => {
-                  const inv = lastInvoiceSummary(r);
-                  if (!inv) {
-                    return <Typography.Text type="secondary">{t("clients.noInvoices")}</Typography.Text>;
-                  }
-                  const cur = inv.currency ?? "USD";
-                  const overdue = invoiceIsOverdue(inv, today);
-                  const tagColor = inv.is_paid
-                    ? "green"
-                    : overdue || inv.status === "overdue"
-                      ? "red"
-                      : inv.status === "pending"
-                        ? "gold"
-                        : "default";
-                  const label = inv.is_paid
-                    ? t("clients.paid")
-                    : overdue
-                      ? t("invoices.status.overdue")
-                      : invoiceStatusLabel(inv.status);
-                  return (
-                    <Space direction="vertical" size={2}>
-                      <Tag color={tagColor}>{label}</Tag>
-                      {inv.amount != null && inv.amount !== "" ? (
-                        <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                          {formatMoney(inv.amount, cur, loc)}
-                        </Typography.Text>
-                      ) : null}
-                    </Space>
-                  );
-                },
-              },
-              {
-                title: t("coachDesk.colDue"),
-                width: 200,
-                render: (_, r) => {
-                  const inv = lastInvoiceSummary(r);
-                  const ms = membershipSummary(r);
+        <Card variant="outlined">
+          <TableContainer sx={{ overflowX: "auto" }}>
+            <Table size="medium" stickyHeader>
+              <TableHead>
+                <TableRow>
+                  <TableCell sx={{ minWidth: 220 }}>{t("clients.client")}</TableCell>
+                  <TableCell sx={{ width: 130 }}>{t("coachDesk.colStatus")}</TableCell>
+                  <TableCell sx={{ minWidth: 220 }}>{t("coachDesk.colInvoice")}</TableCell>
+                  <TableCell sx={{ minWidth: 200 }}>{t("coachDesk.colDue")}</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={4}>
+                      <Typography variant="body2" color="text.secondary">
+                        …
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+                ) : sortedClients.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={4}>
+                      <Typography variant="body2" color="text.secondary">
+                        {t("coachDesk.emptyRoster")}
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  sortedClients.map((r) => (
+                    <TableRow key={String(r.id)} hover>
+                      <TableCell>
+                        <Link to={`/clients/show/${r.id}`}>
+                          <Typography fontWeight={600}>{String(r.name ?? "")}</Typography>
+                        </Link>
+                      </TableCell>
+                      <TableCell>
+                        {(() => {
+                          const st = String(r.status ?? "active");
+                          const roster =
+                            st === "inactive"
+                              ? t("clients.roster.inactive")
+                              : st === "archived"
+                                ? t("clients.roster.archived")
+                                : t("clients.roster.active");
+                          const color =
+                            st === "inactive" ? "warning" : st === "archived" ? "default" : "success";
+                          return <Chip size="small" label={roster} color={color as "default" | "success" | "warning"} variant="outlined" />;
+                        })()}
+                      </TableCell>
+                      <TableCell>
+                        {(() => {
+                          const inv = lastInvoiceSummary(r);
+                          if (!inv) {
+                            return (
+                              <Typography variant="body2" color="text.secondary">
+                                {t("clients.noInvoices")}
+                              </Typography>
+                            );
+                          }
+                          const cur = inv.currency ?? "USD";
+                          const overdue = invoiceIsOverdue(inv, today);
+                          const tagColor = inv.is_paid
+                            ? "success"
+                            : overdue || inv.status === "overdue"
+                              ? "error"
+                              : inv.status === "pending"
+                                ? "warning"
+                                : "default";
+                          const label = inv.is_paid
+                            ? t("clients.paid")
+                            : overdue
+                              ? t("invoices.status.overdue")
+                              : invoiceStatusLabel(inv.status);
+                          return (
+                            <Stack spacing={0.5}>
+                              <Chip size="small" label={label} color={tagColor as "default" | "success" | "error" | "warning"} />
+                              {inv.amount != null && inv.amount !== "" ? (
+                                <Typography variant="caption" color="text.secondary">
+                                  {formatMoney(inv.amount, cur, loc)}
+                                </Typography>
+                              ) : null}
+                            </Stack>
+                          );
+                        })()}
+                      </TableCell>
+                      <TableCell>
+                        {(() => {
+                          const inv = lastInvoiceSummary(r);
+                          const ms = membershipSummary(r);
 
-                  if (
-                    inv &&
-                    (inv.status === "pending" || inv.status === "overdue") &&
-                    inv.due_date
-                  ) {
-                    const d = dayjs(inv.due_date).startOf("day");
-                    const overdue = invoiceIsOverdue(inv, today);
-                    return (
-                      <Space direction="vertical" size={4}>
-                        <Typography.Text strong={overdue} type={overdue ? "danger" : undefined}>
-                          {d.format("MMM D, YYYY")}
-                        </Typography.Text>
-                        {overdue ? (
-                          <Tag color="red">{t("invoices.status.overdue")}</Tag>
-                        ) : null}
-                      </Space>
-                    );
-                  }
+                          if (inv && (inv.status === "pending" || inv.status === "overdue") && inv.due_date) {
+                            const d = dayjs(inv.due_date).startOf("day");
+                            const overdue = invoiceIsOverdue(inv, today);
+                            return (
+                              <Stack spacing={0.5}>
+                                <Typography color={overdue ? "error" : "text.primary"} fontWeight={overdue ? 600 : 400}>
+                                  {d.format("MMM D, YYYY")}
+                                </Typography>
+                                {overdue ? <Chip size="small" label={t("invoices.status.overdue")} color="error" /> : null}
+                              </Stack>
+                            );
+                          }
 
-                  if (inv?.status === "pending" && !inv.due_date) {
-                    return (
-                      <Typography.Text type="secondary">{t("clients.noDueDate")}</Typography.Text>
-                    );
-                  }
+                          if (inv?.status === "pending" && !inv.due_date) {
+                            return (
+                              <Typography variant="body2" color="text.secondary">
+                                {t("clients.noDueDate")}
+                              </Typography>
+                            );
+                          }
 
-                  if (inv?.status === "overdue" && !inv.due_date) {
-                    return <Tag color="red">{t("invoices.status.overdue")}</Tag>;
-                  }
+                          if (inv?.status === "overdue" && !inv.due_date) {
+                            return <Chip size="small" label={t("invoices.status.overdue")} color="error" />;
+                          }
 
-                  if (ms?.ends_at) {
-                    const d = dayjs(ms.ends_at);
-                    return (
-                      <Typography.Text type="secondary" style={{ fontSize: 13 }}>
-                        {t("coachDesk.dueMembershipEnds", { date: d.format("MMM D, YYYY") })}
-                      </Typography.Text>
-                    );
-                  }
+                          if (ms?.ends_at) {
+                            const d = dayjs(ms.ends_at);
+                            return (
+                              <Typography variant="body2" color="text.secondary">
+                                {t("coachDesk.dueMembershipEnds", { date: d.format("MMM D, YYYY") })}
+                              </Typography>
+                            );
+                          }
 
-                  return (
-                    <Typography.Text type="secondary">{t("common.dash")}</Typography.Text>
-                  );
-                },
-              },
-            ]}
-          />
+                          return (
+                            <Typography variant="body2" color="text.secondary">
+                              {t("common.dash")}
+                            </Typography>
+                          );
+                        })()}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
         </Card>
 
-        <Typography.Paragraph style={{ marginBottom: 0 }} type="secondary">
-          <Space wrap size="middle">
+        <Typography variant="body2" color="text.secondary">
+          <Stack direction="row" flexWrap="wrap" gap={1.5} alignItems="center">
             <Link to="/clients">{t("coachDesk.viewClients")}</Link>
             <span style={{ opacity: 0.4 }}>·</span>
             <Link to="/invoices">{t("coachDesk.viewInvoices")}</Link>
             <span style={{ opacity: 0.4 }}>·</span>
             <Link to="/dashboard">{t("coachDesk.openDashboard")}</Link>
-          </Space>
-        </Typography.Paragraph>
-      </Space>
-    </div>
+          </Stack>
+        </Typography>
+      </Stack>
+    </Box>
   );
 }

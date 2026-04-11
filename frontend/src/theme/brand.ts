@@ -1,20 +1,20 @@
 /**
- * Coach console — charcoal + electric teal (dark) and clean light variant.
- * Maps to Ant Design 5 tokens; adjust here to re-skin the whole app.
+ * Coach console — arena charcoal + field green (dark) and clean light variant.
+ * Sporting feel: high-energy accent on deep turf-toned neutrals.
  */
 export const coachBrand = {
-  /** Teal — strong on dark surfaces */
-  primary: "#14b8a6",
-  primaryHover: "#2dd4bf",
-  primaryActive: "#0d9488",
-  primaryBgSoft: "rgba(20, 184, 166, 0.18)",
-  primaryBgHover: "rgba(20, 184, 166, 0.12)",
-  /** Near-black with a cool blue shift */
-  layoutBg: "#0b0e13",
+  /** Field green — strong on dark surfaces, reads “performance / go” */
+  primary: "#22c55e",
+  primaryHover: "#4ade80",
+  primaryActive: "#16a34a",
+  primaryBgSoft: "rgba(34, 197, 94, 0.2)",
+  primaryBgHover: "rgba(34, 197, 94, 0.12)",
+  /** Near-black with a subtle green shift (stadium night) */
+  layoutBg: "#0a0d0c",
   /** Primary panels (cards, form surfaces) */
-  surface: "#121826",
+  surface: "#131a17",
   /** Header, sider, slightly lifted chrome */
-  surfaceElevated: "#1a2234",
+  surfaceElevated: "#1a2420",
   text: "#e2e8f0",
   textSecondary: "#94a3b8",
   border: "rgba(148, 163, 184, 0.2)",
@@ -23,11 +23,11 @@ export const coachBrand = {
 
 /** Light shell — same accent, high-contrast neutrals for daytime use */
 export const coachBrandLight = {
-  primary: "#0d9488",
-  primaryHover: "#14b8a6",
-  primaryActive: "#0f766e",
-  primaryBgSoft: "rgba(13, 148, 136, 0.14)",
-  primaryBgHover: "rgba(13, 148, 136, 0.08)",
+  primary: "#16a34a",
+  primaryHover: "#22c55e",
+  primaryActive: "#15803d",
+  primaryBgSoft: "rgba(22, 163, 74, 0.14)",
+  primaryBgHover: "rgba(22, 163, 74, 0.08)",
   layoutBg: "#f1f5f9",
   surface: "#ffffff",
   surfaceElevated: "#f8fafc",

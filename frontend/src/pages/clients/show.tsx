@@ -1,23 +1,42 @@
-import { Show } from "@refinedev/antd";
+import ArticleOutlinedIcon from "@mui/icons-material/ArticleOutlined";
+import ContactsOutlinedIcon from "@mui/icons-material/ContactsOutlined";
+import CreditCardOutlinedIcon from "@mui/icons-material/CreditCardOutlined";
+import DashboardOutlinedIcon from "@mui/icons-material/DashboardOutlined";
+import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
+import PersonOutlinedIcon from "@mui/icons-material/PersonOutlined";
+import TrackChangesOutlinedIcon from "@mui/icons-material/TrackChangesOutlined";
+import Alert from "@mui/material/Alert";
+import AlertTitle from "@mui/material/AlertTitle";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Card from "@mui/material/Card";
+import CardContent from "@mui/material/CardContent";
+import CardHeader from "@mui/material/CardHeader";
+import Chip from "@mui/material/Chip";
+import Divider from "@mui/material/Divider";
+import Grid from "@mui/material/Grid2";
+import Stack from "@mui/material/Stack";
+import Tab from "@mui/material/Tab";
+import Tabs from "@mui/material/Tabs";
+import Typography from "@mui/material/Typography";
 import { useShow } from "@refinedev/core";
-import {
-  AimOutlined,
-  ContactsOutlined,
-  DashboardOutlined,
-  FileTextOutlined,
-  IdcardOutlined,
-  SnippetsOutlined,
-  UserOutlined,
-} from "@ant-design/icons";
-import { Alert, Button, Card, Col, Divider, Row, Space, Tabs, Tag, Typography } from "antd";
+import { Show } from "@refinedev/mui";
 import dayjs from "dayjs";
 import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import { formatMoney } from "../../lib/money";
+import { ClientAssignedPlansSummary } from "./ClientAssignedPlansSummary";
 import { ClientCoachingPlansEditor } from "./ClientCoachingPlansEditor";
 import { ClientPlansCta, clientWorkoutDietPath } from "./ClientPlansCta";
+import {
+  type ClientDetailTab,
+  clientDetailTabsSx,
+  clientTabScrollIds,
+  hashForTab,
+  tabFromHash,
+} from "./clientTabNav";
 import { ClientInvoicesPanel, ClientMembershipPanel } from "./finance";
 import { goalTypeLabel } from "./goalOptions";
 
@@ -49,7 +68,7 @@ function MembershipSnapshotBlock({ summary }: { summary: MembershipSnap }) {
   return (
     <span>
       <strong>{summary.plan_name}</strong>
-      {codePart} · {t("clients.show.endGlue")} {end} · <Tag>{left}</Tag>
+      {codePart} · {t("clients.show.endGlue")} {end} · <Chip size="small" label={left} variant="outlined" />
     </span>
   );
 }
@@ -70,28 +89,18 @@ function LastInvoiceSnapshotBlock({ inv }: { inv: LastInvSnap }) {
   const cur = inv.currency ?? "USD";
   return (
     <span>
-      <Tag color={inv.is_paid ? "green" : "gold"}>{label}</Tag>{" "}
+      <Chip
+        size="small"
+        label={label}
+        color={inv.is_paid ? "success" : "warning"}
+        variant="outlined"
+        sx={{ mr: 0.5 }}
+      />{" "}
       {inv.reference ? `${inv.reference} · ` : ""}
       {inv.amount != null && inv.amount !== "" ? formatMoney(inv.amount, cur, i18n.language) : t("common.dash")}
-      {inv.due_date
-        ? ` · ${t("clients.due")} ${dayjs(inv.due_date).format("MMM D, YYYY")}`
-        : ""}
+      {inv.due_date ? ` · ${t("clients.due")} ${dayjs(inv.due_date).format("MMM D, YYYY")}` : ""}
     </span>
   );
-}
-
-type ClientShowTab = "profile" | "workout" | "invoices" | "membership";
-
-function tabFromHash(hash: string): ClientShowTab {
-  const h = hash.replace(/^#/, "");
-  if (h === "financial") return "invoices";
-  if (h === "workout" || h === "invoices" || h === "membership") return h;
-  return "profile";
-}
-
-function hashForTab(tab: ClientShowTab): string {
-  if (tab === "profile") return "";
-  return tab;
 }
 
 const profileGrid = {
@@ -103,10 +112,10 @@ const profileGrid = {
 function ProfileField({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div>
-      <Typography.Text type="secondary" style={{ fontSize: 12, display: "block", marginBottom: 6 }}>
+      <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.75 }}>
         {label}
-      </Typography.Text>
-      <div style={{ fontSize: 15, lineHeight: 1.5 }}>{children}</div>
+      </Typography>
+      <Box sx={{ fontSize: 15, lineHeight: 1.5 }}>{children}</Box>
     </div>
   );
 }
@@ -119,7 +128,8 @@ export function ClientShow() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const [activeTab, setActiveTab] = useState<ClientShowTab>(() => tabFromHash(window.location.hash));
+  const [activeTab, setActiveTab] = useState<ClientDetailTab>(() => tabFromHash(window.location.hash));
+  const [coachingSync, setCoachingSync] = useState(0);
 
   const reg = record?.registration_date ?? record?.created_at;
 
@@ -138,20 +148,19 @@ export function ClientShow() {
     if (h !== "invoices" && h !== "membership" && h !== "financial" && h !== "workout") return;
     const id =
       h === "membership"
-        ? "client-tab-membership"
+        ? clientTabScrollIds.membership
         : h === "workout"
-          ? "client-tab-workout"
-          : "client-tab-invoices";
+          ? clientTabScrollIds.workout
+          : clientTabScrollIds.invoices;
     requestAnimationFrame(() => {
       document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
   }, [activeTab, location.hash, query?.isLoading]);
 
-  const onTabChange = (key: string) => {
-    const next = key as ClientShowTab;
-    setActiveTab(next);
+  const onTabChange = (_: React.SyntheticEvent, key: ClientDetailTab) => {
+    setActiveTab(key);
     navigate(
-      { pathname: location.pathname, search: location.search, hash: hashForTab(next) },
+      { pathname: location.pathname, search: location.search, hash: hashForTab(key) },
       { replace: true },
     );
   };
@@ -172,139 +181,123 @@ export function ClientShow() {
   const readonlyCard = "client-section-card client-section-card--readonly";
 
   const profileTab = (
-    <Space direction="vertical" size={20} style={{ width: "100%" }}>
-      <Card
-        className={readonlyCard}
-        title={
-          <Space>
-            <ContactsOutlined />
-            {t("clients.show.cardContact")}
-          </Space>
-        }
-        styles={{ body: { paddingTop: 20 } }}
-      >
-        <div style={profileGrid}>
-          <ProfileField label={t("clients.show.name")}>
-            <Typography.Text strong>{record?.name ?? t("common.dash")}</Typography.Text>
-          </ProfileField>
-          <ProfileField label={t("clients.show.email")}>{record?.email ?? t("common.dash")}</ProfileField>
-          <ProfileField label={t("clients.show.phone")}>{record?.phone ?? t("common.dash")}</ProfileField>
-          <ProfileField label={t("clients.show.registrationDate")}>
-            {reg ? dayjs(reg).format("MMM D, YYYY") : t("common.dash")}
-          </ProfileField>
-        </div>
-      </Card>
-
-      <Card
-        className={readonlyCard}
-        title={
-          <Space>
-            <AimOutlined />
-            {t("clients.show.cardBodyGoals")}
-          </Space>
-        }
-        styles={{ body: { paddingTop: 20 } }}
-      >
-        <div style={profileGrid}>
-          <ProfileField label={t("clients.show.weight")}>{record?.weight_kg ?? t("common.dash")}</ProfileField>
-          <ProfileField label={t("clients.show.height")}>{record?.height_cm ?? t("common.dash")}</ProfileField>
-          <ProfileField label={t("clients.show.goal")}>{goalTypeLabel(record?.goal_type)}</ProfileField>
-          <ProfileField label={t("clients.show.membershipPlanProfile")}>
-            {record?.subscription_plan_template?.name ?? t("common.dash")}
-          </ProfileField>
-          <ProfileField label={t("clients.show.subscriptionEffective")}>
-            {record?.subscription_type ?? t("common.dash")}
-          </ProfileField>
-          <div style={{ gridColumn: "1 / -1" }}>
-            <ProfileField label={t("clients.show.goalDescription")}>
-              {record?.goal?.trim() ? (
-                <Typography.Paragraph style={{ marginBottom: 0, whiteSpace: "pre-wrap" }}>
-                  {record.goal}
-                </Typography.Paragraph>
-              ) : (
-                t("common.dash")
-              )}
+    <Stack spacing={2.5} sx={{ width: "100%" }}>
+      <Card variant="outlined" className={readonlyCard}>
+        <CardHeader
+          avatar={<ContactsOutlinedIcon />}
+          title={t("clients.show.cardContact")}
+          sx={{ pb: 0 }}
+        />
+        <CardContent sx={{ pt: 2 }}>
+          <div style={profileGrid}>
+            <ProfileField label={t("clients.show.name")}>
+              <Typography fontWeight={600}>{record?.name ?? t("common.dash")}</Typography>
+            </ProfileField>
+            <ProfileField label={t("clients.show.email")}>{record?.email ?? t("common.dash")}</ProfileField>
+            <ProfileField label={t("clients.show.phone")}>{record?.phone ?? t("common.dash")}</ProfileField>
+            <ProfileField label={t("clients.show.registrationDate")}>
+              {reg ? dayjs(reg).format("MMM D, YYYY") : t("common.dash")}
             </ProfileField>
           </div>
-        </div>
+        </CardContent>
       </Card>
 
-      <Card
-        className={readonlyCard}
-        title={
-          <Space>
-            <DashboardOutlined />
-            {t("clients.show.cardSnapshot")}
-          </Space>
-        }
-        extra={
-          clientId != null ? (
-            <Button type="link" onClick={goInvoicesTab} style={{ padding: 0, height: "auto" }}>
-              {t("clients.show.tabInvoices")}
-            </Button>
-          ) : null
-        }
-        styles={{ body: { paddingTop: 16 } }}
-      >
-        <Typography.Paragraph type="secondary" style={{ marginTop: 0, marginBottom: 16, fontSize: 13, lineHeight: 1.5 }}>
-          {t("clients.show.snapshotHint")}
-        </Typography.Paragraph>
-        <Row gutter={[0, 20]}>
-          <Col span={24}>
-            <ProfileField label={t("clients.show.currentMembership")}>
-              {record?.membership_summary ? (
-                <MembershipSnapshotBlock summary={record.membership_summary as MembershipSnap} />
-              ) : (
-                t("common.dash")
-              )}
+      <Card variant="outlined" className={readonlyCard}>
+        <CardHeader
+          avatar={<TrackChangesOutlinedIcon />}
+          title={t("clients.show.cardBodyGoals")}
+          sx={{ pb: 0 }}
+        />
+        <CardContent sx={{ pt: 2 }}>
+          <div style={profileGrid}>
+            <ProfileField label={t("clients.show.weight")}>{record?.weight_kg ?? t("common.dash")}</ProfileField>
+            <ProfileField label={t("clients.show.height")}>{record?.height_cm ?? t("common.dash")}</ProfileField>
+            <ProfileField label={t("clients.show.goal")}>{goalTypeLabel(record?.goal_type)}</ProfileField>
+            <ProfileField label={t("clients.show.membershipPlanProfile")}>
+              {record?.subscription_plan_template?.name ?? t("common.dash")}
             </ProfileField>
-          </Col>
-          <Col span={24}>
-            <Divider style={{ margin: "4px 0" }} />
-            <ProfileField label={t("clients.show.latestInvoice")}>
-              {record?.last_invoice_summary ? (
-                <LastInvoiceSnapshotBlock inv={record.last_invoice_summary as LastInvSnap} />
-              ) : (
-                t("common.dash")
-              )}
+            <ProfileField label={t("clients.show.subscriptionEffective")}>
+              {record?.subscription_type ?? t("common.dash")}
             </ProfileField>
-          </Col>
-        </Row>
-      </Card>
-
-      <Card
-        className={readonlyCard}
-        title={
-          <Space>
-            <UserOutlined />
-            {t("clients.show.cardAccount")}
-          </Space>
-        }
-        styles={{ body: { paddingTop: 20 } }}
-      >
-        <div style={profileGrid}>
-          <ProfileField label={t("clients.show.rosterField")}>
-            <Tag>{rosterLabel}</Tag>
-          </ProfileField>
-          <ProfileField label={t("clients.show.clientStatus")}>
-            <Tag color="blue">{acLabel}</Tag>
-          </ProfileField>
-          <div style={{ gridColumn: "1 / -1" }}>
-            <ProfileField label={t("clients.show.notesLabel")}>
-              {record?.notes?.trim() ? (
-                <Typography.Paragraph style={{ marginBottom: 0, whiteSpace: "pre-wrap" }}>
-                  {record.notes}
-                </Typography.Paragraph>
-              ) : (
-                t("common.dash")
-              )}
-            </ProfileField>
+            <div style={{ gridColumn: "1 / -1" }}>
+              <ProfileField label={t("clients.show.goalDescription")}>
+                {record?.goal?.trim() ? (
+                  <Typography sx={{ whiteSpace: "pre-wrap", m: 0 }}>{record.goal}</Typography>
+                ) : (
+                  t("common.dash")
+                )}
+              </ProfileField>
+            </div>
           </div>
-        </div>
+        </CardContent>
+      </Card>
+
+      <Card variant="outlined" className={readonlyCard}>
+        <CardHeader
+          avatar={<DashboardOutlinedIcon />}
+          title={t("clients.show.cardSnapshot")}
+          action={
+            clientId != null ? (
+              <Button size="small" onClick={goInvoicesTab}>
+                {t("clients.show.tabInvoices")}
+              </Button>
+            ) : null
+          }
+          sx={{ pb: 0 }}
+        />
+        <CardContent sx={{ pt: 2 }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            {t("clients.show.snapshotHint")}
+          </Typography>
+          <Grid container spacing={2}>
+            <Grid size={12}>
+              <ProfileField label={t("clients.show.currentMembership")}>
+                {record?.membership_summary ? (
+                  <MembershipSnapshotBlock summary={record.membership_summary as MembershipSnap} />
+                ) : (
+                  t("common.dash")
+                )}
+              </ProfileField>
+            </Grid>
+            <Grid size={12}>
+              <Divider sx={{ my: 0.5 }} />
+              <ProfileField label={t("clients.show.latestInvoice")}>
+                {record?.last_invoice_summary ? (
+                  <LastInvoiceSnapshotBlock inv={record.last_invoice_summary as LastInvSnap} />
+                ) : (
+                  t("common.dash")
+                )}
+              </ProfileField>
+            </Grid>
+          </Grid>
+        </CardContent>
+      </Card>
+
+      <Card variant="outlined" className={readonlyCard}>
+        <CardHeader avatar={<PersonOutlinedIcon />} title={t("clients.show.cardAccount")} sx={{ pb: 0 }} />
+        <CardContent sx={{ pt: 2 }}>
+          <div style={profileGrid}>
+            <ProfileField label={t("clients.show.rosterField")}>
+              <Chip size="small" label={rosterLabel} variant="outlined" />
+            </ProfileField>
+            <ProfileField label={t("clients.show.clientStatus")}>
+              <Chip size="small" label={acLabel} color="primary" variant="outlined" />
+            </ProfileField>
+            <div style={{ gridColumn: "1 / -1" }}>
+              <ProfileField label={t("clients.show.notesLabel")}>
+                {record?.notes?.trim() ? (
+                  <Typography sx={{ whiteSpace: "pre-wrap", m: 0 }}>{record.notes}</Typography>
+                ) : (
+                  t("common.dash")
+                )}
+              </ProfileField>
+            </div>
+          </div>
+        </CardContent>
       </Card>
 
       {clientId != null ? <ClientPlansCta clientId={clientId} /> : null}
-    </Space>
+    </Stack>
   );
 
   return (
@@ -314,106 +307,104 @@ export function ClientShow() {
         <>
           {defaultButtons}
           {record?.id != null ? (
-            <Space size={4}>
+            <Stack direction="row" spacing={0.5} alignItems="center" flexWrap="wrap">
               <Button
-                type="default"
-                icon={<SnippetsOutlined />}
-                size="middle"
+                variant="outlined"
+                size="medium"
+                startIcon={<ArticleOutlinedIcon />}
                 onClick={() =>
                   navigate({ pathname: location.pathname, search: location.search, hash: "workout" })
                 }
               >
                 {t("clients.plans.headerButton")}
               </Button>
-              <Link to={clientWorkoutDietPath(record.id)}>
-                <Button type="link" size="middle" style={{ paddingInline: 8 }}>
-                  {t("clients.plans.openFullPage")}
-                </Button>
-              </Link>
-            </Space>
+              <Button component={Link} to={clientWorkoutDietPath(record.id)} size="small">
+                {t("clients.plans.openFullPage")}
+              </Button>
+            </Stack>
           ) : null}
         </>
       )}
     >
-      <div className="client-page-shell">
+      <Box className="client-page-shell">
         {record?.id != null && (
-          <Alert
-            type="info"
-            showIcon
-            style={{ marginBottom: 16 }}
-            message={t("clients.show.viewModeTitle")}
-            description={
-              <Space direction="vertical" size="small" style={{ width: "100%" }}>
-                <span>{t("clients.show.viewModeDescription")}</span>
-                <Link to={`/clients/edit/${record.id}`}>
-                  <Button type="primary" size="small">
-                    {t("clients.show.goToEdit")}
-                  </Button>
-                </Link>
-              </Space>
-            }
-          />
+          <Alert severity="info" sx={{ mb: 2 }}>
+            <AlertTitle>{t("clients.show.viewModeTitle")}</AlertTitle>
+            <Stack spacing={1}>
+              <span>{t("clients.show.viewModeDescription")}</span>
+              <Button component={Link} to={`/clients/edit/${record.id}`} variant="contained" size="small" sx={{ alignSelf: "flex-start" }}>
+                {t("clients.show.goToEdit")}
+              </Button>
+            </Stack>
+          </Alert>
         )}
         <Tabs
-          activeKey={activeTab}
+          value={activeTab}
           onChange={onTabChange}
-          destroyInactiveTabPane={false}
-          items={[
-            {
-              key: "profile",
-              label: (
-                <span>
-                  <UserOutlined /> {t("clients.show.tabProfile")}
-                </span>
-              ),
-              children: profileTab,
-            },
-            ...(clientId != null
-              ? [
-                  {
-                    key: "workout" as const,
-                    label: (
-                      <span>
-                        <SnippetsOutlined /> {t("clients.show.tabWorkout")}
-                      </span>
-                    ),
-                    children: <ClientCoachingPlansEditor clientId={clientId} embed />,
-                  },
-                ]
-              : []),
-            ...(clientId != null
-              ? [
-                  {
-                    key: "invoices" as const,
-                    label: (
-                      <span>
-                        <FileTextOutlined /> {t("clients.show.tabInvoices")}
-                      </span>
-                    ),
-                    children: (
-                      <div id="client-tab-invoices" style={{ paddingTop: 4 }}>
-                        <ClientInvoicesPanel clientId={clientId} />
-                      </div>
-                    ),
-                  },
-                  {
-                    key: "membership" as const,
-                    label: (
-                      <span>
-                        <IdcardOutlined /> {t("clients.show.tabMembership")}
-                      </span>
-                    ),
-                    children: (
-                      <div id="client-tab-membership" style={{ paddingTop: 4 }}>
-                        <ClientMembershipPanel clientId={clientId} />
-                      </div>
-                    ),
-                  },
-                ]
-              : []),
-          ]}
-        />
-      </div>
+          variant="scrollable"
+          scrollButtons="auto"
+          sx={clientDetailTabsSx}
+        >
+          <Tab
+            icon={<PersonOutlinedIcon fontSize="small" />}
+            iconPosition="start"
+            label={t("clients.show.tabProfile")}
+            value="profile"
+          />
+          {clientId != null ? (
+            <Tab
+              icon={<DescriptionOutlinedIcon fontSize="small" />}
+              iconPosition="start"
+              label={t("clients.show.tabWorkout")}
+              value="workout"
+            />
+          ) : null}
+          {clientId != null ? (
+            <Tab
+              icon={<ArticleOutlinedIcon fontSize="small" />}
+              iconPosition="start"
+              label={t("clients.show.tabInvoices")}
+              value="invoices"
+            />
+          ) : null}
+          {clientId != null ? (
+            <Tab
+              icon={<CreditCardOutlinedIcon fontSize="small" />}
+              iconPosition="start"
+              label={t("clients.show.tabMembership")}
+              value="membership"
+            />
+          ) : null}
+        </Tabs>
+
+        <Box sx={{ display: activeTab === "profile" ? "block" : "none" }}>{profileTab}</Box>
+        {clientId != null ? (
+          <Box id="client-tab-workout" sx={{ display: activeTab === "workout" ? "block" : "none", pt: 0.5 }}>
+            <ClientAssignedPlansSummary
+              clientId={clientId}
+              variant="view"
+              refreshKey={coachingSync}
+              onMutated={() => setCoachingSync((k) => k + 1)}
+            />
+            <ClientCoachingPlansEditor
+              clientId={clientId}
+              embed
+              reloadToken={coachingSync}
+              onCoachingPlansMutated={() => setCoachingSync((k) => k + 1)}
+            />
+          </Box>
+        ) : null}
+        {clientId != null ? (
+          <Box id="client-tab-invoices" sx={{ display: activeTab === "invoices" ? "block" : "none", pt: 0.5 }}>
+            <ClientInvoicesPanel clientId={clientId} />
+          </Box>
+        ) : null}
+        {clientId != null ? (
+          <Box id="client-tab-membership" sx={{ display: activeTab === "membership" ? "block" : "none", pt: 0.5 }}>
+            <ClientMembershipPanel clientId={clientId} />
+          </Box>
+        ) : null}
+      </Box>
     </Show>
   );
 }
