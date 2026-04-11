@@ -619,6 +619,11 @@ const translation = {
     mergeModalOk: "Group",
     linkExercisesButton: "Link exercises",
     linkExerciseRow: "Link exercise",
+    addSuperset: "Add superset",
+    pickerActiveSupersetFirst: "Step 1 of 2: choose the first exercise for your superset (circuit block).",
+    pickerActiveSupersetSecond: "Step 2 of 2: choose the second exercise to finish the superset. It is added to the same block as the first.",
+    pickerCollapsedSupersetHint: "Finish your superset: open the library and pick the second exercise, or cancel to turn the first exercise back into a normal single exercise.",
+    cancelSupersetDraft: "Cancel superset",
     dndGuideTitle: "Drag and drop exercises",
     dndGuideBody:
       "Grab the ⋮⋮ handle on the exercise row — the whole card (all sets) moves. While dragging: a dashed border on another card means you can drop there to group into a block; aim for the space between cards if you only want to change order.",
