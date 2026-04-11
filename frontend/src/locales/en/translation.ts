@@ -608,21 +608,33 @@ const translation = {
   workouts: {
     builderTitle: "Workout builder",
     builderHint:
-      "Use Add exercise to open the picker. Each exercise has a top block (reps, time, rest, notes) that applies to all its sets until you override a set. Add set below adds another set for the same exercise. Drag the handle on a set to reorder sets; drag on the exercise block to move the whole exercise. Drop on the dashed strip under another exercise block to group (superset, …). Add linked below adds the next exercise to the block.",
-    mergeDropHint: "Drop to group after this row",
+      "Use Add exercise to open the picker. Each exercise has a top block (reps, time, rest, notes) for all sets until a set overrides it. Add set below adds another set. Drag the grip on the exercise title row: the whole card (all sets) moves together. Release between cards to reorder, or release on another exercise’s name (dashed outline while dragging) to group into a block. Legacy “one line per set”: only the first line has the grip.",
+    mergeDropHint: "Drop on this exercise’s name to group after it",
+    invalidWorkoutOrder: "That order would break exercise/set grouping. Nothing was changed.",
+    dropExerciseOnHeadOrMergeZone:
+      "Drop between exercise cards to reorder, or on another exercise’s name to group.",
     mergeModalTitle: "Group exercises",
     mergeModalHint:
       "Choose the block type. The exercise you are dragging is placed directly under the row above this drop zone.",
     mergeModalOk: "Group",
-    mergeNeedSingleRow:
-      "Drag-to-group from the exercise block (grip on the top row of an exercise), not from a set row. Whole superset blocks move together — adjust the block from the block’s drag handle.",
-    reorderSetsOnlyHere: "Sets for this exercise can only be reordered among themselves. Drag onto another set of the same exercise.",
     linkExercisesButton: "Link exercises",
-    addLinkedBelow: "Add linked below",
+    linkExerciseRow: "Link exercise",
+    dndGuideTitle: "Drag and drop exercises",
+    dndGuideBody:
+      "Grab the ⋮⋮ handle on the exercise row — the whole card (all sets) moves. While dragging: a dashed border on another card means you can drop there to group into a block; aim for the space between cards if you only want to change order.",
+    dragOverlayHints: "Drop on a dashed card to group · Between cards to reorder only",
+    rowToolbar: {
+      drag: "Drag to move this exercise (and its sets)",
+      dragTooltipTitle: "Drag this exercise",
+      dragTooltipBody:
+        "Moves the whole card including all sets. While dragging: drop on another exercise (dashed outline) to group, or release between cards to reorder only.",
+    },
     blockGroupLabel: "Block type",
     blockMemberStep: "Step {{current}} / {{total}}",
     blockMemberCount: "{{count}} exercises",
-    blockDragBundleHint: "Drag the grip on any row to move the whole block. Change the block type with the control above.",
+    dragBundleTogether: "{{count}} rows as one group",
+    blockDragBundleHint:
+      "Drag the grip on each exercise’s top row to move that exercise (and its sets) inside the block. Change the block type with the control above.",
     planVenueLabel: "Program venue",
     venueFilterHint: "Exercise picker is filtered for {{venue}} programs (includes “both”).",
     exerciseBankTitle: "Exercise bank",

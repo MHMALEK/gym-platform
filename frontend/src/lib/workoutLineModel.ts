@@ -62,6 +62,19 @@ export function exerciseGroupRange(items: WorkoutLine[], index: number): [number
   return [lo, hi];
 }
 
+/** Top-level sortable ids: one per exercise bundle, in list order (for @dnd-kit/sortable). */
+export function orderedExerciseHeadLocalIds(items: WorkoutLine[]): string[] {
+  const out: string[] = [];
+  let i = 0;
+  while (i < items.length) {
+    const [lo, hi] = exerciseGroupRange(items, i);
+    const head = items[lo];
+    if (head) out.push(head.localId);
+    i = hi + 1;
+  }
+  return out;
+}
+
 export function exerciseHeadIndex(items: WorkoutLine[], index: number): number {
   const row = items[index];
   if (!row) return index;
@@ -136,6 +149,10 @@ export function isMergeDragRoot(items: WorkoutLine[], index: number): boolean {
   if (!row) return false;
   if (row.row_type === "legacy_line") return true;
   if (row.row_type === "exercise") return true;
+  if (row.row_type === "set") {
+    const head = items[exerciseHeadIndex(items, index)];
+    return head?.row_type === "exercise";
+  }
   return false;
 }
 
@@ -415,6 +432,95 @@ export function stripOrphanWorkoutBlocks(items: WorkoutLine[]): WorkoutLine[] {
   });
 }
 
+/** True for `set` rows and non-first legacy lines in a run (not a bundle “head”). */
+export function isWorkoutLineSetLikeRow(items: WorkoutLine[], index: number): boolean {
+  const row = items[index];
+  if (!row) return false;
+  if (row.row_type === "set") return true;
+  if (row.row_type === "legacy_line") {
+    const [lo] = contiguousLegacyExerciseRun(items, index);
+    return index !== lo;
+  }
+  return false;
+}
+
+/** First row of an exercise+sets bundle or the first row of a legacy run. */
+export function isBundleHeadRow(items: WorkoutLine[], index: number): boolean {
+  const row = items[index];
+  if (!row) return false;
+  if (row.row_type === "exercise") {
+    const [lo] = exerciseGroupRange(items, index);
+    return lo === index;
+  }
+  if (row.row_type === "legacy_line") {
+    const [lo] = contiguousLegacyExerciseRun(items, index);
+    return lo === index;
+  }
+  return false;
+}
+
+/**
+ * Same rules as backend `validate_training_plan_items_sequence` (training plan / workout JSON).
+ * Returns `null` if the list order is valid for exercise → set grouping.
+ */
+export function validateWorkoutLinesSequence(items: WorkoutLine[]): string | null {
+  let pending: { eid: number; iid: string; bid: string | null } | null = null;
+  let setsInGroup = 0;
+
+  for (const row of items) {
+    const rt = row.row_type;
+    if (rt === "legacy_line") {
+      if (pending !== null && setsInGroup === 0) {
+        return "Each exercise head must be followed by at least one set row";
+      }
+      pending = null;
+      setsInGroup = 0;
+      continue;
+    }
+
+    if (rt === "exercise") {
+      if (pending !== null && setsInGroup === 0) {
+        return "Each exercise head must be followed by at least one set row";
+      }
+      const bid = row.block_id?.trim() ? row.block_id.trim() : null;
+      pending = {
+        eid: row.exercise_id,
+        iid: row.exercise_instance_id?.trim() ? row.exercise_instance_id.trim() : "",
+        bid,
+      };
+      setsInGroup = 0;
+      continue;
+    }
+
+    if (rt === "set") {
+      if (pending === null) {
+        return "Set rows must immediately follow their exercise head (same sort order group)";
+      }
+      const { eid, iid, bid } = pending;
+      const riid = row.exercise_instance_id?.trim() ? row.exercise_instance_id.trim() : "";
+      if (riid !== iid) {
+        return "Set row exercise_instance_id does not match its exercise head";
+      }
+      if (row.exercise_id !== eid) {
+        return "Set row exercise_id does not match its exercise head";
+      }
+      const sb = row.block_id?.trim() ? row.block_id.trim() : null;
+      if (sb !== bid) {
+        return "Set row block_id must match its exercise head";
+      }
+      setsInGroup += 1;
+      continue;
+    }
+
+    return `Unknown row_type: ${rt}`;
+  }
+
+  if (pending !== null && setsInGroup === 0) {
+    return "Each exercise head must be followed by at least one set row";
+  }
+  return null;
+}
+
 export function normalizeWorkoutLinesForApi(items: WorkoutLine[]) {
   const stripped = stripOrphanWorkoutBlocks(items);
   return stripped.map((it, index) => ({
@@ -482,6 +588,24 @@ export function workoutLinesFromApiItems(
     return mapped.map((r, idx) => ({ ...r, sort_order: idx }));
   }
   return consolidateLegacyPlanRows(mapped);
+}
+
+/**
+ * When dropping onto a non-head row of another exercise, map the over index to a bundle
+ * boundary so we never splice a multi-set exercise in the middle of another exercise.
+ */
+export function normalizeBundleDropOverIndex(items: WorkoutLine[], activeIndex: number, overIndex: number): number {
+  const [aLo, aHi] = exerciseGroupRange(items, activeIndex);
+  const [tLo, tHi] = exerciseGroupRange(items, overIndex);
+  if (aLo === tLo && aHi === tHi) return overIndex;
+  if (overIndex <= tLo || overIndex > tHi) return overIndex;
+  if (aLo > tHi) {
+    return tLo;
+  }
+  if (aHi < tLo) {
+    return tHi + 1;
+  }
+  return tLo;
 }
 
 export function reorderExerciseBundleInList(
