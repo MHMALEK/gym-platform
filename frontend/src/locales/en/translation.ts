@@ -608,7 +608,15 @@ const translation = {
   workouts: {
     builderTitle: "Workout builder",
     builderHint:
-      "On any standalone exercise, use Link exercises to pick a block type (superset, dropset, …), then choose the next exercise — it is inserted below as a linked step. Inside a block, Add linked below adds another step. Drag the handle to reorder; a whole block moves together. APIs store shared block_id, block_type, and block_sequence (0 = first step) for client apps.",
+      "Use the button below your workout list to open the exercise library (search, filter, Add). Each row is one set. Add set below duplicates a set line. When an exercise has multiple set rows, drag them by the handle to reorder only within that exercise. Drag onto the dashed strip under another row to group (superset, dropset, …). Inside a block, Add linked below opens the library for the next exercise. Otherwise drag moves whole blocks or single exercises.",
+    mergeDropHint: "Drop to group after this row",
+    mergeModalTitle: "Group exercises",
+    mergeModalHint:
+      "Choose the block type. The exercise you are dragging is placed directly under the row above this drop zone.",
+    mergeModalOk: "Group",
+    mergeNeedSingleRow:
+      "Drag-to-group only works on a single row. Rows in a multi-exercise block move together — delete a row or change the workout order to adjust the block.",
+    reorderSetsOnlyHere: "Sets for this exercise can only be reordered among themselves. Drag onto another set of the same exercise.",
     linkExercisesButton: "Link exercises",
     addLinkedBelow: "Add linked below",
     blockGroupLabel: "Block type",
@@ -620,7 +628,11 @@ const translation = {
     exerciseBankTitle: "Exercise bank",
     exerciseBankRefresh: "Refresh list",
     exerciseBankIntro:
-      "Search and scope the list, then Add on any row — no separate dialog. Use Link exercises or Add linked below on a workout row when the next add should join a block.",
+      "Filter by scope, search by name, then tap Add. Inside a block, use Add linked below on a row to attach the next exercise to that block.",
+    addExerciseExpand: "Add exercises — browse & filter",
+    addExerciseCollapse: "Hide exercise library",
+    openExerciseLibrary: "Open library",
+    pickerCollapsedLinkHint: "Choose an exercise from the library to finish linking.",
     pickerActiveBeginBlock: "Next add starts a {{type}} after the row you chose — pick an exercise below.",
     pickerActiveExtendBlock: "Next add extends that block — pick an exercise below.",
     pickerClearMode: "Add to end instead",
@@ -633,7 +645,7 @@ const translation = {
     loadExercisesError: "Could not load exercises.",
     pickExercise: "Add exercise",
     pickerModalSubtitle:
-      "Filter the list, then Add appends the exercise — at the end of the workout, or as the next linked step when you started from Link exercises / Add linked below.",
+      "Filter the list, then Add appends the exercise at the end of the workout, or after the row you used Add linked below on.",
     pickerFilterPh: "Search by name…",
     pickerHint: "Scope chips narrow the list. Remove lines from the workout with the trash icon on each row.",
     pickerDone: "Done",
@@ -650,6 +662,10 @@ const translation = {
     add: "Add",
     emptyItems: "No exercises yet. Add from catalog or your library.",
     colExercise: "Exercise",
+    colSet: "Set",
+    extraSetExerciseLabel: "Same exercise",
+    setNumber: "{{n}}",
+    addSetBelow: "Add set below",
     colSets: "Sets",
     colReps: "Reps",
     colDurationSec: "Sec",

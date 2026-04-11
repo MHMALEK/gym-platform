@@ -1,10 +1,21 @@
-import { DeleteOutlined, HolderOutlined, PlusOutlined, SearchOutlined } from "@ant-design/icons";
+import {
+  DeleteOutlined,
+  DownOutlined,
+  HolderOutlined,
+  PlusOutlined,
+  SearchOutlined,
+  UpOutlined,
+} from "@ant-design/icons";
 import {
   DndContext,
+  type CollisionDetection,
   type DragEndEvent,
+  type DragStartEvent,
   KeyboardSensor,
   PointerSensor,
   closestCenter,
+  pointerWithin,
+  useDroppable,
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
@@ -20,13 +31,13 @@ import {
   Alert,
   App,
   Button,
-  Dropdown,
   Empty,
   Flex,
   Input,
   InputNumber,
   Card,
   Divider,
+  Modal,
   Segmented,
   Select,
   Space,
@@ -72,6 +83,63 @@ function newLocalId() {
   return crypto.randomUUID();
 }
 
+/** 1-based index of this row within consecutive rows with the same exercise and block (each row = one set). */
+function setIndexInExerciseRun(items: WorkoutLine[], index: number): number {
+  const row = items[index];
+  if (!row) return 1;
+  let n = 1;
+  const bid = row.block_id ?? null;
+  for (let j = index - 1; j >= 0; j--) {
+    const p = items[j];
+    if (!p) break;
+    const pb = p.block_id ?? null;
+    if (p.exercise_id === row.exercise_id && pb === bid) n += 1;
+    else break;
+  }
+  return n;
+}
+
+/** Inclusive index range of consecutive rows with the same exercise and block (one “set run”). */
+function contiguousSameExerciseRun(items: WorkoutLine[], index: number): [number, number] {
+  const row = items[index];
+  if (!row) return [index, index];
+  const eid = row.exercise_id;
+  const bid = row.block_id ?? null;
+  let lo = index;
+  while (lo > 0) {
+    const p = items[lo - 1];
+    if (p.exercise_id === eid && (p.block_id ?? null) === bid) lo -= 1;
+    else break;
+  }
+  let hi = index;
+  while (hi < items.length - 1) {
+    const n = items[hi + 1];
+    if (n.exercise_id === eid && (n.block_id ?? null) === bid) hi += 1;
+    else break;
+  }
+  return [lo, hi];
+}
+
+function arrayMove<T>(arr: T[], from: number, to: number): T[] {
+  if (from === to || from < 0 || to < 0 || from >= arr.length || to >= arr.length) return arr.slice();
+  const next = arr.slice();
+  const [removed] = next.splice(from, 1);
+  next.splice(to, 0, removed);
+  return next;
+}
+
+function insertDuplicateSetBelow(items: WorkoutLine[], index: number): WorkoutLine[] {
+  const row = items[index];
+  if (!row) return items;
+  const dup: WorkoutLine = {
+    ...row,
+    localId: newLocalId(),
+    sort_order: 0,
+  };
+  const next = [...items.slice(0, index + 1), dup, ...items.slice(index + 1)];
+  return next.map((r, i) => ({ ...r, sort_order: i }));
+}
+
 function contiguousBlockRange(items: WorkoutLine[], index: number): [number, number] {
   const bid = items[index]?.block_id;
   if (!bid) return [index, index];
@@ -109,6 +177,60 @@ function stripOrphanBlocks(items: WorkoutLine[]): WorkoutLine[] {
     }
     return it;
   });
+}
+
+/** Droppable id prefix: merge dragged row immediately after the row that owns this zone. */
+const LINK_AFTER_PREFIX = "link-after:";
+
+function linkAfterDroppableId(localId: string) {
+  return `${LINK_AFTER_PREFIX}${localId}`;
+}
+
+/** Move active row to sit right after target, then share target's block or create a new pair. */
+function mergeDraggedAfterTarget(
+  items: WorkoutLine[],
+  activeLocalId: string,
+  targetLocalId: string,
+  newBlockType: WorkoutBlockType,
+): WorkoutLine[] {
+  let activeIndex = items.findIndex((r) => r.localId === activeLocalId);
+  let targetIndex = items.findIndex((r) => r.localId === targetLocalId);
+  if (activeIndex < 0 || targetIndex < 0 || activeLocalId === targetLocalId) return items;
+
+  const [alo, ahi] = contiguousBlockRange(items, activeIndex);
+  if (alo !== ahi) return items;
+
+  let rows = items.map((r) => ({ ...r }));
+  rows[activeIndex] = { ...rows[activeIndex], block_id: null, block_type: null };
+  rows = stripOrphanBlocks(rows);
+
+  activeIndex = rows.findIndex((r) => r.localId === activeLocalId);
+  targetIndex = rows.findIndex((r) => r.localId === targetLocalId);
+  if (activeIndex < 0 || targetIndex < 0) return items;
+
+  const [removed] = rows.splice(activeIndex, 1);
+  if (activeIndex < targetIndex) targetIndex -= 1;
+
+  const target = rows[targetIndex];
+  const existingBid = target.block_id?.trim() || null;
+
+  if (existingBid) {
+    const bt = (target.block_type ?? "superset") as WorkoutBlockType;
+    rows.splice(targetIndex + 1, 0, { ...removed, block_id: existingBid, block_type: bt });
+  } else {
+    const bid = newLocalId();
+    rows[targetIndex] = { ...target, block_id: bid, block_type: newBlockType };
+    rows.splice(targetIndex + 1, 0, { ...removed, block_id: bid, block_type: newBlockType });
+  }
+
+  return rows.map((r, i) => ({ ...r, sort_order: i }));
+}
+
+function workoutLinkCollisionDetection(args: Parameters<CollisionDetection>[0]) {
+  const pointerHits = pointerWithin(args);
+  const linkHits = pointerHits.filter((c) => String(c.id).startsWith(LINK_AFTER_PREFIX));
+  if (linkHits.length > 0) return linkHits;
+  return closestCenter(args);
 }
 
 function blockAccent(blockId: string): string {
@@ -172,44 +294,7 @@ const BLOCK_OPTIONS: { value: WorkoutBlockType; labelKey: string }[] = [
   { value: "dropset", labelKey: "workouts.block.dropset" },
 ];
 
-type PickerContext =
-  | { mode: "append" }
-  | { mode: "beginBlock"; anchorIndex: number; blockType: WorkoutBlockType }
-  | { mode: "extendBlock"; afterIndex: number };
-
-function beginBlockFromRow(
-  items: WorkoutLine[],
-  anchorIndex: number,
-  blockType: WorkoutBlockType,
-  childEx: ExerciseOpt,
-): WorkoutLine[] {
-  const bid = newLocalId();
-  const anchor = items[anchorIndex];
-  if (!anchor || anchor.block_id) return items;
-  const child: WorkoutLine = {
-    localId: newLocalId(),
-    exercise_id: childEx.id,
-    exercise_name: childEx.name,
-    sort_order: 0,
-    sets: anchor.sets,
-    reps: anchor.reps,
-    duration_sec: anchor.duration_sec,
-    rest_sec: anchor.rest_sec,
-    notes: null,
-    block_id: bid,
-    block_type: blockType,
-  };
-  const next: WorkoutLine[] = [];
-  for (let i = 0; i < items.length; i++) {
-    if (i === anchorIndex) {
-      next.push({ ...items[i], block_id: bid, block_type: blockType });
-      next.push(child);
-    } else {
-      next.push(items[i]);
-    }
-  }
-  return next.map((row, i) => ({ ...row, sort_order: i }));
-}
+type PickerContext = { mode: "append" } | { mode: "extendBlock"; afterIndex: number };
 
 function insertLinkedChildAfter(items: WorkoutLine[], afterIndex: number, ex: ExerciseOpt): WorkoutLine[] {
   const row = items[afterIndex];
@@ -221,7 +306,7 @@ function insertLinkedChildAfter(items: WorkoutLine[], afterIndex: number, ex: Ex
     exercise_id: ex.id,
     exercise_name: ex.name,
     sort_order: 0,
-    sets: row.sets,
+    sets: null,
     reps: row.reps,
     duration_sec: row.duration_sec,
     rest_sec: row.rest_sec,
@@ -236,36 +321,42 @@ function insertLinkedChildAfter(items: WorkoutLine[], afterIndex: number, ex: Ex
 function SortableRow({
   row,
   index,
-  prevBlockId,
   insideBlock,
   blockStepLabel,
-  canBeginLink,
+  setLabel,
+  isExtraSetRow,
   canExtendLink,
-  onPickBeginBlock,
   onPickExtendBlock,
+  onAddSetBelow,
+  mergeDropEnabled,
   t,
   updateAt,
   removeAt,
-  joinPrevious,
-  leaveGroup,
 }: {
   row: WorkoutLine;
   index: number;
-  prevBlockId: string | null | undefined;
   insideBlock: boolean;
   blockStepLabel: string | null;
-  canBeginLink: boolean;
+  setLabel: string;
+  /** Set 2+ for the same exercise run — only delete is shown; quieter exercise column. */
+  isExtraSetRow: boolean;
   canExtendLink: boolean;
-  onPickBeginBlock: (bt: WorkoutBlockType) => void;
   onPickExtendBlock: () => void;
+  onAddSetBelow: (i: number) => void;
+  /** Show dashed drop zone to group dragged exercise after this row (superset / dropset / …). */
+  mergeDropEnabled: boolean;
   t: (k: string) => string;
   updateAt: (i: number, patch: Partial<WorkoutLine>) => void;
   removeAt: (i: number) => void;
-  joinPrevious: (i: number) => void;
-  leaveGroup: (i: number) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: row.localId,
+  });
+  const showMergeDrop = mergeDropEnabled && !isExtraSetRow;
+  const mergeDropId = linkAfterDroppableId(row.localId);
+  const { setNodeRef: setMergeDropRef, isOver: mergeDropOver } = useDroppable({
+    id: mergeDropId,
+    disabled: !showMergeDrop,
   });
   const rowStripe =
     insideBlock || !row.block_id
@@ -278,46 +369,109 @@ function SortableRow({
     borderLeft: rowStripe,
     paddingLeft: 10,
     paddingRight: 8,
-    paddingTop: 10,
-    paddingBottom: 10,
+    paddingTop: isExtraSetRow ? 8 : 12,
+    paddingBottom: isExtraSetRow ? 8 : 12,
     marginBottom: insideBlock ? 0 : 8,
-    background: "var(--app-surface-elevated, #1a2234)",
+    background: isExtraSetRow
+      ? "var(--app-surface, rgba(22, 28, 42, 0.65))"
+      : "var(--app-surface-elevated, #1a2234)",
     borderRadius: 8,
     border: "1px solid var(--app-border, rgba(148,163,184,0.16))",
+  };
+
+  const labelTiny: CSSProperties = {
+    fontSize: 10,
+    textTransform: "uppercase",
+    letterSpacing: "0.06em",
+    display: "block",
+    marginBottom: 6,
+    opacity: 0.85,
   };
 
   return (
     <div ref={setNodeRef} style={style}>
       <Space wrap align="start" style={{ width: "100%" }} size={[8, 8]}>
         <Button type="text" size="small" icon={<HolderOutlined />} {...attributes} {...listeners} />
-        <div style={{ minWidth: 132 }}>
-          <Typography.Text type="secondary" style={{ fontSize: 11, display: "block" }}>
+        <div style={{ minWidth: 120 }}>
+          <Typography.Text type="secondary" style={labelTiny}>
             {t("workouts.colBlock")}
           </Typography.Text>
           {blockStepLabel ? (
-            <Typography.Text strong style={{ fontSize: 12, display: "block" }}>
+            <Typography.Text strong style={{ fontSize: 12, display: "block", lineHeight: 1.35 }}>
               {blockStepLabel}
             </Typography.Text>
           ) : (
-            <Typography.Text type="secondary">{t("workouts.block.single")}</Typography.Text>
+            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+              {t("workouts.block.single")}
+            </Typography.Text>
           )}
         </div>
-        <div style={{ flex: "1 1 200px", minWidth: 140 }}>
-          <Typography.Text type="secondary" style={{ fontSize: 11, display: "block" }}>
-            {t("workouts.colExercise")}
-          </Typography.Text>
-          <Typography.Text strong style={{ fontSize: 14 }}>
-            {row.exercise_name ?? `ID ${row.exercise_id}`}
-          </Typography.Text>
-        </div>
-        <InputNumber
-          min={0}
-          size="small"
-          style={{ width: 72 }}
-          placeholder={t("workouts.colSets")}
-          value={row.sets ?? undefined}
-          onChange={(v) => updateAt(index, { sets: v == null ? null : Number(v) })}
-        />
+        <Flex
+          align="flex-start"
+          gap={14}
+          style={{
+            flex: "1 1 260px",
+            minWidth: 200,
+            paddingTop: 2,
+            borderLeft: isExtraSetRow ? "1px solid var(--app-border, rgba(148,163,184,0.22))" : undefined,
+            paddingLeft: isExtraSetRow ? 14 : 0,
+          }}
+        >
+          <div style={{ flexShrink: 0, textAlign: "center", minWidth: 44 }}>
+            <Typography.Text type="secondary" style={{ ...labelTiny, marginBottom: 8 }}>
+              {t("workouts.colSet")}
+            </Typography.Text>
+            <Tag
+              color={isExtraSetRow ? "default" : "processing"}
+              style={{
+                margin: 0,
+                minWidth: 36,
+                textAlign: "center",
+                fontSize: 13,
+                fontWeight: 600,
+                lineHeight: "22px",
+                padding: "0 10px",
+                borderRadius: 8,
+              }}
+            >
+              {setLabel}
+            </Tag>
+          </div>
+          <div style={{ flex: 1, minWidth: 0, paddingTop: 0 }}>
+            {!isExtraSetRow ? (
+              <>
+                <Typography.Text type="secondary" style={labelTiny}>
+                  {t("workouts.colExercise")}
+                </Typography.Text>
+                <Typography.Text
+                  strong
+                  style={{
+                    fontSize: 16,
+                    fontWeight: 600,
+                    lineHeight: 1.35,
+                    display: "block",
+                  }}
+                  ellipsis={{ tooltip: row.exercise_name ?? `ID ${row.exercise_id}` }}
+                >
+                  {row.exercise_name ?? `ID ${row.exercise_id}`}
+                </Typography.Text>
+              </>
+            ) : (
+              <>
+                <Typography.Text type="secondary" style={{ ...labelTiny, marginBottom: 4 }}>
+                  {t("workouts.extraSetExerciseLabel")}
+                </Typography.Text>
+                <Typography.Text
+                  type="secondary"
+                  style={{ fontSize: 13, lineHeight: 1.4, display: "block" }}
+                  ellipsis={{ tooltip: row.exercise_name ?? `ID ${row.exercise_id}` }}
+                >
+                  {row.exercise_name ?? `ID ${row.exercise_id}`}
+                </Typography.Text>
+              </>
+            )}
+          </div>
+        </Flex>
         <InputNumber
           min={0}
           size="small"
@@ -350,40 +504,45 @@ function SortableRow({
           onChange={(e) => updateAt(index, { notes: e.target.value || null })}
         />
         <Space size={4} wrap>
-          {canBeginLink ? (
-            <Dropdown
-              trigger={["click"]}
-              menu={{
-                items: BLOCK_OPTIONS.map((o) => ({
-                  key: o.value,
-                  label: t(o.labelKey),
-                  onClick: () => onPickBeginBlock(o.value),
-                })),
-              }}
-            >
-              <Button size="small" type="primary" ghost icon={<PlusOutlined />}>
-                {t("workouts.linkExercisesButton")}
-              </Button>
-            </Dropdown>
-          ) : null}
-          {canExtendLink ? (
+          {!isExtraSetRow && canExtendLink ? (
             <Button size="small" type="primary" ghost icon={<PlusOutlined />} onClick={onPickExtendBlock}>
               {t("workouts.addLinkedBelow")}
             </Button>
           ) : null}
-          <Button
-            size="small"
-            disabled={index === 0 || !prevBlockId}
-            onClick={() => joinPrevious(index)}
-          >
-            {t("workouts.joinPrevious")}
-          </Button>
-          <Button size="small" disabled={!row.block_id} onClick={() => leaveGroup(index)}>
-            {t("workouts.leaveGroup")}
-          </Button>
+          {!isExtraSetRow ? (
+            <Button size="small" icon={<PlusOutlined />} onClick={() => onAddSetBelow(index)}>
+              {t("workouts.addSetBelow")}
+            </Button>
+          ) : null}
           <Button size="small" danger icon={<DeleteOutlined />} onClick={() => removeAt(index)} />
         </Space>
       </Space>
+      <div
+        ref={setMergeDropRef}
+        role="presentation"
+        style={
+          showMergeDrop
+            ? {
+                marginTop: 6,
+                minHeight: 16,
+                borderRadius: 6,
+                border: `1px dashed ${
+                  mergeDropOver ? "var(--ant-color-primary)" : "var(--app-border, rgba(148,163,184,0.4))"
+                }`,
+                background: mergeDropOver ? "var(--ant-color-primary-bg)" : "rgba(148,163,184,0.05)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 11,
+                color: "var(--ant-color-text-tertiary)",
+                padding: "5px 8px",
+                textAlign: "center",
+              }
+            : { display: "none" }
+        }
+      >
+        {showMergeDrop ? t("workouts.mergeDropHint") : null}
+      </div>
     </div>
   );
 }
@@ -406,6 +565,13 @@ export function WorkoutItemsEditor({
   const [pickerQuery, setPickerQuery] = useState("");
   const [pickerScope, setPickerScope] = useState<"all" | "mine" | "catalog">("all");
   const [saving, setSaving] = useState(false);
+  const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  const [mergeModal, setMergeModal] = useState<{ activeLocalId: string; targetLocalId: string } | null>(
+    null,
+  );
+  const [mergePickType, setMergePickType] = useState<WorkoutBlockType>("superset");
+  /** Exercise bank is below the workout list; expand to search and add. */
+  const [pickerExpanded, setPickerExpanded] = useState(false);
   const pickerContextRef = useRef<PickerContext>({ mode: "append" });
   /** Mirrors ref so the UI can show which add mode is active (append vs linking). */
   const [pickerBanner, setPickerBanner] = useState<PickerContext>({ mode: "append" });
@@ -419,6 +585,20 @@ export function WorkoutItemsEditor({
     if (planVenue === "home" || planVenue === "commercial_gym") return planVenue;
     return undefined;
   }, [planVenue]);
+
+  const draggedRowIsSingle = useMemo(() => {
+    if (!activeDragId) return false;
+    const i = items.findIndex((r) => r.localId === activeDragId);
+    if (i < 0) return false;
+    const [lo, hi] = contiguousBlockRange(items, i);
+    return lo === hi;
+  }, [activeDragId, items]);
+
+  const mergeDropActiveForRow = useCallback(
+    (rowLocalId: string) =>
+      Boolean(activeDragId && activeDragId !== rowLocalId && draggedRowIsSingle),
+    [activeDragId, draggedRowIsSingle],
+  );
 
   useEffect(() => {
     const next = (initialItems ?? []).map((x, i) => ({
@@ -453,12 +633,14 @@ export function WorkoutItemsEditor({
   }, [message, t, venueCompat]);
 
   useEffect(() => {
+    if (!pickerExpanded) return;
     void loadExerciseOptions();
-  }, [loadExerciseOptions]);
+  }, [pickerExpanded, loadExerciseOptions]);
 
   const armPickerContext = useCallback((ctx: PickerContext) => {
     pickerContextRef.current = ctx;
     setPickerBanner(ctx);
+    if (ctx.mode !== "append") setPickerExpanded(true);
   }, []);
 
   const pickerLists = useMemo(() => {
@@ -477,9 +659,7 @@ export function WorkoutItemsEditor({
     (ex: ExerciseOpt) => {
       const ctx = pickerContextRef.current;
       let next: WorkoutLine[];
-      if (ctx.mode === "beginBlock") {
-        next = beginBlockFromRow(items, ctx.anchorIndex, ctx.blockType, ex);
-      } else if (ctx.mode === "extendBlock") {
+      if (ctx.mode === "extendBlock") {
         next = insertLinkedChildAfter(items, ctx.afterIndex, ex);
       } else {
         next = [
@@ -488,7 +668,7 @@ export function WorkoutItemsEditor({
             localId: newLocalId(),
             exercise_id: ex.id,
             sort_order: items.length,
-            sets: 3,
+            sets: null,
             reps: 10,
             duration_sec: null,
             rest_sec: 60,
@@ -506,16 +686,66 @@ export function WorkoutItemsEditor({
     [items, pushItems],
   );
 
+  const onDragStart = useCallback((event: DragStartEvent) => {
+    setActiveDragId(String(event.active.id));
+  }, []);
+
+  const onDragCancel = useCallback(() => {
+    setActiveDragId(null);
+  }, []);
+
   const onDragEnd = useCallback(
     (event: DragEndEvent) => {
       const { active, over } = event;
-      if (!over || active.id === over.id) return;
-      const oldIndex = items.findIndex((x) => x.localId === active.id);
-      const newIndex = items.findIndex((x) => x.localId === over.id);
+      const activeLocalId = String(active.id);
+      setActiveDragId(null);
+
+      if (!over) return;
+      const overId = String(over.id);
+
+      if (overId.startsWith(LINK_AFTER_PREFIX)) {
+        const targetLocalId = overId.slice(LINK_AFTER_PREFIX.length);
+        if (targetLocalId === activeLocalId) return;
+
+        const ai = items.findIndex((x) => x.localId === activeLocalId);
+        const ti = items.findIndex((x) => x.localId === targetLocalId);
+        if (ai < 0 || ti < 0) return;
+
+        const [alo, ahi] = contiguousBlockRange(items, ai);
+        if (alo !== ahi) {
+          message.warning(t("workouts.mergeNeedSingleRow"));
+          return;
+        }
+
+        const targetRow = items[ti];
+        if (targetRow.block_id?.trim()) {
+          pushItems(mergeDraggedAfterTarget(items, activeLocalId, targetLocalId, "superset"));
+        } else {
+          setMergePickType("superset");
+          setMergeModal({ activeLocalId, targetLocalId });
+        }
+        return;
+      }
+
+      if (activeLocalId === overId) return;
+      const oldIndex = items.findIndex((x) => x.localId === activeLocalId);
+      const newIndex = items.findIndex((x) => x.localId === overId);
       if (oldIndex < 0 || newIndex < 0) return;
+
+      const [runLo, runHi] = contiguousSameExerciseRun(items, oldIndex);
+      if (runHi > runLo) {
+        if (newIndex >= runLo && newIndex <= runHi) {
+          const moved = arrayMove(items, oldIndex, newIndex).map((r, i) => ({ ...r, sort_order: i }));
+          pushItems(moved);
+          return;
+        }
+        message.info(t("workouts.reorderSetsOnlyHere"));
+        return;
+      }
+
       pushItems(reorderWithBlocks(items, oldIndex, newIndex));
     },
-    [items, pushItems],
+    [items, message, pushItems, t],
   );
 
   const removeAt = useCallback(
@@ -534,30 +764,17 @@ export function WorkoutItemsEditor({
     [items, pushItems],
   );
 
-  const joinPrevious = useCallback(
-    (index: number) => {
-      if (index === 0) return;
-      const prev = items[index - 1];
-      if (!prev.block_id) return;
-      const next = items.map((row, i) =>
-        i === index ? { ...row, block_id: prev.block_id, block_type: prev.block_type } : row,
-      );
+  const updateBlockType = useCallback(
+    (blockId: string, bt: WorkoutBlockType) => {
+      const next = items.map((row) => (row.block_id === blockId ? { ...row, block_type: bt } : row));
       pushItems(next);
     },
     [items, pushItems],
   );
 
-  const leaveGroup = useCallback(
+  const addSetBelow = useCallback(
     (index: number) => {
-      updateAt(index, { block_id: null, block_type: null });
-    },
-    [updateAt],
-  );
-
-  const updateBlockType = useCallback(
-    (blockId: string, bt: WorkoutBlockType) => {
-      const next = items.map((row) => (row.block_id === blockId ? { ...row, block_type: bt } : row));
-      pushItems(next);
+      pushItems(insertDuplicateSetBelow(items, index));
     },
     [items, pushItems],
   );
@@ -596,196 +813,6 @@ export function WorkoutItemsEditor({
         </Typography.Text>
       ) : null}
 
-      <Card
-        id="workout-exercise-bank"
-        size="small"
-        title={t("workouts.exerciseBankTitle")}
-        style={{ marginBottom: 16 }}
-        extra={
-          <Button size="small" loading={pickerLoading} onClick={() => void loadExerciseOptions()}>
-            {t("workouts.exerciseBankRefresh")}
-          </Button>
-        }
-      >
-        <Typography.Paragraph type="secondary" style={{ marginBottom: 12 }}>
-          {t("workouts.exerciseBankIntro")}
-        </Typography.Paragraph>
-        {pickerBanner.mode === "beginBlock" ? (
-          <Alert
-            type="info"
-            showIcon
-            style={{ marginBottom: 12 }}
-            message={t("workouts.pickerActiveBeginBlock", {
-              type: t(`workouts.block.${pickerBanner.blockType}`),
-            })}
-            action={
-              <Button size="small" onClick={() => armPickerContext({ mode: "append" })}>
-                {t("workouts.pickerClearMode")}
-              </Button>
-            }
-          />
-        ) : null}
-        {pickerBanner.mode === "extendBlock" ? (
-          <Alert
-            type="info"
-            showIcon
-            style={{ marginBottom: 12 }}
-            message={t("workouts.pickerActiveExtendBlock")}
-            action={
-              <Button size="small" onClick={() => armPickerContext({ mode: "append" })}>
-                {t("workouts.pickerClearMode")}
-              </Button>
-            }
-          />
-        ) : null}
-        {pickerBanner.mode === "append" ? (
-          <Typography.Text type="secondary" style={{ display: "block", marginBottom: 12, fontSize: 13 }}>
-            {t("workouts.pickerActiveAppend")}
-          </Typography.Text>
-        ) : null}
-        {pickerLoading && catalogOpts.length === 0 && mineOpts.length === 0 ? (
-          <Flex align="center" justify="center" style={{ minHeight: 160 }}>
-            <Spin />
-          </Flex>
-        ) : (
-          <Space direction="vertical" style={{ width: "100%" }} size="middle">
-            <Flex wrap="wrap" gap={8} align="center" justify="space-between">
-              <Segmented
-                value={pickerScope}
-                onChange={(v) => setPickerScope(v as "all" | "mine" | "catalog")}
-                options={[
-                  { value: "all", label: t("workouts.pickerScopeAll") },
-                  { value: "mine", label: t("workouts.pickerScopeMine") },
-                  { value: "catalog", label: t("workouts.pickerScopeCatalog") },
-                ]}
-              />
-              <Button type="primary" size="small" icon={<PlusOutlined />} onClick={() => armPickerContext({ mode: "append" })}>
-                {t("workouts.addToEnd")}
-              </Button>
-            </Flex>
-            <Input.Search
-              allowClear
-              placeholder={t("workouts.pickerFilterPh")}
-              value={pickerQuery}
-              onChange={(e) => setPickerQuery(e.target.value)}
-              enterButton={<SearchOutlined />}
-            />
-            <Flex align="center" justify="space-between" wrap="wrap" gap={8}>
-              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                {t("workouts.pickerHint")}
-              </Typography.Text>
-              {pickerTotal > 0 ? (
-                <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                  {t("workouts.pickerShowingCount", { count: pickerTotal })}
-                </Typography.Text>
-              ) : null}
-            </Flex>
-            <div
-              style={{
-                maxHeight: 320,
-                overflowY: "auto",
-                paddingInlineEnd: 4,
-              }}
-            >
-              {pickerTotal === 0 && !pickerLoading ? (
-                <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("workouts.pickerNoMatches")} />
-              ) : pickerTotal === 0 && pickerLoading ? (
-                <Flex justify="center" style={{ padding: 24 }}>
-                  <Spin />
-                </Flex>
-              ) : (
-                <Space direction="vertical" size={12} style={{ width: "100%" }}>
-                  {pickerLists.mine.length > 0 ? (
-                    <>
-                      <Typography.Text strong style={{ display: "block", fontSize: 13 }}>
-                        {t("workouts.pickerGroupMine")}
-                      </Typography.Text>
-                      {pickerLists.mine.map((ex) => (
-                        <Flex
-                          key={`mine-${ex.id}`}
-                          align="center"
-                          justify="space-between"
-                          gap={12}
-                          wrap="wrap"
-                          style={{
-                            padding: "10px 12px",
-                            borderRadius: 8,
-                            border: "1px solid var(--app-border, rgba(148, 163, 184, 0.16))",
-                            background: "var(--app-surface-elevated, rgba(26, 32, 52, 0.55))",
-                          }}
-                        >
-                          <Flex align="center" gap={10} style={{ minWidth: 0, flex: "1 1 200px" }}>
-                            <Typography.Text ellipsis title={ex.name} style={{ margin: 0 }}>
-                              {ex.name}
-                            </Typography.Text>
-                            <Tag style={{ margin: 0, fontSize: 11, lineHeight: "18px", flexShrink: 0 }} color="green">
-                              {t("workouts.pickerTagMine")}
-                            </Tag>
-                          </Flex>
-                          <Button
-                            type="primary"
-                            size="small"
-                            icon={<PlusOutlined />}
-                            onClick={() => addExerciseFromPicker(ex)}
-                          >
-                            {t("workouts.pickerAddExercise")}
-                          </Button>
-                        </Flex>
-                      ))}
-                    </>
-                  ) : null}
-                  {pickerLists.mine.length > 0 && pickerLists.catalog.length > 0 ? (
-                    <Divider style={{ margin: "4px 0" }} />
-                  ) : null}
-                  {pickerLists.catalog.length > 0 ? (
-                    <>
-                      <Typography.Text strong style={{ display: "block", fontSize: 13 }}>
-                        {t("workouts.pickerGroupCatalog")}
-                      </Typography.Text>
-                      {pickerLists.catalog.map((ex) => (
-                        <Flex
-                          key={`cat-${ex.id}`}
-                          align="center"
-                          justify="space-between"
-                          gap={12}
-                          wrap="wrap"
-                          style={{
-                            padding: "10px 12px",
-                            borderRadius: 8,
-                            border: "1px solid var(--app-border, rgba(148, 163, 184, 0.16))",
-                            background: "var(--app-surface-elevated, rgba(26, 32, 52, 0.55))",
-                          }}
-                        >
-                          <Flex align="center" gap={10} style={{ minWidth: 0, flex: "1 1 200px" }}>
-                            <Typography.Text ellipsis title={ex.name} style={{ margin: 0 }}>
-                              {ex.name}
-                            </Typography.Text>
-                            <Tag
-                              style={{ margin: 0, fontSize: 11, lineHeight: "18px", flexShrink: 0 }}
-                              color="geekblue"
-                            >
-                              {t("workouts.pickerBadgeCatalog")}
-                            </Tag>
-                          </Flex>
-                          <Button
-                            type="primary"
-                            size="small"
-                            icon={<PlusOutlined />}
-                            onClick={() => addExerciseFromPicker(ex)}
-                          >
-                            {t("workouts.pickerAddExercise")}
-                          </Button>
-                        </Flex>
-                      ))}
-                    </>
-                  ) : null}
-                </Space>
-              )}
-            </div>
-          </Space>
-        )}
-      </Card>
-
       <Space wrap style={{ marginBottom: 12 }}>
         {mode === "training-plan" && showSaveButton ? (
           <Button type="primary" onClick={() => void saveTrainingPlan()} loading={saving}>
@@ -797,7 +824,13 @@ export function WorkoutItemsEditor({
       {items.length === 0 ? (
         <Typography.Text type="secondary">{t("workouts.emptyItems")}</Typography.Text>
       ) : (
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={workoutLinkCollisionDetection}
+          onDragStart={onDragStart}
+          onDragEnd={onDragEnd}
+          onDragCancel={onDragCancel}
+        >
           <SortableContext items={items.map((r) => r.localId)} strategy={verticalListSortingStrategy}>
             {(() => {
               const nodes: ReactNode[] = [];
@@ -806,23 +839,23 @@ export function WorkoutItemsEditor({
                 const row = items[i];
                 if (!row.block_id) {
                   const idx = i;
+                  const setRun = setIndexInExerciseRun(items, idx);
                   nodes.push(
                     <Fragment key={row.localId}>
                       <SortableRow
                         row={row}
                         index={idx}
-                        prevBlockId={idx > 0 ? items[idx - 1]?.block_id : null}
                         insideBlock={false}
                         blockStepLabel={null}
-                        canBeginLink
+                        setLabel={t("workouts.setNumber", { n: setRun })}
+                        isExtraSetRow={setRun > 1}
                         canExtendLink={false}
-                        onPickBeginBlock={(bt) => armPickerContext({ mode: "beginBlock", anchorIndex: idx, blockType: bt })}
                         onPickExtendBlock={() => armPickerContext({ mode: "extendBlock", afterIndex: idx })}
+                        onAddSetBelow={addSetBelow}
+                        mergeDropEnabled={mergeDropActiveForRow(row.localId)}
                         t={t}
                         updateAt={updateAt}
                         removeAt={removeAt}
-                        joinPrevious={joinPrevious}
-                        leaveGroup={leaveGroup}
                       />
                     </Fragment>,
                   );
@@ -871,6 +904,7 @@ export function WorkoutItemsEditor({
                       const globalIndex = start + k;
                       const r = items[globalIndex];
                       const stepLabel = t("workouts.blockMemberStep", { current: k + 1, total: blockLen });
+                      const setRun = setIndexInExerciseRun(items, globalIndex);
                       return (
                         <Fragment key={r.localId}>
                           {k > 0 ? (
@@ -899,18 +933,17 @@ export function WorkoutItemsEditor({
                           <SortableRow
                             row={r}
                             index={globalIndex}
-                            prevBlockId={globalIndex > 0 ? items[globalIndex - 1]?.block_id : null}
                             insideBlock
                             blockStepLabel={stepLabel}
-                            canBeginLink={false}
+                            setLabel={t("workouts.setNumber", { n: setRun })}
+                            isExtraSetRow={setRun > 1}
                             canExtendLink
-                            onPickBeginBlock={() => undefined}
                             onPickExtendBlock={() => armPickerContext({ mode: "extendBlock", afterIndex: globalIndex })}
+                            onAddSetBelow={addSetBelow}
+                            mergeDropEnabled={mergeDropActiveForRow(r.localId)}
                             t={t}
                             updateAt={updateAt}
                             removeAt={removeAt}
-                            joinPrevious={joinPrevious}
-                            leaveGroup={leaveGroup}
                           />
                         </Fragment>
                       );
@@ -923,6 +956,246 @@ export function WorkoutItemsEditor({
           </SortableContext>
         </DndContext>
       )}
+
+      {!pickerExpanded && pickerBanner.mode !== "append" ? (
+        <Alert
+          type="info"
+          showIcon
+          style={{ marginTop: 16 }}
+          message={t("workouts.pickerCollapsedLinkHint")}
+          action={
+            <Button size="small" type="primary" onClick={() => setPickerExpanded(true)}>
+              {t("workouts.openExerciseLibrary")}
+            </Button>
+          }
+        />
+      ) : null}
+
+      <Button
+        type="dashed"
+        block
+        size="large"
+        icon={pickerExpanded ? <UpOutlined /> : <DownOutlined />}
+        onClick={() => setPickerExpanded((open) => !open)}
+        style={{ marginTop: 16 }}
+      >
+        {pickerExpanded ? t("workouts.addExerciseCollapse") : t("workouts.addExerciseExpand")}
+      </Button>
+
+      {pickerExpanded ? (
+        <Card
+          id="workout-exercise-bank"
+          size="small"
+          title={t("workouts.exerciseBankTitle")}
+          style={{ marginTop: 12 }}
+          extra={
+            <Button size="small" loading={pickerLoading} onClick={() => void loadExerciseOptions()}>
+              {t("workouts.exerciseBankRefresh")}
+            </Button>
+          }
+        >
+          <Typography.Paragraph type="secondary" style={{ marginBottom: 12 }}>
+            {t("workouts.exerciseBankIntro")}
+          </Typography.Paragraph>
+          {pickerBanner.mode === "extendBlock" ? (
+            <Alert
+              type="info"
+              showIcon
+              style={{ marginBottom: 12 }}
+              message={t("workouts.pickerActiveExtendBlock")}
+              action={
+                <Button size="small" onClick={() => armPickerContext({ mode: "append" })}>
+                  {t("workouts.pickerClearMode")}
+                </Button>
+              }
+            />
+          ) : null}
+          {pickerBanner.mode === "append" ? (
+            <Typography.Text type="secondary" style={{ display: "block", marginBottom: 12, fontSize: 13 }}>
+              {t("workouts.pickerActiveAppend")}
+            </Typography.Text>
+          ) : null}
+          {pickerLoading && catalogOpts.length === 0 && mineOpts.length === 0 ? (
+            <Flex align="center" justify="center" style={{ minHeight: 160 }}>
+              <Spin />
+            </Flex>
+          ) : (
+            <Space direction="vertical" style={{ width: "100%" }} size="middle">
+              <Flex wrap="wrap" gap={8} align="center" justify="space-between">
+                <Segmented
+                  value={pickerScope}
+                  onChange={(v) => setPickerScope(v as "all" | "mine" | "catalog")}
+                  options={[
+                    { value: "all", label: t("workouts.pickerScopeAll") },
+                    { value: "mine", label: t("workouts.pickerScopeMine") },
+                    { value: "catalog", label: t("workouts.pickerScopeCatalog") },
+                  ]}
+                />
+                <Button
+                  type="primary"
+                  size="small"
+                  icon={<PlusOutlined />}
+                  onClick={() => armPickerContext({ mode: "append" })}
+                >
+                  {t("workouts.addToEnd")}
+                </Button>
+              </Flex>
+              <Input.Search
+                allowClear
+                placeholder={t("workouts.pickerFilterPh")}
+                value={pickerQuery}
+                onChange={(e) => setPickerQuery(e.target.value)}
+                enterButton={<SearchOutlined />}
+              />
+              <Flex align="center" justify="space-between" wrap="wrap" gap={8}>
+                <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                  {t("workouts.pickerHint")}
+                </Typography.Text>
+                {pickerTotal > 0 ? (
+                  <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                    {t("workouts.pickerShowingCount", { count: pickerTotal })}
+                  </Typography.Text>
+                ) : null}
+              </Flex>
+              <div
+                style={{
+                  maxHeight: 320,
+                  overflowY: "auto",
+                  paddingInlineEnd: 4,
+                }}
+              >
+                {pickerTotal === 0 && !pickerLoading ? (
+                  <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("workouts.pickerNoMatches")} />
+                ) : pickerTotal === 0 && pickerLoading ? (
+                  <Flex justify="center" style={{ padding: 24 }}>
+                    <Spin />
+                  </Flex>
+                ) : (
+                  <Space direction="vertical" size={12} style={{ width: "100%" }}>
+                    {pickerLists.mine.length > 0 ? (
+                      <>
+                        <Typography.Text strong style={{ display: "block", fontSize: 13 }}>
+                          {t("workouts.pickerGroupMine")}
+                        </Typography.Text>
+                        {pickerLists.mine.map((ex) => (
+                          <Flex
+                            key={`mine-${ex.id}`}
+                            align="center"
+                            justify="space-between"
+                            gap={12}
+                            wrap="wrap"
+                            style={{
+                              padding: "10px 12px",
+                              borderRadius: 8,
+                              border: "1px solid var(--app-border, rgba(148, 163, 184, 0.16))",
+                              background: "var(--app-surface-elevated, rgba(26, 32, 52, 0.55))",
+                            }}
+                          >
+                            <Flex align="center" gap={10} style={{ minWidth: 0, flex: "1 1 200px" }}>
+                              <Typography.Text ellipsis title={ex.name} style={{ margin: 0 }}>
+                                {ex.name}
+                              </Typography.Text>
+                              <Tag
+                                style={{ margin: 0, fontSize: 11, lineHeight: "18px", flexShrink: 0 }}
+                                color="green"
+                              >
+                                {t("workouts.pickerTagMine")}
+                              </Tag>
+                            </Flex>
+                            <Button
+                              type="primary"
+                              size="small"
+                              icon={<PlusOutlined />}
+                              onClick={() => addExerciseFromPicker(ex)}
+                            >
+                              {t("workouts.pickerAddExercise")}
+                            </Button>
+                          </Flex>
+                        ))}
+                      </>
+                    ) : null}
+                    {pickerLists.mine.length > 0 && pickerLists.catalog.length > 0 ? (
+                      <Divider style={{ margin: "4px 0" }} />
+                    ) : null}
+                    {pickerLists.catalog.length > 0 ? (
+                      <>
+                        <Typography.Text strong style={{ display: "block", fontSize: 13 }}>
+                          {t("workouts.pickerGroupCatalog")}
+                        </Typography.Text>
+                        {pickerLists.catalog.map((ex) => (
+                          <Flex
+                            key={`cat-${ex.id}`}
+                            align="center"
+                            justify="space-between"
+                            gap={12}
+                            wrap="wrap"
+                            style={{
+                              padding: "10px 12px",
+                              borderRadius: 8,
+                              border: "1px solid var(--app-border, rgba(148, 163, 184, 0.16))",
+                              background: "var(--app-surface-elevated, rgba(26, 32, 52, 0.55))",
+                            }}
+                          >
+                            <Flex align="center" gap={10} style={{ minWidth: 0, flex: "1 1 200px" }}>
+                              <Typography.Text ellipsis title={ex.name} style={{ margin: 0 }}>
+                                {ex.name}
+                              </Typography.Text>
+                              <Tag
+                                style={{ margin: 0, fontSize: 11, lineHeight: "18px", flexShrink: 0 }}
+                                color="geekblue"
+                              >
+                                {t("workouts.pickerBadgeCatalog")}
+                              </Tag>
+                            </Flex>
+                            <Button
+                              type="primary"
+                              size="small"
+                              icon={<PlusOutlined />}
+                              onClick={() => addExerciseFromPicker(ex)}
+                            >
+                              {t("workouts.pickerAddExercise")}
+                            </Button>
+                          </Flex>
+                        ))}
+                      </>
+                    ) : null}
+                  </Space>
+                )}
+              </div>
+            </Space>
+          )}
+        </Card>
+      ) : null}
+
+      <Modal
+        title={t("workouts.mergeModalTitle")}
+        open={mergeModal != null}
+        okText={t("workouts.mergeModalOk")}
+        onOk={() => {
+          if (!mergeModal) return;
+          pushItems(
+            mergeDraggedAfterTarget(
+              items,
+              mergeModal.activeLocalId,
+              mergeModal.targetLocalId,
+              mergePickType,
+            ),
+          );
+          setMergeModal(null);
+        }}
+        onCancel={() => setMergeModal(null)}
+        destroyOnClose
+      >
+        <Typography.Paragraph type="secondary" style={{ marginBottom: 12 }}>
+          {t("workouts.mergeModalHint")}
+        </Typography.Paragraph>
+        <Select<WorkoutBlockType>
+          style={{ width: "100%" }}
+          value={mergePickType}
+          onChange={(v) => setMergePickType(v)}
+          options={BLOCK_OPTIONS.map((o) => ({ value: o.value, label: t(o.labelKey) }))}
+        />
+      </Modal>
 
     </div>
   );
