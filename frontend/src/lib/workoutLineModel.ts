@@ -214,7 +214,11 @@ export function consolidateLegacyPlanRows(lines: WorkoutLine[]): WorkoutLine[] {
   return out.map((r, idx) => ({ ...r, sort_order: idx }));
 }
 
-export function newExerciseWithOneSet(ex: { id: number; name: string }): WorkoutLine[] {
+export function newExerciseWithOneSetInBlock(
+  ex: { id: number; name: string },
+  blockId: string | null,
+  blockType: WorkoutBlockType | null,
+): WorkoutLine[] {
   const iid = newLocalId();
   const head: WorkoutLine = {
     localId: newLocalId(),
@@ -228,8 +232,8 @@ export function newExerciseWithOneSet(ex: { id: number; name: string }): Workout
     duration_sec: null,
     rest_sec: 60,
     notes: null,
-    block_id: null,
-    block_type: null,
+    block_id: blockId,
+    block_type: blockType,
   };
   const setR: WorkoutLine = {
     localId: newLocalId(),
@@ -243,10 +247,14 @@ export function newExerciseWithOneSet(ex: { id: number; name: string }): Workout
     duration_sec: null,
     rest_sec: null,
     notes: null,
-    block_id: null,
-    block_type: null,
+    block_id: blockId,
+    block_type: blockType,
   };
   return [head, setR];
+}
+
+export function newExerciseWithOneSet(ex: { id: number; name: string }): WorkoutLine[] {
+  return newExerciseWithOneSetInBlock(ex, null, null);
 }
 
 function effectiveTemplateFromRow(items: WorkoutLine[], index: number) {
@@ -380,24 +388,30 @@ export function mergeExerciseBundleAfterTarget(
   const targetIndex = rest.findIndex((r) => r.localId === targetLocalId);
   if (targetIndex < 0) return items;
 
-  const target = rest[targetIndex];
-  const existingBid = target.block_id?.trim() || null;
+  const [tLo, tHi] = exerciseGroupRange(rest, targetIndex);
+  const targetHead = rest[tLo];
+  if (!targetHead) return items;
+  const existingBid = targetHead.block_id?.trim() || null;
+  /** After the whole target exercise (head + all its sets), never after the head only — that breaks exercise/set grouping. */
+  const insertAt = tHi + 1;
 
   if (existingBid) {
-    const bt = (target.block_type ?? "superset") as WorkoutBlockType;
+    const bt = (targetHead.block_type ?? "superset") as WorkoutBlockType;
     chunk.forEach((c) => {
       c.block_id = existingBid;
       c.block_type = bt;
     });
-    rest.splice(targetIndex + 1, 0, ...chunk);
+    rest.splice(insertAt, 0, ...chunk);
   } else {
     const bid = newLocalId();
-    rest[targetIndex] = { ...target, block_id: bid, block_type: newBlockType };
+    for (let j = tLo; j <= tHi; j++) {
+      rest[j] = { ...rest[j], block_id: bid, block_type: newBlockType };
+    }
     chunk.forEach((c) => {
       c.block_id = bid;
       c.block_type = newBlockType;
     });
-    rest.splice(targetIndex + 1, 0, ...chunk);
+    rest.splice(insertAt, 0, ...chunk);
   }
 
   return rest.map((r, i) => ({ ...r, sort_order: i }));
@@ -429,6 +443,28 @@ export function stripOrphanWorkoutBlocks(items: WorkoutLine[]): WorkoutLine[] {
       return { ...it, block_id: null, block_type: null };
     }
     return it;
+  });
+}
+
+/** Remove block_id when fewer than two exercise bundles share that block (e.g. abandoned “add superset” after first pick). */
+export function stripBlocksWithFewerThanTwoExercises(items: WorkoutLine[]): WorkoutLine[] {
+  const bundlesPerBlock = new Map<string, number>();
+  let i = 0;
+  while (i < items.length) {
+    const [lo, hi] = exerciseGroupRange(items, i);
+    const head = items[lo];
+    const bid = head?.block_id?.trim() || null;
+    if (bid) {
+      bundlesPerBlock.set(bid, (bundlesPerBlock.get(bid) ?? 0) + 1);
+    }
+    i = hi + 1;
+  }
+  return items.map((r) => {
+    const bid = r.block_id?.trim() || null;
+    if (bid && (bundlesPerBlock.get(bid) ?? 0) < 2) {
+      return { ...r, block_id: null, block_type: null };
+    }
+    return r;
   });
 }
 
@@ -608,22 +644,55 @@ export function normalizeBundleDropOverIndex(items: WorkoutLine[], activeIndex: 
   return tLo;
 }
 
+function arrayMoveIds(ids: string[], from: number, to: number): string[] {
+  if (from === to || from < 0 || to < 0 || from >= ids.length || to >= ids.length) return ids.slice();
+  const next = ids.slice();
+  const [removed] = next.splice(from, 1);
+  next.splice(to, 0, removed);
+  return next;
+}
+
+/**
+ * Matches @dnd-kit/sortable `arrayMove` on `orderedExerciseHeadLocalIds`: moves the dragged
+ * exercise bundle (head + sets) to the sort position of `overHeadLocalId`. Fixes downward
+ * drags where index-based splicing used to insert before the target bundle instead of after.
+ */
+export function reorderWorkoutLinesByHeadMove(
+  items: WorkoutLine[],
+  activeHeadLocalId: string,
+  overHeadLocalId: string,
+): WorkoutLine[] {
+  if (activeHeadLocalId === overHeadLocalId) return items;
+  const headIds = orderedExerciseHeadLocalIds(items);
+  const oldH = headIds.indexOf(activeHeadLocalId);
+  const newH = headIds.indexOf(overHeadLocalId);
+  if (oldH < 0 || newH < 0) return items;
+
+  const bundleByHeadId = new Map<string, WorkoutLine[]>();
+  for (const hid of headIds) {
+    const idx = items.findIndex((r) => r.localId === hid);
+    if (idx < 0) continue;
+    const [lo, hi] = exerciseGroupRange(items, idx);
+    bundleByHeadId.set(hid, items.slice(lo, hi + 1));
+  }
+
+  const nextHeadIds = arrayMoveIds(headIds, oldH, newH);
+  const out: WorkoutLine[] = [];
+  for (const hid of nextHeadIds) {
+    const chunk = bundleByHeadId.get(hid);
+    if (chunk) out.push(...chunk);
+  }
+  if (out.length !== items.length) return items;
+  return out.map((row, i) => ({ ...row, sort_order: i }));
+}
+
 export function reorderExerciseBundleInList(
   items: WorkoutLine[],
   activeIndex: number,
   overIndex: number,
 ): WorkoutLine[] {
-  if (activeIndex === overIndex) return items;
-  const [lo, hi] = exerciseGroupRange(items, activeIndex);
-  if (overIndex >= lo && overIndex <= hi) return items;
-  const chunk = items.slice(lo, hi + 1);
-  const rest = [...items.slice(0, lo), ...items.slice(hi + 1)];
-  let insertBefore = overIndex;
-  if (overIndex > hi) insertBefore = overIndex - chunk.length;
-  else if (overIndex < lo) insertBefore = overIndex;
-  insertBefore = Math.max(0, Math.min(insertBefore, rest.length));
-  return [...rest.slice(0, insertBefore), ...chunk, ...rest.slice(insertBefore)].map((row, i) => ({
-    ...row,
-    sort_order: i,
-  }));
+  const activeHead = items[activeIndex]?.localId;
+  const overHead = items[overIndex]?.localId;
+  if (!activeHead || !overHead) return items;
+  return reorderWorkoutLinesByHeadMove(items, activeHead, overHead);
 }
