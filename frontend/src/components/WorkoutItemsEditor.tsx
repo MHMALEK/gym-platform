@@ -49,77 +49,41 @@ import {
   useRef,
   useState,
 } from "react";
+import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 
 import { apiPrefix, authHeaders } from "../lib/api";
+import {
+  type WorkoutBlockType,
+  type WorkoutLine,
+  contiguousLegacyExerciseRun,
+  effectiveNotes,
+  effectiveNumeric,
+  exerciseGroupRange,
+  exerciseHeadIndex,
+  insertLinkedExerciseAfter,
+  insertSetBelowGroupEnd,
+  isMergeDragRoot,
+  mergeExerciseBundleAfterTarget,
+  newExerciseWithOneSet,
+  newLocalId,
+  normalizeWorkoutLinesForApi,
+  reorderExerciseBundleInList,
+  setCountInGroup,
+  setOrdinalInGroup,
+  setRowUISegment,
+} from "../lib/workoutLineModel";
 
-export type WorkoutBlockType = "superset" | "circuit" | "tri_set" | "giant_set" | "dropset";
-
-export type WorkoutLine = {
-  localId: string;
-  exercise_id: number;
-  sort_order: number;
-  sets: number | null;
-  reps: number | null;
-  duration_sec: number | null;
-  rest_sec: number | null;
-  notes: string | null;
-  exercise_name?: string;
-  block_id: string | null;
-  block_type: WorkoutBlockType | null;
-  /** From API: 0-based index inside the block (optional; server also recomputes on save). */
-  block_sequence?: number | null;
-};
+export type { WorkoutBlockType, WorkoutLine } from "../lib/workoutLineModel";
+export { normalizeWorkoutLinesForApi as normalizeWorkoutItemsForApi, workoutLinesFromApiItems } from "../lib/workoutLineModel";
 
 type ExerciseOpt = { id: number; name: string; source: "catalog" | "mine" };
 
-function newLocalId() {
-  return crypto.randomUUID();
-}
-
-/** 1-based index of this row within consecutive rows with the same exercise and block (each row = one set). */
-function setIndexInExerciseRun(items: WorkoutLine[], index: number): number {
-  const row = items[index];
-  if (!row) return 1;
-  let n = 1;
-  const bid = row.block_id ?? null;
-  for (let j = index - 1; j >= 0; j--) {
-    const p = items[j];
-    if (!p) break;
-    const pb = p.block_id ?? null;
-    if (p.exercise_id === row.exercise_id && pb === bid) n += 1;
-    else break;
-  }
-  return n;
-}
-
-/** Inclusive index range of consecutive rows with the same exercise and block (one “set run”). */
-function contiguousSameExerciseRun(items: WorkoutLine[], index: number): [number, number] {
-  const row = items[index];
-  if (!row) return [index, index];
-  const eid = row.exercise_id;
-  const bid = row.block_id ?? null;
-  let lo = index;
-  while (lo > 0) {
-    const p = items[lo - 1];
-    if (p.exercise_id === eid && (p.block_id ?? null) === bid) lo -= 1;
-    else break;
-  }
-  let hi = index;
-  while (hi < items.length - 1) {
-    const n = items[hi + 1];
-    if (n.exercise_id === eid && (n.block_id ?? null) === bid) hi += 1;
-    else break;
-  }
-  return [lo, hi];
-}
-
-/** Position within consecutive rows for the same exercise + block (for grouped set UI). */
-function exerciseSetRunSegment(
+function legacyRowUISegment(
   items: WorkoutLine[],
   index: number,
 ): "single" | "runFirst" | "runMiddle" | "runLast" {
-  const [lo, hi] = contiguousSameExerciseRun(items, index);
+  const [lo, hi] = contiguousLegacyExerciseRun(items, index);
   if (lo === hi) return "single";
   if (index === lo) return "runFirst";
   if (index === hi) return "runLast";
@@ -132,18 +96,6 @@ function arrayMove<T>(arr: T[], from: number, to: number): T[] {
   const [removed] = next.splice(from, 1);
   next.splice(to, 0, removed);
   return next;
-}
-
-function insertDuplicateSetBelow(items: WorkoutLine[], index: number): WorkoutLine[] {
-  const row = items[index];
-  if (!row) return items;
-  const dup: WorkoutLine = {
-    ...row,
-    localId: newLocalId(),
-    sort_order: 0,
-  };
-  const next = [...items.slice(0, index + 1), dup, ...items.slice(index + 1)];
-  return next.map((r, i) => ({ ...r, sort_order: i }));
 }
 
 function contiguousBlockRange(items: WorkoutLine[], index: number): [number, number] {
@@ -170,19 +122,6 @@ export function reorderWithBlocks(items: WorkoutLine[], activeIndex: number, ove
     ...row,
     sort_order: i,
   }));
-}
-
-function stripOrphanBlocks(items: WorkoutLine[]): WorkoutLine[] {
-  const counts = new Map<string, number>();
-  for (const it of items) {
-    if (it.block_id) counts.set(it.block_id, (counts.get(it.block_id) ?? 0) + 1);
-  }
-  return items.map((it) => {
-    if (it.block_id && (counts.get(it.block_id) ?? 0) < 2) {
-      return { ...it, block_id: null, block_type: null };
-    }
-    return it;
-  });
 }
 
 /** Droppable id prefix: merge dragged row immediately after the row that owns this zone. */
@@ -223,46 +162,6 @@ function AddSetBelowFooter({ onClick, label }: { onClick: () => void; label: str
       </Button>
     </div>
   );
-}
-
-/** Move active row to sit right after target, then share target's block or create a new pair. */
-function mergeDraggedAfterTarget(
-  items: WorkoutLine[],
-  activeLocalId: string,
-  targetLocalId: string,
-  newBlockType: WorkoutBlockType,
-): WorkoutLine[] {
-  let activeIndex = items.findIndex((r) => r.localId === activeLocalId);
-  let targetIndex = items.findIndex((r) => r.localId === targetLocalId);
-  if (activeIndex < 0 || targetIndex < 0 || activeLocalId === targetLocalId) return items;
-
-  const [alo, ahi] = contiguousBlockRange(items, activeIndex);
-  if (alo !== ahi) return items;
-
-  let rows = items.map((r) => ({ ...r }));
-  rows[activeIndex] = { ...rows[activeIndex], block_id: null, block_type: null };
-  rows = stripOrphanBlocks(rows);
-
-  activeIndex = rows.findIndex((r) => r.localId === activeLocalId);
-  targetIndex = rows.findIndex((r) => r.localId === targetLocalId);
-  if (activeIndex < 0 || targetIndex < 0) return items;
-
-  const [removed] = rows.splice(activeIndex, 1);
-  if (activeIndex < targetIndex) targetIndex -= 1;
-
-  const target = rows[targetIndex];
-  const existingBid = target.block_id?.trim() || null;
-
-  if (existingBid) {
-    const bt = (target.block_type ?? "superset") as WorkoutBlockType;
-    rows.splice(targetIndex + 1, 0, { ...removed, block_id: existingBid, block_type: bt });
-  } else {
-    const bid = newLocalId();
-    rows[targetIndex] = { ...target, block_id: bid, block_type: newBlockType };
-    rows.splice(targetIndex + 1, 0, { ...removed, block_id: bid, block_type: newBlockType });
-  }
-
-  return rows.map((r, i) => ({ ...r, sort_order: i }));
 }
 
 /** Stabilize grouping: when several “link after” zones overlap the drag rect, pick the nearest to the dragged item center. */
@@ -317,21 +216,6 @@ function blockAccent(blockId: string): string {
   return `hsl(${h % 360} 58% 52%)`;
 }
 
-export function normalizeWorkoutItemsForApi(items: WorkoutLine[]) {
-  const stripped = stripOrphanBlocks(items);
-  return stripped.map((it, index) => ({
-    exercise_id: it.exercise_id,
-    sort_order: index,
-    sets: it.sets ?? null,
-    reps: it.reps ?? null,
-    duration_sec: it.duration_sec ?? null,
-    rest_sec: it.rest_sec ?? null,
-    notes: it.notes?.trim() ? it.notes.trim() : null,
-    block_id: it.block_id?.trim() ? it.block_id.trim() : null,
-    block_type: it.block_id?.trim() ? it.block_type ?? "superset" : null,
-  }));
-}
-
 async function loadExercisesGrouped(
   venueCompat: string | null | undefined,
 ): Promise<{ catalog: ExerciseOpt[]; mine: ExerciseOpt[] }> {
@@ -374,31 +258,13 @@ const BLOCK_OPTIONS: { value: WorkoutBlockType; labelKey: string }[] = [
 
 type PickerContext = { mode: "append" } | { mode: "extendBlock"; afterIndex: number };
 
-function insertLinkedChildAfter(items: WorkoutLine[], afterIndex: number, ex: ExerciseOpt): WorkoutLine[] {
-  const row = items[afterIndex];
-  if (!row?.block_id) return items;
-  const bid = row.block_id;
-  const bt = row.block_type ?? "superset";
-  const child: WorkoutLine = {
-    localId: newLocalId(),
-    exercise_id: ex.id,
-    exercise_name: ex.name,
-    sort_order: 0,
-            sets: 1,
-            reps: row.reps,
-    duration_sec: row.duration_sec,
-    rest_sec: row.rest_sec,
-    notes: null,
-    block_id: bid,
-    block_type: bt,
-  };
-  const next = [...items.slice(0, afterIndex + 1), child, ...items.slice(afterIndex + 1)];
-  return next.map((r, i) => ({ ...r, sort_order: i }));
-}
+type RowPresentation = "exercise_head" | "set_under" | "legacy_combined";
 
 function SortableRow({
   row,
   index,
+  items,
+  presentation,
   insideBlock,
   packInExerciseGroup,
   blockStepLabel,
@@ -413,26 +279,31 @@ function SortableRow({
 }: {
   row: WorkoutLine;
   index: number;
+  items: WorkoutLine[];
+  presentation: RowPresentation;
   insideBlock: boolean;
-  /** Row sits inside the per-exercise shell; outer vertical gaps come from the shell + footer. */
   packInExerciseGroup: boolean;
   blockStepLabel: string | null;
   setLabel: string;
-  /** Where this row sits in a same-exercise set run (drives spacing + nested look for extra sets). */
   setRunSegment: "single" | "runFirst" | "runMiddle" | "runLast";
   canExtendLink: boolean;
   onPickExtendBlock: () => void;
-  /** Show dashed drop zone to group dragged exercise after this row (superset / dropset / …). */
   mergeDropEnabled: boolean;
-  t: (k: string) => string;
+  t: TFunction<"translation">;
   updateAt: (i: number, patch: Partial<WorkoutLine>) => void;
   removeAt: (i: number) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: row.localId,
   });
-  const isExtraSetRow = setRunSegment === "runMiddle" || setRunSegment === "runLast";
-  const showMergeDrop = mergeDropEnabled && !isExtraSetRow;
+  const isSetUnder = presentation === "set_under";
+  const isLegacyExtra =
+    presentation === "legacy_combined" && (setRunSegment === "runMiddle" || setRunSegment === "runLast");
+  const isExtraSetRow =
+    (presentation === "set_under" && (setRunSegment === "runMiddle" || setRunSegment === "runLast")) ||
+    isLegacyExtra;
+  const showMergeDrop =
+    mergeDropEnabled && (presentation === "exercise_head" || presentation === "legacy_combined");
   const mergeDropId = linkAfterDroppableId(row.localId);
   const { setNodeRef: setMergeDropRef, isOver: mergeDropOver } = useDroppable({
     id: mergeDropId,
@@ -447,6 +318,18 @@ function SortableRow({
   const nestedBg = "color-mix(in srgb, var(--ant-color-primary) 8%, var(--app-surface, #141a28))";
   const nestedBorder = "1px solid color-mix(in srgb, var(--ant-color-primary) 22%, var(--app-border, rgba(148,163,184,0.2)))";
 
+  const displayReps = isSetUnder ? effectiveNumeric(items, index, "reps") : row.reps;
+  const displayDur = isSetUnder ? effectiveNumeric(items, index, "duration_sec") : row.duration_sec;
+  const displayRest = isSetUnder ? effectiveNumeric(items, index, "rest_sec") : row.rest_sec;
+  const displayNotes = isSetUnder ? effectiveNotes(items, index) ?? "" : row.notes ?? "";
+
+  const hasSetOverride =
+    isSetUnder &&
+    (row.reps != null ||
+      row.duration_sec != null ||
+      row.rest_sec != null ||
+      (row.notes != null && row.notes !== ""));
+
   let borderRadius: string | number = 8;
   let marginTop = 0;
   let marginBottom = insideBlock ? 0 : 8;
@@ -456,11 +339,11 @@ function SortableRow({
   let border = "1px solid var(--app-border, rgba(148,163,184,0.16))";
   let extraPaddingLeft = 0;
 
-  if (setRunSegment === "runFirst") {
+  if (presentation === "exercise_head") {
     borderRadius = "12px 12px 6px 6px";
     marginBottom = insideBlock ? 6 : 6;
     paddingBottom = 10;
-  } else if (setRunSegment === "runMiddle") {
+  } else if (setRunSegment === "runFirst") {
     marginTop = insideBlock ? 6 : 10;
     marginBottom = 4;
     paddingTop = 10;
@@ -498,7 +381,7 @@ function SortableRow({
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0 : 1,
-    borderLeft: isExtraSetRow ? setRail : rowStripe,
+    borderLeft: isExtraSetRow || isLegacyExtra ? setRail : rowStripe,
     paddingLeft: 10 + extraPaddingLeft,
     paddingRight: 8,
     paddingTop,
@@ -509,7 +392,8 @@ function SortableRow({
     border,
     borderRadius,
     boxShadow:
-      setRunSegment === "runMiddle" || setRunSegment === "runLast"
+      presentation !== "exercise_head" &&
+      (setRunSegment === "runMiddle" || setRunSegment === "runLast")
         ? "inset 0 1px 0 color-mix(in srgb, var(--ant-color-primary) 12%, transparent)"
         : undefined,
   };
@@ -525,7 +409,22 @@ function SortableRow({
 
   return (
     <div ref={setNodeRef} style={style}>
-      {setRunSegment === "runFirst" ? (
+      {presentation === "exercise_head" && setCountInGroup(items, index) > 1 ? (
+        <Typography.Text
+          type="secondary"
+          style={{
+            display: "block",
+            fontSize: 11,
+            fontStyle: "italic",
+            marginBottom: 10,
+            paddingLeft: 36,
+            opacity: 0.9,
+          }}
+        >
+          {t("workouts.exerciseHeadAppliesToSets")}
+        </Typography.Text>
+      ) : null}
+      {presentation === "legacy_combined" && setRunSegment === "runFirst" ? (
         <Typography.Text
           type="secondary"
           style={{
@@ -556,79 +455,101 @@ function SortableRow({
             </Typography.Text>
           )}
         </div>
-        <Flex
-          align="flex-start"
-          gap={14}
-          style={{
-            flex: "1 1 260px",
-            minWidth: 200,
-            paddingTop: 2,
-            borderLeft: isExtraSetRow ? "1px dashed color-mix(in srgb, var(--ant-color-primary) 35%, transparent)" : undefined,
-            paddingLeft: isExtraSetRow ? 12 : 0,
-            marginLeft: isExtraSetRow ? 4 : 0,
-          }}
-        >
-          <div style={{ flexShrink: 0, textAlign: "center", minWidth: 44 }}>
-            <Typography.Text type="secondary" style={{ ...labelTiny, marginBottom: 8 }}>
-              {t("workouts.colSet")}
-            </Typography.Text>
-            <Tag
-              color={isExtraSetRow ? "default" : "processing"}
-              style={{
-                margin: 0,
-                minWidth: 36,
-                textAlign: "center",
-                fontSize: 13,
-                fontWeight: 600,
-                lineHeight: "22px",
-                padding: "0 10px",
-                borderRadius: 8,
-              }}
-            >
-              {setLabel}
-            </Tag>
-          </div>
-          <div style={{ flex: 1, minWidth: 0, paddingTop: 0 }}>
-            {!isExtraSetRow ? (
-              <>
-                <Typography.Text type="secondary" style={labelTiny}>
-                  {t("workouts.colExercise")}
-                </Typography.Text>
-                <Typography.Text
-                  strong
-                  style={{
-                    fontSize: 16,
-                    fontWeight: 600,
-                    lineHeight: 1.35,
-                    display: "block",
-                  }}
-                  ellipsis={{ tooltip: row.exercise_name ?? `ID ${row.exercise_id}` }}
-                >
-                  {row.exercise_name ?? `ID ${row.exercise_id}`}
-                </Typography.Text>
-              </>
-            ) : (
-              <>
-                <Typography.Text type="secondary" style={{ ...labelTiny, marginBottom: 4 }}>
-                  {t("workouts.extraSetExerciseLabel")}
-                </Typography.Text>
-                <Typography.Text
-                  type="secondary"
-                  style={{ fontSize: 13, lineHeight: 1.4, display: "block" }}
-                  ellipsis={{ tooltip: row.exercise_name ?? `ID ${row.exercise_id}` }}
-                >
-                  {row.exercise_name ?? `ID ${row.exercise_id}`}
-                </Typography.Text>
-              </>
-            )}
-          </div>
-        </Flex>
+        {presentation === "exercise_head" ? (
+          <Flex align="flex-start" gap={8} style={{ flex: "1 1 260px", minWidth: 200, paddingTop: 2 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <Typography.Text type="secondary" style={labelTiny}>
+                {t("workouts.colExerciseBlock")}
+              </Typography.Text>
+              <Typography.Text
+                strong
+                style={{
+                  fontSize: 16,
+                  fontWeight: 600,
+                  lineHeight: 1.35,
+                  display: "block",
+                }}
+                ellipsis={{ tooltip: row.exercise_name ?? `ID ${row.exercise_id}` }}
+              >
+                {row.exercise_name ?? `ID ${row.exercise_id}`}
+              </Typography.Text>
+            </div>
+          </Flex>
+        ) : (
+          <Flex
+            align="flex-start"
+            gap={14}
+            style={{
+              flex: "1 1 260px",
+              minWidth: 200,
+              paddingTop: 2,
+              borderLeft: isExtraSetRow ? "1px dashed color-mix(in srgb, var(--ant-color-primary) 35%, transparent)" : undefined,
+              paddingLeft: isExtraSetRow ? 12 : 0,
+              marginLeft: isExtraSetRow ? 4 : 0,
+            }}
+          >
+            <div style={{ flexShrink: 0, textAlign: "center", minWidth: 44 }}>
+              <Typography.Text type="secondary" style={{ ...labelTiny, marginBottom: 8 }}>
+                {t("workouts.colSet")}
+              </Typography.Text>
+              <Tag
+                color={isExtraSetRow ? "default" : "processing"}
+                style={{
+                  margin: 0,
+                  minWidth: 36,
+                  textAlign: "center",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  lineHeight: "22px",
+                  padding: "0 10px",
+                  borderRadius: 8,
+                }}
+              >
+                {setLabel}
+              </Tag>
+            </div>
+            <div style={{ flex: 1, minWidth: 0, paddingTop: 0 }}>
+              {!isExtraSetRow ? (
+                <>
+                  <Typography.Text type="secondary" style={labelTiny}>
+                    {t("workouts.colExercise")}
+                  </Typography.Text>
+                  <Typography.Text
+                    strong
+                    style={{
+                      fontSize: 16,
+                      fontWeight: 600,
+                      lineHeight: 1.35,
+                      display: "block",
+                    }}
+                    ellipsis={{ tooltip: row.exercise_name ?? `ID ${row.exercise_id}` }}
+                  >
+                    {row.exercise_name ?? `ID ${row.exercise_id}`}
+                  </Typography.Text>
+                </>
+              ) : (
+                <>
+                  <Typography.Text type="secondary" style={{ ...labelTiny, marginBottom: 4 }}>
+                    {isSetUnder ? t("workouts.setInheritsHint") : t("workouts.extraSetExerciseLabel")}
+                  </Typography.Text>
+                  <Typography.Text
+                    type="secondary"
+                    style={{ fontSize: 13, lineHeight: 1.4, display: "block" }}
+                    ellipsis={{ tooltip: row.exercise_name ?? `ID ${row.exercise_id}` }}
+                  >
+                    {row.exercise_name ?? `ID ${row.exercise_id}`}
+                  </Typography.Text>
+                </>
+              )}
+            </div>
+          </Flex>
+        )}
         <InputNumber
           min={0}
           size="small"
           style={{ width: 72 }}
           placeholder={t("workouts.colReps")}
-          value={row.reps ?? undefined}
+          value={displayReps ?? undefined}
           onChange={(v) => updateAt(index, { reps: v == null ? null : Number(v) })}
         />
         <InputNumber
@@ -636,7 +557,7 @@ function SortableRow({
           size="small"
           style={{ width: 80 }}
           placeholder={t("workouts.colDurationSec")}
-          value={row.duration_sec ?? undefined}
+          value={displayDur ?? undefined}
           onChange={(v) => updateAt(index, { duration_sec: v == null ? null : Number(v) })}
         />
         <InputNumber
@@ -644,18 +565,30 @@ function SortableRow({
           size="small"
           style={{ width: 80 }}
           placeholder={t("workouts.colRestSec")}
-          value={row.rest_sec ?? undefined}
+          value={displayRest ?? undefined}
           onChange={(v) => updateAt(index, { rest_sec: v == null ? null : Number(v) })}
         />
         <Input
           size="small"
           style={{ flex: "2 1 180px", minWidth: 140 }}
           placeholder={t("workouts.colTipsNotes")}
-          value={row.notes ?? ""}
+          value={displayNotes}
           onChange={(e) => updateAt(index, { notes: e.target.value || null })}
         />
         <Space size={4} wrap>
-          {!isExtraSetRow && canExtendLink ? (
+          {isSetUnder && hasSetOverride ? (
+            <Button
+              size="small"
+              type="link"
+              onClick={() =>
+                updateAt(index, { reps: null, duration_sec: null, rest_sec: null, notes: null })
+              }
+            >
+              {t("workouts.clearSetOverrides")}
+            </Button>
+          ) : null}
+          {(presentation === "exercise_head" || (presentation === "legacy_combined" && !isExtraSetRow)) &&
+          canExtendLink ? (
             <Button size="small" type="primary" ghost icon={<PlusOutlined />} onClick={onPickExtendBlock}>
               {t("workouts.addLinkedBelow")}
             </Button>
@@ -733,24 +666,28 @@ export function WorkoutItemsEditor({
     return undefined;
   }, [planVenue]);
 
-  const draggedRowIsSingle = useMemo(() => {
+  const mergeDragEligible = useMemo(() => {
     if (!activeDragId) return false;
     const i = items.findIndex((r) => r.localId === activeDragId);
     if (i < 0) return false;
-    const [lo, hi] = contiguousBlockRange(items, i);
-    return lo === hi;
+    if (!isMergeDragRoot(items, i)) return false;
+    const [blo, bhi] = contiguousBlockRange(items, i);
+    return blo === bhi;
   }, [activeDragId, items]);
 
   const mergeDropActiveForRow = useCallback(
     (rowLocalId: string) =>
-      Boolean(activeDragId && activeDragId !== rowLocalId && draggedRowIsSingle),
-    [activeDragId, draggedRowIsSingle],
+      Boolean(activeDragId && activeDragId !== rowLocalId && mergeDragEligible),
+    [activeDragId, mergeDragEligible],
   );
 
-  const activeDragRow = useMemo(
-    () => (activeDragId ? items.find((r) => r.localId === activeDragId) : undefined),
-    [activeDragId, items],
-  );
+  const activeDragRow = useMemo(() => {
+    if (!activeDragId) return undefined;
+    const i = items.findIndex((r) => r.localId === activeDragId);
+    if (i < 0) return undefined;
+    const hi = exerciseHeadIndex(items, i);
+    return items[hi];
+  }, [activeDragId, items]);
 
   useEffect(() => {
     const next = (initialItems ?? []).map((x, i) => ({
@@ -759,6 +696,8 @@ export function WorkoutItemsEditor({
       sort_order: i,
       block_id: x.block_id ?? null,
       block_type: x.block_type ?? null,
+      row_type: x.row_type ?? "legacy_line",
+      exercise_instance_id: x.exercise_instance_id ?? null,
     }));
     setItems(next);
   }, [initialItems]);
@@ -818,26 +757,11 @@ export function WorkoutItemsEditor({
       const ctx = pickerContextRef.current;
       let next: WorkoutLine[];
       if (ctx.mode === "extendBlock") {
-        next = insertLinkedChildAfter(items, ctx.afterIndex, ex);
+        next = insertLinkedExerciseAfter(items, ctx.afterIndex, ex);
       } else {
-        next = [
-          ...items,
-          {
-            localId: newLocalId(),
-            exercise_id: ex.id,
-            sort_order: items.length,
-            sets: 1,
-            reps: 10,
-            duration_sec: null,
-            rest_sec: 60,
-            notes: null,
-            exercise_name: ex.name,
-            block_id: null,
-            block_type: null,
-          },
-        ];
+        next = [...items, ...newExerciseWithOneSet(ex)];
       }
-      pushItems(next);
+      pushItems(next.map((r, i) => ({ ...r, sort_order: i })));
       pickerContextRef.current = { mode: "append" };
       setPickerBanner({ mode: "append" });
     },
@@ -869,15 +793,20 @@ export function WorkoutItemsEditor({
         const ti = items.findIndex((x) => x.localId === targetLocalId);
         if (ai < 0 || ti < 0) return;
 
-        const [alo, ahi] = contiguousBlockRange(items, ai);
-        if (alo !== ahi) {
+        const [exLo] = exerciseGroupRange(items, ai);
+        if (ai !== exLo) {
+          message.warning(t("workouts.mergeNeedSingleRow"));
+          return;
+        }
+        const [blo, bhi] = contiguousBlockRange(items, ai);
+        if (blo !== bhi) {
           message.warning(t("workouts.mergeNeedSingleRow"));
           return;
         }
 
         const targetRow = items[ti];
         if (targetRow.block_id?.trim()) {
-          pushItems(mergeDraggedAfterTarget(items, activeLocalId, targetLocalId, "superset"));
+          pushItems(mergeExerciseBundleAfterTarget(items, activeLocalId, targetLocalId, "superset"));
         } else {
           setMergePickType("superset");
           setMergeModal({ activeLocalId, targetLocalId });
@@ -890,26 +819,54 @@ export function WorkoutItemsEditor({
       const newIndex = items.findIndex((x) => x.localId === overId);
       if (oldIndex < 0 || newIndex < 0) return;
 
-      const [runLo, runHi] = contiguousSameExerciseRun(items, oldIndex);
-      if (runHi > runLo) {
-        if (newIndex >= runLo && newIndex <= runHi) {
-          const moved = arrayMove(items, oldIndex, newIndex).map((r, i) => ({ ...r, sort_order: i }));
-          pushItems(moved);
-          return;
-        }
+      const [gLo, gHi] = exerciseGroupRange(items, oldIndex);
+      if (gHi > gLo && oldIndex > gLo && newIndex > gLo && newIndex <= gHi && oldIndex !== newIndex) {
+        pushItems(arrayMove(items, oldIndex, newIndex).map((r, i) => ({ ...r, sort_order: i })));
+        return;
+      }
+      if (gHi > gLo && oldIndex > gLo && (newIndex <= gLo || newIndex > gHi)) {
         message.info(t("workouts.reorderSetsOnlyHere"));
         return;
       }
+      if (gHi > gLo && oldIndex === gLo && newIndex > gLo && newIndex <= gHi) {
+        return;
+      }
 
-      pushItems(reorderWithBlocks(items, oldIndex, newIndex));
+      const activeRow = items[oldIndex];
+      if (activeRow.block_id?.trim()) {
+        const [blo, bhi] = contiguousBlockRange(items, oldIndex);
+        if (newIndex < blo || newIndex > bhi) {
+          pushItems(reorderWithBlocks(items, oldIndex, newIndex));
+        }
+        return;
+      }
+
+      pushItems(reorderExerciseBundleInList(items, oldIndex, newIndex));
     },
     [items, message, pushItems, t],
   );
 
   const removeAt = useCallback(
     (index: number) => {
+      const [lo, hi] = exerciseGroupRange(items, index);
+      const row = items[index];
+      if (row.row_type === "exercise") {
+        const next = items.filter((_, i) => i < lo || i > hi);
+        pushItems(next.map((r, i) => ({ ...r, sort_order: i })));
+        return;
+      }
+      if (row.row_type === "set") {
+        if (hi - lo <= 1) {
+          const next = items.filter((_, i) => i < lo || i > hi);
+          pushItems(next.map((r, i) => ({ ...r, sort_order: i })));
+          return;
+        }
+        const next = items.filter((_, i) => i !== index);
+        pushItems(next.map((r, i) => ({ ...r, sort_order: i })));
+        return;
+      }
       const next = items.filter((_, i) => i !== index);
-      pushItems(next.map((row, i) => ({ ...row, sort_order: i })));
+      pushItems(next.map((r, i) => ({ ...r, sort_order: i })));
     },
     [items, pushItems],
   );
@@ -932,7 +889,7 @@ export function WorkoutItemsEditor({
 
   const addSetBelow = useCallback(
     (index: number) => {
-      pushItems(insertDuplicateSetBelow(items, index));
+      pushItems(insertSetBelowGroupEnd(items, index));
     },
     [items, pushItems],
   );
@@ -944,7 +901,7 @@ export function WorkoutItemsEditor({
       const res = await fetch(`${apiPrefix}/training-plans/${planId}/items`, {
         method: "PUT",
         headers: authHeaders(),
-        body: JSON.stringify(normalizeWorkoutItemsForApi(items)),
+        body: JSON.stringify(normalizeWorkoutLinesForApi(items)),
       });
       if (!res.ok) {
         message.error(await res.text());
@@ -996,23 +953,39 @@ export function WorkoutItemsEditor({
               while (i < items.length) {
                 const row = items[i];
                 if (!row.block_id) {
-                  const [lo, hi] = contiguousSameExerciseRun(items, i);
+                  const [lo, hi] = exerciseGroupRange(items, i);
                   nodes.push(
                     <div key={`exercise-group-${items[lo].localId}`} style={exerciseGroupShellStyle}>
                       {Array.from({ length: hi - lo + 1 }, (_, off) => {
                         const idx = lo + off;
                         const r = items[idx];
-                        const setRun = setIndexInExerciseRun(items, idx);
+                        const presentation: RowPresentation =
+                          r.row_type === "exercise"
+                            ? "exercise_head"
+                            : r.row_type === "set"
+                              ? "set_under"
+                              : "legacy_combined";
+                        const setOrd = setOrdinalInGroup(items, idx);
+                        const setLabel =
+                          presentation === "exercise_head" ? "—" : t("workouts.setNumber", { n: setOrd });
+                        const setRunSegment: "single" | "runFirst" | "runMiddle" | "runLast" =
+                          presentation === "exercise_head"
+                            ? "single"
+                            : presentation === "set_under"
+                              ? setRowUISegment(items, idx)
+                              : legacyRowUISegment(items, idx);
                         return (
                           <Fragment key={r.localId}>
                             <SortableRow
                               row={r}
                               index={idx}
+                              items={items}
+                              presentation={presentation}
                               insideBlock={false}
                               packInExerciseGroup
                               blockStepLabel={null}
-                              setLabel={t("workouts.setNumber", { n: setRun })}
-                              setRunSegment={exerciseSetRunSegment(items, idx)}
+                              setLabel={setLabel}
+                              setRunSegment={setRunSegment}
                               canExtendLink={false}
                               onPickExtendBlock={() => armPickerContext({ mode: "extendBlock", afterIndex: idx })}
                               mergeDropEnabled={mergeDropActiveForRow(r.localId)}
@@ -1080,7 +1053,7 @@ export function WorkoutItemsEditor({
                       const blockChildren: ReactNode[] = [];
                       while (k < blockLen) {
                         const globalIndex = start + k;
-                        const [lo, hi] = contiguousSameExerciseRun(items, globalIndex);
+                        const [lo, hi] = exerciseGroupRange(items, globalIndex);
                         blockChildren.push(
                           <Fragment key={`ex-in-block-${items[lo].localId}`}>
                             {lo > start ? (
@@ -1105,17 +1078,32 @@ export function WorkoutItemsEditor({
                                   current: idx - start + 1,
                                   total: blockLen,
                                 });
-                                const setRun = setIndexInExerciseRun(items, idx);
-                                const seg = exerciseSetRunSegment(items, idx);
+                                const presentation: RowPresentation =
+                                  r.row_type === "exercise"
+                                    ? "exercise_head"
+                                    : r.row_type === "set"
+                                      ? "set_under"
+                                      : "legacy_combined";
+                                const setOrd = setOrdinalInGroup(items, idx);
+                                const setLabelInner =
+                                  presentation === "exercise_head" ? "—" : t("workouts.setNumber", { n: setOrd });
+                                const seg: "single" | "runFirst" | "runMiddle" | "runLast" =
+                                  presentation === "exercise_head"
+                                    ? "single"
+                                    : presentation === "set_under"
+                                      ? setRowUISegment(items, idx)
+                                      : legacyRowUISegment(items, idx);
                                 return (
                                   <Fragment key={r.localId}>
                                     <SortableRow
                                       row={r}
                                       index={idx}
+                                      items={items}
+                                      presentation={presentation}
                                       insideBlock
                                       packInExerciseGroup
                                       blockStepLabel={stepLabel}
-                                      setLabel={t("workouts.setNumber", { n: setRun })}
+                                      setLabel={setLabelInner}
                                       setRunSegment={seg}
                                       canExtendLink
                                       onPickExtendBlock={() =>
@@ -1413,7 +1401,7 @@ export function WorkoutItemsEditor({
         onOk={() => {
           if (!mergeModal) return;
           pushItems(
-            mergeDraggedAfterTarget(
+            mergeExerciseBundleAfterTarget(
               items,
               mergeModal.activeLocalId,
               mergeModal.targetLocalId,
@@ -1438,41 +1426,4 @@ export function WorkoutItemsEditor({
 
     </div>
   );
-}
-
-export function workoutLinesFromApiItems(
-  raw: Array<{
-    exercise_id: number;
-    sort_order: number;
-    sets?: number | null;
-    reps?: number | null;
-    duration_sec?: number | null;
-    rest_sec?: number | null;
-    notes?: string | null;
-    block_id?: string | null;
-    block_type?: string | null;
-    block_sequence?: number | null;
-    exercise?: { name?: string };
-    exercise_name?: string | null;
-  }>,
-): WorkoutLine[] {
-  return [...raw]
-    .sort((a, b) => a.sort_order - b.sort_order)
-    .map((row) => ({
-      localId: newLocalId(),
-      exercise_id: row.exercise_id,
-      sort_order: row.sort_order,
-      sets: row.sets ?? null,
-      reps: row.reps ?? null,
-      duration_sec: row.duration_sec ?? null,
-      rest_sec: row.rest_sec ?? null,
-      notes: row.notes ?? null,
-      exercise_name: row.exercise?.name ?? row.exercise_name ?? undefined,
-      block_id: row.block_id?.trim() ? row.block_id.trim() : null,
-      block_type: (row.block_type as WorkoutBlockType) || null,
-      block_sequence:
-        row.block_sequence != null && !Number.isNaN(Number(row.block_sequence))
-          ? Number(row.block_sequence)
-          : undefined,
-    }));
 }
