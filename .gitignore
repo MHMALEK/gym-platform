@@ -6,5 +6,6 @@ backend/**/__pycache__/
 *.pyc
 .env
 frontend/node_modules/
+mcp/node_modules/
 frontend/dist/
 .DS_Store

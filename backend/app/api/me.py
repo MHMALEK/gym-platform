@@ -1,6 +1,6 @@
 import logging
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, Body, HTTPException, Query, Request, status
 from sqlalchemy import delete, select
 
 from app.api.deps import CurrentCoach, DbSession
@@ -8,16 +8,84 @@ from app.core.config import settings
 from app.core.media_util import build_public_url
 from app.core.security import init_firebase
 from app.models.coach import Coach
+from app.models.coach_api_key import CoachApiKey
 from app.models.coach_device_token import CoachDeviceToken
 from app.models.media_asset import MediaAsset
 from app.api.dashboard import build_dashboard_summary
 from app.schemas.coach import CoachRead, CoachUpdate, DeviceTokenCreate, DeviceTokenRead
+from app.schemas.coach_api_key import CoachApiKeyCreated, CoachApiKeyCreate, CoachApiKeyRead
+from app.services.coach_api_keys import generate_api_key_pair
 from app.schemas.common import Message
 from app.schemas.dashboard import DashboardSummary
 from app.services.media_orphans import delete_asset_if_unreferenced
 
 router = APIRouter(prefix="/me", tags=["me"])
 logger = logging.getLogger(__name__)
+
+
+def _reject_api_key_auth_for_key_management(request: Request) -> None:
+    auth = (request.headers.get("authorization") or "").strip()
+    if auth.lower().startswith("bearer gck_"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Create or revoke API keys from the web app while logged in with your password.",
+        )
+    if (request.headers.get("x-api-key") or "").strip():
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Manage API keys using Firebase login (Authorization: Bearer <ID token>), not X-API-Key.",
+        )
+
+
+@router.post("/api-keys", response_model=CoachApiKeyCreated, status_code=status.HTTP_201_CREATED)
+async def create_api_key(
+    request: Request,
+    coach: CurrentCoach,
+    db: DbSession,
+    body: CoachApiKeyCreate | None = Body(None),
+):
+    _reject_api_key_auth_for_key_management(request)
+    raw, prefix, key_hash = generate_api_key_pair()
+    b = body or CoachApiKeyCreate()
+    label = b.label.strip() if b.label and b.label.strip() else None
+    row = CoachApiKey(
+        coach_id=coach.id,
+        key_prefix=prefix,
+        key_hash=key_hash,
+        label=label,
+    )
+    db.add(row)
+    await db.commit()
+    await db.refresh(row)
+    return CoachApiKeyCreated(
+        id=row.id,
+        key=raw,
+        key_prefix=row.key_prefix,
+        label=row.label,
+        created_at=row.created_at,
+    )
+
+
+@router.get("/api-keys", response_model=list[CoachApiKeyRead])
+async def list_api_keys(request: Request, coach: CurrentCoach, db: DbSession):
+    _reject_api_key_auth_for_key_management(request)
+    result = await db.execute(
+        select(CoachApiKey).where(CoachApiKey.coach_id == coach.id).order_by(CoachApiKey.created_at.desc())
+    )
+    rows = result.scalars().all()
+    return [CoachApiKeyRead.model_validate(r, from_attributes=True) for r in rows]
+
+
+@router.delete("/api-keys/{key_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def revoke_api_key(request: Request, key_id: int, coach: CurrentCoach, db: DbSession):
+    _reject_api_key_auth_for_key_management(request)
+    res = await db.execute(
+        delete(CoachApiKey).where(CoachApiKey.id == key_id, CoachApiKey.coach_id == coach.id)
+    )
+    if res.rowcount == 0:
+        raise HTTPException(status_code=404, detail="API key not found")
+    await db.commit()
+    return None
 
 
 async def _coach_read(db: DbSession, coach: Coach, insights: DashboardSummary | None = None) -> CoachRead:

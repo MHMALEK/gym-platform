@@ -42,8 +42,14 @@ class Settings(BaseSettings):
     # Firebase Admin SDK: path to service account JSON, or set GOOGLE_APPLICATION_CREDENTIALS
     firebase_credentials_path: str | None = None
 
+    # HMAC-pepper for hashing coach API keys (MCP / machine clients). Set in production.
+    api_key_pepper: str = "change-me-in-production"
+
     # Dev only: skip Firebase verification (set false in production)
     dev_bypass_auth: bool = False
+    # Dev only: when dev_bypass_auth is True, allow requests with no Authorization/X-API-Key or
+    # X-API-Key in dev_mcp_api_key_aliases (comma-separated) to resolve the dev coach for MCP tests.
+    dev_mcp_api_key_aliases: str = "dev,test,bypass"
     dev_firebase_uid: str = "dev-coach-uid"
     dev_coach_email: str = "dev@example.com"
     dev_coach_name: str = "Dev Coach"

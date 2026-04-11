@@ -3,6 +3,7 @@ from app.models.client import Client
 from app.models.client_coaching_plan import ClientCoachingPlan
 from app.models.client_subscription import ClientSubscription
 from app.models.coach import Coach
+from app.models.coach_api_key import CoachApiKey
 from app.models.coach_device_token import CoachDeviceToken
 from app.models.exercise import Exercise
 from app.models.exercise_muscle_group import ExerciseMuscleGroup
@@ -22,6 +23,7 @@ __all__ = [
     "ClientCoachingPlan",
     "ClientSubscription",
     "Coach",
+    "CoachApiKey",
     "CoachDeviceToken",
     "Exercise",
     "ExerciseMuscleGroup",

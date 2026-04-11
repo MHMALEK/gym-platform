@@ -43,3 +43,8 @@ class Coach(Base, TimestampMixin):
         back_populates="coach",
         cascade="all, delete-orphan",
     )
+    api_keys = relationship(
+        "CoachApiKey",
+        back_populates="coach",
+        cascade="all, delete-orphan",
+    )
