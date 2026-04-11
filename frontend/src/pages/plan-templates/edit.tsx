@@ -1,13 +1,31 @@
+import { PlusOutlined } from "@ant-design/icons";
 import { Edit, useForm } from "@refinedev/antd";
-import { Col, Form, Input, InputNumber, Row, Switch, Typography } from "antd";
+import { Button, Col, Form, Input, InputNumber, Row, Switch, Typography } from "antd";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
+
+import { ExerciseFormMediaUpload } from "../../components/ExerciseFormMediaUpload";
+
+const PLAN_IMAGE_ACCEPT = "image/jpeg,image/png,image/webp,image/gif";
 
 export function PlanTemplateEdit() {
   const { t } = useTranslation();
   const { formProps, saveButtonProps } = useForm({ resource: "plan-templates" });
 
   return (
-    <Edit saveButtonProps={saveButtonProps}>
+    <Edit
+      saveButtonProps={saveButtonProps}
+      headerButtons={({ defaultButtons }) => (
+        <>
+          {defaultButtons}
+          <Link to="/plan-templates/create">
+            <Button type="default" icon={<PlusOutlined />} size="middle">
+              {t("common.quickLinks.newMembershipPlan")}
+            </Button>
+          </Link>
+        </>
+      )}
+    >
       <Form {...formProps} layout="vertical">
         <Typography.Paragraph type="secondary" style={{ marginTop: 0 }}>
           {t("planTemplates.edit.hint")}
@@ -21,25 +39,12 @@ export function PlanTemplateEdit() {
         <Form.Item name="description" label={t("planTemplates.create.description")}>
           <Input.TextArea rows={2} />
         </Form.Item>
-        <Form.Item
-          name="image_url"
-          label={t("planTemplates.create.imageUrl")}
-          rules={[
-            {
-              validator: (_, v) => {
-                const s = typeof v === "string" ? v.trim() : "";
-                if (!s) return Promise.resolve();
-                try {
-                  void new URL(s);
-                  return Promise.resolve();
-                } catch {
-                  return Promise.reject(new Error(t("planTemplates.create.urlError")));
-                }
-              },
-            },
-          ]}
-        >
-          <Input allowClear />
+        <Form.Item name="image_url" label={t("planTemplates.create.imageUrl")} tooltip={t("planTemplates.create.imageTooltip")}>
+          <ExerciseFormMediaUpload
+            variant="thumbnail"
+            accept={PLAN_IMAGE_ACCEPT}
+            emptyHint={t("planTemplates.create.imageEmpty")}
+          />
         </Form.Item>
         <Row gutter={16}>
           <Col xs={24} md={8}>

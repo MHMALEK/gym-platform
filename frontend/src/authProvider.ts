@@ -47,7 +47,12 @@ export const authProvider: AuthProvider = {
     const res = await fetch(`${apiPrefix}/me`, { headers: authHeaders() });
     if (!res.ok) return null;
     const u = await res.json();
-    return { id: u.id, name: u.name, email: u.email, avatar: undefined };
+    return {
+      id: u.id,
+      name: u.name,
+      email: u.email,
+      avatar: u.logo_url ?? undefined,
+    };
   },
   onError: async () => ({ error: undefined }),
 };

@@ -5,14 +5,30 @@ from sqlalchemy import delete, select
 
 from app.api.deps import CurrentCoach, DbSession
 from app.core.config import settings
+from app.core.media_util import build_public_url
 from app.core.security import init_firebase
+from app.models.coach import Coach
 from app.models.coach_device_token import CoachDeviceToken
+from app.models.media_asset import MediaAsset
 from app.api.dashboard import build_dashboard_summary
-from app.schemas.coach import CoachRead, DeviceTokenCreate, DeviceTokenRead
+from app.schemas.coach import CoachRead, CoachUpdate, DeviceTokenCreate, DeviceTokenRead
 from app.schemas.common import Message
+from app.schemas.dashboard import DashboardSummary
+from app.services.media_orphans import delete_asset_if_unreferenced
 
 router = APIRouter(prefix="/me", tags=["me"])
 logger = logging.getLogger(__name__)
+
+
+async def _coach_read(db: DbSession, coach: Coach, insights: DashboardSummary | None = None) -> CoachRead:
+    logo_url = None
+    if coach.logo_media_asset_id:
+        res = await db.execute(select(MediaAsset).where(MediaAsset.id == coach.logo_media_asset_id))
+        asset = res.scalar_one_or_none()
+        if asset:
+            logo_url = build_public_url(asset.storage_path)
+    base = CoachRead.model_validate(coach, from_attributes=True)
+    return base.model_copy(update={"logo_url": logo_url, "insights": insights})
 
 
 @router.get("", response_model=CoachRead)
@@ -21,11 +37,36 @@ async def read_me(
     db: DbSession,
     insights: bool = Query(False, description="Include dashboard metrics on the home screen"),
 ):
-    base = CoachRead.model_validate(coach, from_attributes=True)
-    if not insights:
-        return base
-    summary = await build_dashboard_summary(coach, db)
-    return base.model_copy(update={"insights": summary})
+    summary = None
+    if insights:
+        summary = await build_dashboard_summary(coach, db)
+    return await _coach_read(db, coach, summary)
+
+
+@router.patch("", response_model=CoachRead)
+async def update_me(coach: CurrentCoach, db: DbSession, body: CoachUpdate):
+    old_logo_id = coach.logo_media_asset_id
+    data = body.model_dump(exclude_unset=True)
+    if "logo_media_asset_id" in data:
+        new_id = data.pop("logo_media_asset_id")
+        if new_id is not None:
+            res = await db.execute(
+                select(MediaAsset).where(MediaAsset.id == new_id, MediaAsset.coach_id == coach.id)
+            )
+            if res.scalar_one_or_none() is None:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="logo_media_asset_id does not belong to this coach",
+                )
+        coach.logo_media_asset_id = new_id
+    for key, value in data.items():
+        setattr(coach, key, value)
+    await db.commit()
+    await db.refresh(coach)
+    if old_logo_id and old_logo_id != coach.logo_media_asset_id:
+        await delete_asset_if_unreferenced(db, old_logo_id)
+        await db.commit()
+    return await _coach_read(db, coach)
 
 
 @router.post("/device-tokens", response_model=DeviceTokenRead, status_code=status.HTTP_201_CREATED)

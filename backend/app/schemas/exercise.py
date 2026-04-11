@@ -71,6 +71,8 @@ def exercise_to_read(ex: Exercise) -> ExerciseRead:
     )
     for link in links:
         mg = link.muscle_group
+        if mg is None:
+            continue
         groups.append(MuscleGroupRef(id=mg.id, code=mg.code, label=mg.label))
         ids.append(mg.id)
     return ExerciseRead(

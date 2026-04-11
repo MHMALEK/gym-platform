@@ -181,9 +181,7 @@ async def get_catalog_training_plan(
         raise HTTPException(status_code=404, detail="Catalog plan not found")
     items_out = []
     for it in sorted(plan.items, key=lambda x: x.sort_order):
-        er = exercise_to_read(it.exercise) if it.exercise else None
-        tir = TrainingPlanItemRead.model_validate(it).model_copy(update={"exercise": er})
-        items_out.append(tir)
+        items_out.append(TrainingPlanItemRead.model_validate(it))
     return TrainingPlanRead(
         id=plan.id,
         coach_id=plan.coach_id,

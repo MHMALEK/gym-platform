@@ -2,6 +2,10 @@ import { Create, useForm } from "@refinedev/antd";
 import { Col, Form, Input, InputNumber, Row, Switch, Typography } from "antd";
 import { useTranslation } from "react-i18next";
 
+import { ExerciseFormMediaUpload } from "../../components/ExerciseFormMediaUpload";
+
+const PLAN_IMAGE_ACCEPT = "image/jpeg,image/png,image/webp,image/gif";
+
 export function PlanTemplateCreate() {
   const { t } = useTranslation();
   const { formProps, saveButtonProps } = useForm({ resource: "plan-templates" });
@@ -21,26 +25,12 @@ export function PlanTemplateCreate() {
         <Form.Item name="description" label={t("planTemplates.create.description")}>
           <Input.TextArea rows={2} placeholder={t("planTemplates.create.descPh")} />
         </Form.Item>
-        <Form.Item
-          name="image_url"
-          label={t("planTemplates.create.imageUrl")}
-          tooltip={t("planTemplates.create.imageTooltip")}
-          rules={[
-            {
-              validator: (_, v) => {
-                const s = typeof v === "string" ? v.trim() : "";
-                if (!s) return Promise.resolve();
-                try {
-                  void new URL(s);
-                  return Promise.resolve();
-                } catch {
-                  return Promise.reject(new Error(t("planTemplates.create.urlError")));
-                }
-              },
-            },
-          ]}
-        >
-          <Input placeholder={t("planTemplates.create.imagePh")} allowClear />
+        <Form.Item name="image_url" label={t("planTemplates.create.imageUrl")} tooltip={t("planTemplates.create.imageTooltip")}>
+          <ExerciseFormMediaUpload
+            variant="thumbnail"
+            accept={PLAN_IMAGE_ACCEPT}
+            emptyHint={t("planTemplates.create.imageEmpty")}
+          />
         </Form.Item>
         <Row gutter={16}>
           <Col xs={24} md={8}>

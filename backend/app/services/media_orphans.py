@@ -2,6 +2,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.media_util import delete_local_file_if_exists
+from app.models.coach import Coach
 from app.models.media_asset import ExerciseMedia, MediaAsset
 
 
@@ -10,6 +11,11 @@ async def delete_asset_if_unreferenced(db: AsyncSession, asset_id: int) -> None:
         select(func.count()).select_from(ExerciseMedia).where(ExerciseMedia.media_asset_id == asset_id)
     )
     if cnt and cnt > 0:
+        return
+    used_logo = await db.scalar(
+        select(func.count()).select_from(Coach).where(Coach.logo_media_asset_id == asset_id)
+    )
+    if used_logo and used_logo > 0:
         return
     res = await db.execute(select(MediaAsset).where(MediaAsset.id == asset_id))
     asset = res.scalar_one_or_none()

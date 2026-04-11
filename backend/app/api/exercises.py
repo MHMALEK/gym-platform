@@ -1,8 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, or_, select
+from sqlalchemy.exc import IntegrityError
 from app.api.deps import CurrentCoach, DbSession
 from app.models.exercise import Exercise
 from app.models.media_asset import ExerciseMedia
+from app.models.training_plan_item import TrainingPlanItem
 from app.schemas.exercise import ExerciseCreate, ExerciseRead, ExerciseUpdate, exercise_to_read
 from app.services.exercise_muscles import (
     EXERCISE_MUSCLE_LOADER,
@@ -172,12 +174,29 @@ async def delete_exercise(exercise_id: int, coach: CurrentCoach, db: DbSession):
     ex = result.scalar_one_or_none()
     if not ex:
         raise HTTPException(status_code=404, detail="Exercise not found")
+
+    in_plans = await db.scalar(
+        select(func.count()).select_from(TrainingPlanItem).where(TrainingPlanItem.exercise_id == exercise_id)
+    )
+    if in_plans and in_plans > 0:
+        raise HTTPException(
+            status_code=409,
+            detail="This exercise is used in one or more training plans. Remove it from those plans first, then try again.",
+        )
+
     r = await db.execute(
         select(ExerciseMedia.media_asset_id).where(ExerciseMedia.exercise_id == exercise_id)
     )
     asset_ids = {row[0] for row in r.all()}
-    await db.delete(ex)
-    await db.flush()
-    for aid in asset_ids:
-        await delete_asset_if_unreferenced(db, aid)
-    await db.commit()
+    try:
+        await db.delete(ex)
+        await db.flush()
+        for aid in asset_ids:
+            await delete_asset_if_unreferenced(db, aid)
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="This exercise cannot be deleted because it is still referenced elsewhere.",
+        ) from None

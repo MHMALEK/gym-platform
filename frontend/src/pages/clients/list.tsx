@@ -1,4 +1,5 @@
 import {
+  CreateButton,
   DeleteButton,
   EditButton,
   List,
@@ -96,7 +97,7 @@ export function ClientList() {
   }
 
   return (
-    <List>
+    <List headerButtons={<CreateButton />}>
       <Table {...tableProps} rowKey="id" scroll={{ x: 1100 }} size="middle">
         <Table.Column<BaseRecord>
           title={t("clients.client")}

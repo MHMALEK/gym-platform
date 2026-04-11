@@ -1,9 +1,10 @@
-from typing import Literal
+from typing import Any, Literal
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
+from app.models.exercise import Exercise
 from app.schemas.common import ORMBase
-from app.schemas.exercise import ExerciseRead
+from app.schemas.exercise import ExerciseRead, exercise_to_read
 
 PlanVenue = Literal["home", "commercial_gym", "mixed"]
 
@@ -82,6 +83,16 @@ class TrainingPlanItemRead(ORMBase):
     row_type: str = "legacy_line"
     exercise_instance_id: str | None = None
     exercise: ExerciseRead | None = None
+
+    @field_validator("exercise", mode="before")
+    @classmethod
+    def _coerce_exercise_from_orm(cls, v: Any) -> Any:
+        """ORM loads `exercise` as a SQLAlchemy model; map it to ExerciseRead for the API."""
+        if v is None or isinstance(v, ExerciseRead):
+            return v
+        if isinstance(v, Exercise):
+            return exercise_to_read(v)
+        return v
 
 
 class TrainingPlanRead(ORMBase):

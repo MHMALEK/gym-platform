@@ -1,8 +1,9 @@
+import { PlusOutlined } from "@ant-design/icons";
 import { Edit, useForm } from "@refinedev/antd";
-import { Form, Input, Select } from "antd";
+import { Button, Form, Input, Select } from "antd";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 
 import { ExerciseFormMediaUpload } from "../../components/ExerciseFormMediaUpload";
 import { ExerciseMediaGallery } from "../../components/ExerciseMediaGallery";
@@ -24,7 +25,19 @@ export function ExerciseEdit() {
   ];
 
   return (
-    <Edit saveButtonProps={saveButtonProps}>
+    <Edit
+      saveButtonProps={saveButtonProps}
+      headerButtons={({ defaultButtons }) => (
+        <>
+          {defaultButtons}
+          <Link to="/exercises/create">
+            <Button type="default" icon={<PlusOutlined />} size="middle">
+              {t("common.quickLinks.newExercise")}
+            </Button>
+          </Link>
+        </>
+      )}
+    >
       <Form {...formProps} layout="vertical">
         <Form.Item name="name" label={t("exercises.form.name")} rules={[{ required: true }]}>
           <Input />

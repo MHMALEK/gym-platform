@@ -55,6 +55,19 @@ export function ClientCoachingPlansEditor({ clientId, embed, extraActions }: Pro
   const [lines, setLines] = useState<WorkoutLine[]>([]);
   const [dietMeals, setDietMeals] = useState<DietMeal[]>([]);
   const [nutritionTemplateFilter, setNutritionTemplateFilter] = useState("");
+  const [trainingPlanFilter, setTrainingPlanFilter] = useState("");
+
+  const { data: trainingPlanList, isLoading: trainingPlansLoading } = useList({
+    resource: "training-plans",
+    pagination: { current: 1, pageSize: 500 },
+  });
+  const trainingPlanRows = useMemo(() => {
+    const raw = (trainingPlanList?.data ?? []) as BaseRecord[];
+    const q = trainingPlanFilter.trim().toLowerCase();
+    if (!q) return raw;
+    return raw.filter((r) => String(r.name ?? "").toLowerCase().includes(q));
+  }, [trainingPlanList?.data, trainingPlanFilter]);
+  const trainingPlansTotalCount = trainingPlanList?.data?.length ?? 0;
 
   const { data: nutritionTemplateList, isLoading: nutritionTemplatesLoading } = useList({
     resource: "nutrition-templates",
@@ -118,6 +131,37 @@ export function ClientCoachingPlansEditor({ clientId, embed, extraActions }: Pro
       }
     },
     [message, t],
+  );
+
+  const applyTrainingPlan = useCallback(
+    async (planId: number) => {
+      try {
+        const res = await fetch(`${apiPrefix}/training-plans/${planId}`, {
+          headers: authHeaders(),
+        });
+        if (!res.ok) {
+          message.error(t("clients.plans.workoutTemplateApplyError"));
+          return;
+        }
+        const data = (await res.json()) as {
+          items?: Parameters<typeof workoutLinesFromApiItems>[0];
+          workout_rich_html?: string | null;
+          venue_type?: string;
+        };
+        setLines(workoutLinesFromApiItems(data.items ?? []));
+        const pv = data.venue_type;
+        const programVenueOut =
+          pv === "home" || pv === "commercial_gym" || pv === "mixed" ? pv : "mixed";
+        form.setFieldsValue({
+          workout_rich_html: data.workout_rich_html ?? "",
+          program_venue: programVenueOut,
+        });
+        message.success(t("clients.plans.workoutTemplateApplied"));
+      } catch {
+        message.error(t("clients.plans.workoutTemplateApplyError"));
+      }
+    },
+    [form, message, t],
   );
 
   useEffect(() => {
@@ -238,22 +282,84 @@ export function ClientCoachingPlansEditor({ clientId, embed, extraActions }: Pro
 
         <Divider />
         <Typography.Title level={5} style={{ marginTop: 0 }}>
+          {t("clients.plans.workoutTemplatesSectionTitle")}
+        </Typography.Title>
+        <Typography.Paragraph type="secondary" style={{ marginBottom: 12 }}>
+          {t("clients.plans.workoutTemplatesHint")}
+        </Typography.Paragraph>
+        <div style={{ marginBottom: 12 }}>
+          <Link to="/training-plans/create">
+            <Button type="primary">{t("clients.plans.newWorkoutPlan")}</Button>
+          </Link>
+        </div>
+        <Space direction="vertical" size="middle" style={{ width: "100%", marginBottom: 24 }}>
+          <Input.Search
+            allowClear
+            placeholder={t("clients.plans.filterWorkoutPlansPlaceholder")}
+            value={trainingPlanFilter}
+            onChange={(e) => setTrainingPlanFilter(e.target.value)}
+            onSearch={setTrainingPlanFilter}
+            style={{ maxWidth: 400 }}
+          />
+          <Table<BaseRecord>
+            size="small"
+            rowKey="id"
+            loading={trainingPlansLoading}
+            dataSource={trainingPlanRows}
+            pagination={{ pageSize: 8, hideOnSinglePage: true, showSizeChanger: false }}
+            locale={{
+              emptyText:
+                trainingPlansTotalCount === 0
+                  ? t("clients.plans.workoutTemplateEmptyList")
+                  : trainingPlanFilter.trim()
+                    ? t("clients.plans.workoutTemplateFilterEmpty")
+                    : t("clients.plans.workoutTemplateEmptyList"),
+            }}
+          >
+            <Table.Column dataIndex="name" title={t("trainingPlans.list.name")} ellipsis />
+            <Table.Column
+              dataIndex="description"
+              title={t("trainingPlans.list.description")}
+              ellipsis
+            />
+            <Table.Column
+              dataIndex="venue_type"
+              title={t("trainingPlans.list.venue")}
+              width={140}
+              render={(v: string) => t(`workouts.venue.${v ?? "mixed"}`)}
+            />
+            <Table.Column<BaseRecord>
+              title={t("nutritionTemplates.list.actions")}
+              width={220}
+              render={(_, r) => (
+                <Space wrap size="small">
+                  <Button
+                    type="primary"
+                    size="small"
+                    onClick={() => void applyTrainingPlan(Number(r.id))}
+                  >
+                    {t("clients.plans.workoutTemplateApply")}
+                  </Button>
+                  <Link to={`/training-plans/edit/${r.id}`}>
+                    <Button size="small">{t("actions.edit")}</Button>
+                  </Link>
+                </Space>
+              )}
+            />
+          </Table>
+        </Space>
+
+        <Typography.Title level={5} style={{ marginTop: 0 }}>
           {t("clients.plans.templatesSectionTitle")}
         </Typography.Title>
         <Typography.Paragraph type="secondary" style={{ marginBottom: 12 }}>
           {t("clients.plans.templateApplyHint")}
         </Typography.Paragraph>
-        <Space wrap style={{ marginBottom: 12 }}>
+        <div style={{ marginBottom: 12 }}>
           <Link to="/nutrition-templates/create">
             <Button type="primary">{t("clients.plans.newTemplate")}</Button>
           </Link>
-          <Link to="/nutrition-templates">
-            <Button>{t("clients.plans.manageTemplates")}</Button>
-          </Link>
-          <Link to="/library/nutrition-templates">
-            <Button>{t("nutritionTemplates.list.openCatalog")}</Button>
-          </Link>
-        </Space>
+        </div>
         <Space direction="vertical" size="middle" style={{ width: "100%", marginBottom: 16 }}>
           <Input.Search
             allowClear

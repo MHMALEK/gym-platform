@@ -1,10 +1,14 @@
+import { PlusOutlined } from "@ant-design/icons";
 import { Edit, useForm, useSelect } from "@refinedev/antd";
-import { DatePicker, Form, Input, InputNumber, Select } from "antd";
+import { Button, DatePicker, Form, Input, InputNumber, Select, Space } from "antd";
 import dayjs from "dayjs";
+import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 
 import { INVOICE_STATUS_OPTIONS } from "./invoiceOptions";
 
 export function InvoiceEdit() {
+  const { t } = useTranslation();
   const { formProps, saveButtonProps } = useForm({ resource: "invoices" });
 
   const { selectProps: clientSelectProps } = useSelect({
@@ -15,7 +19,26 @@ export function InvoiceEdit() {
   });
 
   return (
-    <Edit saveButtonProps={saveButtonProps}>
+    <Edit
+      saveButtonProps={saveButtonProps}
+      headerButtons={({ defaultButtons }) => (
+        <>
+          {defaultButtons}
+          <Space wrap size="small">
+            <Link to="/invoices/create">
+              <Button type="default" icon={<PlusOutlined />} size="middle">
+                {t("common.quickLinks.newInvoice")}
+              </Button>
+            </Link>
+            <Link to="/clients/create">
+              <Button type="default" size="middle">
+                {t("common.quickLinks.newClient")}
+              </Button>
+            </Link>
+          </Space>
+        </>
+      )}
+    >
       <Form {...formProps} layout="vertical">
         <Form.Item name="client_id" label="Client" rules={[{ required: true }]}>
           <Select {...clientSelectProps} style={{ width: "100%" }} />

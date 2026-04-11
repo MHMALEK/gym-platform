@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import delete, func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 
 from app.api.deps import CurrentCoach, DbSession
 from app.models.training_plan import TrainingPlan
 from app.models.training_plan_item import TrainingPlanItem
-from app.schemas.exercise import exercise_to_read
 from app.schemas.training_plan import (
     TrainingPlanCreate,
     TrainingPlanItemRead,
@@ -38,8 +38,7 @@ async def _get_owned_plan(db, coach_id: int, plan_id: int) -> TrainingPlan | Non
 def _plan_to_read(plan: TrainingPlan) -> TrainingPlanRead:
     items_out = []
     for it in sorted(plan.items, key=lambda x: x.sort_order):
-        er = exercise_to_read(it.exercise) if it.exercise else None
-        tir = TrainingPlanItemRead.model_validate(it).model_copy(update={"exercise": er})
+        tir = TrainingPlanItemRead.model_validate(it)
         items_out.append(tir)
     return TrainingPlanRead(
         id=plan.id,
@@ -219,11 +218,19 @@ async def replace_training_plan_items(
 
 @router.delete("/{plan_id}", status_code=204)
 async def delete_training_plan(plan_id: int, coach: CurrentCoach, db: DbSession):
-    result = await db.execute(
-        select(TrainingPlan).where(TrainingPlan.id == plan_id, TrainingPlan.coach_id == coach.id)
+    owned = await db.scalar(
+        select(TrainingPlan.id).where(TrainingPlan.id == plan_id, TrainingPlan.coach_id == coach.id)
     )
-    plan = result.scalar_one_or_none()
-    if not plan:
+    if owned is None:
         raise HTTPException(status_code=404, detail="Training plan not found")
-    await db.delete(plan)
-    await db.commit()
+    # Use a Core DELETE so we never lazy-load `items` in the async session (ORM delete + cascade
+    # would trigger MissingGreenlet). DB FK on training_plan_items uses ON DELETE CASCADE.
+    await db.execute(delete(TrainingPlan).where(TrainingPlan.id == plan_id, TrainingPlan.coach_id == coach.id))
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="This training plan cannot be deleted because it is still referenced elsewhere.",
+        ) from None

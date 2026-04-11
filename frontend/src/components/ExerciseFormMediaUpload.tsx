@@ -18,6 +18,8 @@ export type ExerciseFormMediaUploadProps = {
   exerciseId?: string;
   linkRole?: MediaRole;
   onUploaded?: () => void;
+  /** Overrides default empty-state hint for the thumbnail variant (e.g. plan cover). */
+  emptyHint?: string;
 };
 
 function isProbablyVideoUrl(url: string) {
@@ -32,6 +34,7 @@ export function ExerciseFormMediaUpload({
   exerciseId,
   linkRole,
   onUploaded,
+  emptyHint,
 }: ExerciseFormMediaUploadProps) {
   const { t } = useTranslation();
   const { message } = App.useApp();
@@ -94,7 +97,9 @@ export function ExerciseFormMediaUpload({
         </div>
       ) : (
         <Typography.Text type="secondary" style={{ fontSize: 13 }}>
-          {variant === "thumbnail" ? t("exercises.form.thumbnailEmpty") : t("exercises.form.demoEmpty")}
+          {variant === "thumbnail"
+            ? emptyHint ?? t("exercises.form.thumbnailEmpty")
+            : t("exercises.form.demoEmpty")}
         </Typography.Text>
       )}
       <Space wrap>

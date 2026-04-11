@@ -1,187 +1,106 @@
-import { FileTextOutlined, UserOutlined } from "@ant-design/icons";
-import { useCreate, useList } from "@refinedev/core";
-import type { BaseRecord, HttpError } from "@refinedev/core";
-import {
-  App,
-  Button,
-  Card,
-  DatePicker,
-  Form,
-  Input,
-  InputNumber,
-  Select,
-  Space,
-  Table,
-  Tabs,
-  Typography,
-} from "antd";
+import { useList } from "@refinedev/core";
+import type { BaseRecord } from "@refinedev/core";
+import { Card, Space, Table, Tag, Typography } from "antd";
 import dayjs from "dayjs";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
 import { formatMoney } from "../../lib/money";
-import { ClientSubscriptionsPanel } from "../memberships/ClientSubscriptionsPanel";
 
 type MembershipSummary = {
   plan_name: string;
+  plan_code?: string | null;
   ends_at?: string | null;
+  days_remaining?: number | null;
+  source: "active_subscription" | "designated_only";
 };
 
-function clientMembership(c: BaseRecord): MembershipSummary | undefined {
-  const x = c as Record<string, unknown>;
-  return x.membership_summary as MembershipSummary | undefined;
+type LastInvoiceSummary = {
+  id: number;
+  status: string;
+  is_paid: boolean;
+  due_date?: string | null;
+  amount?: number | string | null;
+  currency: string;
+  reference?: string | null;
+};
+
+function membershipSummary(r: BaseRecord): MembershipSummary | undefined {
+  const x = r as Record<string, unknown>;
+  return (x.membership_summary ?? x.membershipSummary) as MembershipSummary | undefined;
+}
+
+function lastInvoiceSummary(r: BaseRecord): LastInvoiceSummary | undefined {
+  const x = r as Record<string, unknown>;
+  return (x.last_invoice_summary ?? x.lastInvoiceSummary) as LastInvoiceSummary | undefined;
 }
 
 /** Backend caps `limit` (e.g. le=200 on list endpoints). */
 const LIST_PAGE_SIZE = 200;
 
+function invoiceIsOverdue(inv: LastInvoiceSummary, today: dayjs.Dayjs): boolean {
+  if (inv.status === "overdue") return true;
+  if (inv.status === "pending" && inv.due_date) {
+    return dayjs(inv.due_date).startOf("day").isBefore(today);
+  }
+  return false;
+}
+
+function sortTier(r: BaseRecord): number {
+  const inv = lastInvoiceSummary(r);
+  if (
+    inv?.status === "overdue" ||
+    (inv?.status === "pending" && inv.due_date)
+  ) {
+    return 0;
+  }
+  if (inv?.status === "pending") return 1;
+  const ms = membershipSummary(r);
+  if (ms?.ends_at) return 2;
+  return 3;
+}
+
+function sortDateValue(r: BaseRecord): number {
+  const inv = lastInvoiceSummary(r);
+  if (inv && (inv.status === "overdue" || inv.status === "pending") && inv.due_date) {
+    return dayjs(inv.due_date).startOf("day").valueOf();
+  }
+  const ms = membershipSummary(r);
+  if (ms?.ends_at) {
+    return dayjs(ms.ends_at).valueOf();
+  }
+  return Number.POSITIVE_INFINITY;
+}
+
 /**
- * Minimal coach workflow: add client, add invoice, assign plan, see due dates.
+ * Trainer home: roster at a glance — client status, last invoice, what is due next.
  */
 export function CoachDeskPage() {
   const { t, i18n } = useTranslation();
-  const { message } = App.useApp();
-  const [clientForm] = Form.useForm();
-  const [invoiceForm] = Form.useForm();
-  const [planClientId, setPlanClientId] = useState<number | null>(null);
-
-  const { data: clientsData, isLoading: clientsLoading } = useList({
+  const { data: clientsData, isLoading } = useList({
     resource: "clients",
     pagination: { pageSize: LIST_PAGE_SIZE, mode: "server" },
   });
-  const { data: invoicesData, isLoading: invoicesLoading } = useList({
-    resource: "invoices",
-    pagination: { pageSize: LIST_PAGE_SIZE, mode: "server" },
-  });
+  const loc = i18n.language;
+  const today = dayjs().startOf("day");
 
   const clients = clientsData?.data ?? [];
-  const invoices = invoicesData?.data ?? [];
 
-  const clientOptions = useMemo(
-    () =>
-      clients.map((c) => ({
-        value: c.id as number,
-        label: String(c.name ?? `#${c.id}`),
-      })),
-    [clients],
-  );
+  const sortedClients = useMemo(() => {
+    return [...clients].sort((a, b) => {
+      const ta = sortTier(a);
+      const tb = sortTier(b);
+      if (ta !== tb) return ta - tb;
+      return sortDateValue(a) - sortDateValue(b);
+    });
+  }, [clients]);
 
-  const { mutate: createClient, isPending: savingClient } = useCreate({
-    successNotification: false,
-  });
-  const { mutate: createInvoice, isPending: savingInvoice } = useCreate({
-    successNotification: false,
-  });
-
-  const onAddClient = (values: { name: string; phone?: string }) => {
-    createClient(
-      {
-        resource: "clients",
-        values: {
-          name: values.name.trim(),
-          phone: values.phone?.trim() || undefined,
-          status: "active",
-          account_status: "good_standing",
-        },
-        invalidates: ["list"],
-      },
-      {
-        onSuccess: () => {
-          message.success(t("coachDesk.clientAdded"));
-          clientForm.resetFields();
-        },
-        onError: (e: HttpError) => {
-          message.error(e?.message ?? t("coachDesk.saveError"));
-        },
-      },
-    );
-  };
-
-  const onAddInvoice = (values: {
-    client_id: number;
-    amount?: number;
-    due_date?: dayjs.Dayjs;
-  }) => {
-    createInvoice(
-      {
-        resource: "invoices",
-        values: {
-          client_id: values.client_id,
-          amount: values.amount ?? undefined,
-          currency: "USD",
-          status: "pending",
-          due_date: values.due_date
-            ? values.due_date.format("YYYY-MM-DD")
-            : undefined,
-        },
-        invalidates: ["list"],
-      },
-      {
-        onSuccess: () => {
-          message.success(t("coachDesk.invoiceAdded"));
-          invoiceForm.resetFields();
-        },
-        onError: (e: HttpError) => {
-          message.error(e?.message ?? t("coachDesk.saveError"));
-        },
-      },
-    );
-  };
-
-  const dueRows = useMemo(() => {
-    type Row = {
-      key: string;
-      kind: "invoice" | "membership";
-      who: string;
-      detail: string;
-      when: dayjs.Dayjs | null;
-      sort: number;
-      amount?: string;
-      currency?: string;
-    };
-    const out: Row[] = [];
-    for (const inv of invoices) {
-      const st = String(inv.status ?? "");
-      if (st === "paid" || st === "cancelled") continue;
-      const due = inv.due_date ? dayjs(String(inv.due_date)) : null;
-      const clientName =
-        inv.client && typeof inv.client === "object" && "name" in inv.client
-          ? String((inv.client as { name: string }).name)
-          : `#${inv.client_id}`;
-      out.push({
-        key: `i-${inv.id}`,
-        kind: "invoice",
-        who: clientName,
-        detail: inv.reference
-          ? String(inv.reference)
-          : t("coachDesk.invoiceNoRef"),
-        when: due,
-        sort: due ? due.valueOf() : Number.POSITIVE_INFINITY,
-        amount:
-          inv.amount != null && inv.amount !== ""
-            ? String(inv.amount)
-            : undefined,
-        currency: String(inv.currency ?? "USD"),
-      });
-    }
-    for (const c of clients) {
-      const ms = clientMembership(c);
-      if (!ms?.ends_at) continue;
-      const when = dayjs(ms.ends_at);
-      out.push({
-        key: `m-${c.id}`,
-        kind: "membership",
-        who: String(c.name ?? ""),
-        detail: ms.plan_name,
-        when,
-        sort: when.valueOf(),
-      });
-    }
-    return out.sort((a, b) => a.sort - b.sort).slice(0, 24);
-  }, [clients, invoices, t]);
-
-  const loc = i18n.language;
+  function invoiceStatusLabel(status: string): string {
+    const key = `invoices.status.${status}` as const;
+    const tr = t(key);
+    return tr === key ? status : tr;
+  }
 
   return (
     <div style={{ maxWidth: 1120, margin: "0 auto" }}>
@@ -193,212 +112,141 @@ export function CoachDeskPage() {
           <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
             {t("coachDesk.subtitle")}
           </Typography.Paragraph>
-          <Typography.Paragraph style={{ marginBottom: 0, marginTop: 8 }}>
-            <Link to="/workouts">{t("coachDesk.workoutsLink")}</Link>
-          </Typography.Paragraph>
         </div>
 
-        <Tabs
-          size="large"
-          destroyInactiveTabPane={false}
-          items={[
-            {
-              key: "client",
-              label: (
-                <span>
-                  <UserOutlined /> {t("coachDesk.addClient")}
-                </span>
-              ),
-              children: (
-                <Card
-                  size="small"
-                  loading={clientsLoading}
-                  styles={{ body: { maxWidth: 440 } }}
-                >
-                  <Form
-                    form={clientForm}
-                    layout="vertical"
-                    onFinish={onAddClient}
-                  >
-                    <Form.Item
-                      name="name"
-                      label={t("coachDesk.clientName")}
-                      rules={[{ required: true }]}
-                    >
-                      <Input placeholder={t("coachDesk.clientNamePh")} />
-                    </Form.Item>
-                    <Form.Item
-                      name="phone"
-                      label={t("coachDesk.phoneOptional")}
-                    >
-                      <Input placeholder={t("coachDesk.phonePh")} />
-                    </Form.Item>
-                    <Button
-                      type="primary"
-                      htmlType="submit"
-                      loading={savingClient}
-                    >
-                      {t("coachDesk.addClientSubmit")}
-                    </Button>
-                  </Form>
-                </Card>
-              ),
-            },
-            {
-              key: "invoice",
-              label: (
-                <span>
-                  <FileTextOutlined /> {t("coachDesk.addInvoice")}
-                </span>
-              ),
-              children: (
-                <Card
-                  size="small"
-                  loading={invoicesLoading}
-                  styles={{ body: { maxWidth: 440 } }}
-                >
-                  <Form
-                    form={invoiceForm}
-                    layout="vertical"
-                    onFinish={onAddInvoice}
-                  >
-                    <Form.Item
-                      name="client_id"
-                      label={t("coachDesk.client")}
-                      rules={[{ required: true }]}
-                    >
-                      <Select
-                        showSearch
-                        optionFilterProp="label"
-                        options={clientOptions}
-                        placeholder={t("coachDesk.chooseClient")}
-                        disabled={clientOptions.length === 0}
-                      />
-                    </Form.Item>
-                    <Form.Item name="amount" label={t("coachDesk.amount")}>
-                      <InputNumber
-                        min={0}
-                        step={0.01}
-                        style={{ width: "100%" }}
-                        placeholder="0"
-                      />
-                    </Form.Item>
-                    <Form.Item
-                      name="due_date"
-                      label={t("coachDesk.dueDate")}
-                      getValueFromEvent={(d) => d ?? null}
-                      getValueProps={(v) => ({ value: v ?? undefined })}
-                    >
-                      <DatePicker style={{ width: "100%" }} />
-                    </Form.Item>
-                    <Button
-                      type="primary"
-                      htmlType="submit"
-                      loading={savingInvoice}
-                    >
-                      {t("coachDesk.addInvoiceSubmit")}
-                    </Button>
-                  </Form>
-                </Card>
-              ),
-            },
-          ]}
-        />
-
-        <Card size="small" title={t("coachDesk.planSection")}>
-          <Space direction="vertical" size="middle" style={{ width: "100%" }}>
-            <Typography.Paragraph
-              type="secondary"
-              style={{ marginBottom: 0, fontSize: 13, lineHeight: 1.5 }}
-            >
-              {t("coachDesk.planHelp")}
-            </Typography.Paragraph>
-            <Select
-              showSearch
-              optionFilterProp="label"
-              allowClear
-              placeholder={t("coachDesk.chooseClient")}
-              options={clientOptions}
-              style={{ width: "100%", maxWidth: 420 }}
-              value={planClientId ?? undefined}
-              onChange={(v) => setPlanClientId(typeof v === "number" ? v : null)}
-            />
-            {planClientId != null ? (
-              <div style={{ width: "100%", paddingTop: 8 }}>
-                <ClientSubscriptionsPanel
-                  clientId={planClientId}
-                  allowMutation
-                  compactHeader
-                  splitLayout
-                />
-              </div>
-            ) : (
-              <Typography.Text
-                type="secondary"
-                style={{
-                  display: "block",
-                  padding: "10px 4px 14px",
-                  lineHeight: 1.55,
-                }}
-              >
-                {t("coachDesk.pickClientForPlan")}
-              </Typography.Text>
-            )}
-          </Space>
-        </Card>
-
-        <Card size="small" title={t("coachDesk.dueGlance")}>
-          <Typography.Paragraph
-            type="secondary"
-            style={{ marginTop: 0, fontSize: 13 }}
-          >
-            {t("coachDesk.dueGlanceHint")}
-          </Typography.Paragraph>
-          <Table
-            size="small"
+        <Card size="small">
+          <Table<BaseRecord>
+            size="middle"
+            rowKey="id"
+            loading={isLoading}
             pagination={false}
-            loading={clientsLoading || invoicesLoading}
-            locale={{ emptyText: t("coachDesk.noDues") }}
-            dataSource={dueRows}
-            rowKey="key"
+            dataSource={sortedClients}
+            locale={{ emptyText: t("coachDesk.emptyRoster") }}
+            scroll={{ x: 720 }}
             columns={[
               {
-                title: t("coachDesk.colType"),
-                width: 120,
-                render: (_, r) =>
-                  r.kind === "invoice"
-                    ? t("coachDesk.typeInvoice")
-                    : t("coachDesk.typeMembership"),
+                title: t("clients.client"),
+                width: 220,
+                fixed: "left" as const,
+                render: (_, r) => (
+                  <Link to={`/clients/show/${r.id}`}>
+                    <Typography.Text strong>{String(r.name ?? "")}</Typography.Text>
+                  </Link>
+                ),
               },
               {
-                title: t("coachDesk.colWho"),
-                render: (_, r) => r.who,
+                title: t("coachDesk.colStatus"),
+                width: 130,
+                render: (_, r) => {
+                  const st = String(r.status ?? "active");
+                  const roster =
+                    st === "inactive"
+                      ? t("clients.roster.inactive")
+                      : st === "archived"
+                        ? t("clients.roster.archived")
+                        : t("clients.roster.active");
+                  const color =
+                    st === "inactive" ? "orange" : st === "archived" ? "default" : "green";
+                  return <Tag color={color}>{roster}</Tag>;
+                },
               },
               {
-                title: t("coachDesk.colWhat"),
-                ellipsis: true,
-                render: (_, r) =>
-                  r.kind === "invoice" && r.amount != null
-                    ? `${r.detail} · ${formatMoney(r.amount, r.currency ?? "USD", loc)}`
-                    : r.detail,
+                title: t("coachDesk.colInvoice"),
+                width: 220,
+                render: (_, r) => {
+                  const inv = lastInvoiceSummary(r);
+                  if (!inv) {
+                    return <Typography.Text type="secondary">{t("clients.noInvoices")}</Typography.Text>;
+                  }
+                  const cur = inv.currency ?? "USD";
+                  const overdue = invoiceIsOverdue(inv, today);
+                  const tagColor = inv.is_paid
+                    ? "green"
+                    : overdue || inv.status === "overdue"
+                      ? "red"
+                      : inv.status === "pending"
+                        ? "gold"
+                        : "default";
+                  const label = inv.is_paid
+                    ? t("clients.paid")
+                    : overdue
+                      ? t("invoices.status.overdue")
+                      : invoiceStatusLabel(inv.status);
+                  return (
+                    <Space direction="vertical" size={2}>
+                      <Tag color={tagColor}>{label}</Tag>
+                      {inv.amount != null && inv.amount !== "" ? (
+                        <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                          {formatMoney(inv.amount, cur, loc)}
+                        </Typography.Text>
+                      ) : null}
+                    </Space>
+                  );
+                },
               },
               {
-                title: t("coachDesk.colWhen"),
-                width: 160,
-                render: (_, r) =>
-                  r.when ? r.when.format("MMM D, YYYY") : t("common.dash"),
+                title: t("coachDesk.colDue"),
+                width: 200,
+                render: (_, r) => {
+                  const inv = lastInvoiceSummary(r);
+                  const ms = membershipSummary(r);
+
+                  if (
+                    inv &&
+                    (inv.status === "pending" || inv.status === "overdue") &&
+                    inv.due_date
+                  ) {
+                    const d = dayjs(inv.due_date).startOf("day");
+                    const overdue = invoiceIsOverdue(inv, today);
+                    return (
+                      <Space direction="vertical" size={4}>
+                        <Typography.Text strong={overdue} type={overdue ? "danger" : undefined}>
+                          {d.format("MMM D, YYYY")}
+                        </Typography.Text>
+                        {overdue ? (
+                          <Tag color="red">{t("invoices.status.overdue")}</Tag>
+                        ) : null}
+                      </Space>
+                    );
+                  }
+
+                  if (inv?.status === "pending" && !inv.due_date) {
+                    return (
+                      <Typography.Text type="secondary">{t("clients.noDueDate")}</Typography.Text>
+                    );
+                  }
+
+                  if (inv?.status === "overdue" && !inv.due_date) {
+                    return <Tag color="red">{t("invoices.status.overdue")}</Tag>;
+                  }
+
+                  if (ms?.ends_at) {
+                    const d = dayjs(ms.ends_at);
+                    return (
+                      <Typography.Text type="secondary" style={{ fontSize: 13 }}>
+                        {t("coachDesk.dueMembershipEnds", { date: d.format("MMM D, YYYY") })}
+                      </Typography.Text>
+                    );
+                  }
+
+                  return (
+                    <Typography.Text type="secondary">{t("common.dash")}</Typography.Text>
+                  );
+                },
               },
             ]}
           />
         </Card>
 
-        <Space wrap size="middle">
-          <Link to="/dashboard">{t("coachDesk.openDashboard")}</Link>
-          <span style={{ opacity: 0.4 }}>·</span>
-          <Link to="/clients">{t("coachDesk.viewClients")}</Link>
-          <span style={{ opacity: 0.4 }}>·</span>
-          <Link to="/invoices">{t("coachDesk.viewInvoices")}</Link>
-        </Space>
+        <Typography.Paragraph style={{ marginBottom: 0 }} type="secondary">
+          <Space wrap size="middle">
+            <Link to="/clients">{t("coachDesk.viewClients")}</Link>
+            <span style={{ opacity: 0.4 }}>·</span>
+            <Link to="/invoices">{t("coachDesk.viewInvoices")}</Link>
+            <span style={{ opacity: 0.4 }}>·</span>
+            <Link to="/dashboard">{t("coachDesk.openDashboard")}</Link>
+          </Space>
+        </Typography.Paragraph>
       </Space>
     </div>
   );

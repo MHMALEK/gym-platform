@@ -1,5 +1,6 @@
 import {
   AppleOutlined,
+  BgColorsOutlined,
   BookOutlined,
   DashboardOutlined,
   FileTextOutlined,
@@ -15,7 +16,7 @@ import routerProvider, {
   DocumentTitleHandler,
   UnsavedChangesNotifier,
 } from "@refinedev/react-router-v6";
-import { App as AntdApp, ConfigProvider } from "antd";
+import { App as AntdApp, ConfigProvider, Typography } from "antd";
 import enUS from "antd/locale/en_US";
 import faIR from "antd/locale/fa_IR";
 import dayjs from "dayjs";
@@ -26,6 +27,11 @@ import { useTranslation } from "react-i18next";
 import { BrowserRouter, Navigate, Outlet, Route, Routes } from "react-router-dom";
 
 import { authProvider } from "./authProvider";
+import {
+  BrandedAntdOverride,
+  CoachBrandingProvider,
+  useCoachBranding,
+} from "./contexts/CoachBrandingContext";
 import { DesktopSiderPinned } from "./components/DesktopSiderPinned";
 import { LanguageSwitcher } from "./components/LanguageSwitcher";
 import { ThemeSwitcher } from "./components/ThemeSwitcher";
@@ -53,6 +59,7 @@ import { NutritionTemplateCreate } from "./pages/nutrition-templates/create";
 import { NutritionTemplateEdit } from "./pages/nutrition-templates/edit";
 import { NutritionTemplateList } from "./pages/nutrition-templates/list";
 import { LoginPage } from "./pages/login";
+import { BrandingSettingsPage } from "./pages/settings/branding";
 import { PlanTemplateCreate } from "./pages/plan-templates/create";
 import { PlanTemplateEdit } from "./pages/plan-templates/edit";
 import { PlanTemplateList } from "./pages/plan-templates/list";
@@ -60,12 +67,40 @@ import { TrainingPlanCreate } from "./pages/training-plans/create";
 import { TrainingPlanEdit } from "./pages/training-plans/edit";
 import { TrainingPlanList } from "./pages/training-plans/list";
 import { TrainingPlanShow } from "./pages/training-plans/show";
+import { mediaSrc } from "./lib/exerciseMediaApi";
 
 function AppLayoutTitle() {
   const { t } = useTranslation();
+  const { branding } = useCoachBranding();
+  const displayName = branding.loading ? t("app.title") : branding.name || t("app.title");
   return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 12, marginInlineStart: 8 }}>
-      <span>{t("app.title")}</span>
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 12,
+        marginInlineStart: 8,
+        flexWrap: "wrap",
+        minHeight: 40,
+      }}
+    >
+      {branding.logoUrl && !branding.loading ? (
+        <img
+          src={mediaSrc(branding.logoUrl)}
+          alt=""
+          width={28}
+          height={28}
+          style={{ borderRadius: 6, objectFit: "cover" }}
+        />
+      ) : null}
+      <span style={{ display: "inline-flex", flexDirection: "column", justifyContent: "center", lineHeight: 1.25 }}>
+        <span>{displayName}</span>
+        {branding.tagline && !branding.loading ? (
+          <Typography.Text type="secondary" style={{ fontSize: 11 }}>
+            {branding.tagline}
+          </Typography.Text>
+        ) : null}
+      </span>
       <ThemeSwitcher />
       <LanguageSwitcher />
     </span>
@@ -171,6 +206,11 @@ function RefineShell() {
         list: "/library/nutrition-templates",
         meta: { label: t("nav.libraryNutritionTemplates"), icon: <ReadOutlined /> },
       },
+      {
+        name: "branding",
+        list: "/settings/branding",
+        meta: { label: t("nav.branding"), icon: <BgColorsOutlined /> },
+      },
     ],
     [t, i18n.language],
   );
@@ -195,10 +235,14 @@ function RefineShell() {
         <Route
           element={
             <Authenticated key="app-gate" fallback={<Navigate to="/login" replace />}>
-              <ThemedLayoutV2 Title={AppLayoutTitle} initialSiderCollapsed={false}>
-                <DesktopSiderPinned />
-                <Outlet />
-              </ThemedLayoutV2>
+              <CoachBrandingProvider>
+                <BrandedAntdOverride>
+                  <ThemedLayoutV2 Title={AppLayoutTitle} initialSiderCollapsed={false}>
+                    <DesktopSiderPinned />
+                    <Outlet />
+                  </ThemedLayoutV2>
+                </BrandedAntdOverride>
+              </CoachBrandingProvider>
             </Authenticated>
           }
         >
@@ -230,6 +274,7 @@ function RefineShell() {
           <Route path="/library/exercises" element={<DirectoryExercisesPage />} />
           <Route path="/library/training-plans" element={<DirectoryTrainingPlansPage />} />
           <Route path="/library/nutrition-templates" element={<DirectoryNutritionTemplatesPage />} />
+          <Route path="/settings/branding" element={<BrandingSettingsPage />} />
         </Route>
       </Routes>
       <UnsavedChangesNotifier />

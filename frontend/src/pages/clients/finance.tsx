@@ -149,6 +149,11 @@ export function ClientMembershipPanel({ clientId }: { clientId: number }) {
           {t("memberships.panel.title")}
         </Space>
       }
+      extra={
+        <Link to="/plan-templates/create" style={{ fontSize: 14 }}>
+          {t("common.quickLinks.newMembershipPlan")}
+        </Link>
+      }
     >
       <Typography.Paragraph type="secondary" style={{ marginTop: 0 }}>
         {t("clients.finance.membershipsCardIntro")}

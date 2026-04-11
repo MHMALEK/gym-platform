@@ -1,6 +1,9 @@
+import { PlusOutlined } from "@ant-design/icons";
 import { Edit, useForm } from "@refinedev/antd";
-import { Form, Spin } from "antd";
+import { Button, Form, Space, Spin } from "antd";
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 
 import { WorkoutItemsEditor, workoutLinesFromApiItems } from "../../components/WorkoutItemsEditor";
 import { TrainingPlanOverviewCard, TrainingPlanWorkoutRichField } from "./TrainingPlanSharedFields";
@@ -28,6 +31,7 @@ type PlanRecord = {
 };
 
 export function TrainingPlanEdit() {
+  const { t } = useTranslation();
   const { formProps, saveButtonProps, query, form } = useForm({ resource: "training-plans" });
   const record = query?.data?.data as PlanRecord | undefined;
 
@@ -39,8 +43,27 @@ export function TrainingPlanEdit() {
   const venueLive = Form.useWatch("venue_type", form) ?? record?.venue_type ?? "mixed";
 
   return (
-    <Edit saveButtonProps={saveButtonProps}>
-      <Form {...formProps} layout="vertical">
+    <Edit
+      saveButtonProps={saveButtonProps}
+      headerButtons={({ defaultButtons }) => (
+        <>
+          {defaultButtons}
+          <Space wrap size="small">
+            <Link to="/training-plans/create">
+              <Button type="default" icon={<PlusOutlined />} size="middle">
+                {t("common.quickLinks.newWorkout")}
+              </Button>
+            </Link>
+            <Link to="/exercises/create">
+              <Button type="default" size="middle">
+                {t("common.quickLinks.newExercise")}
+              </Button>
+            </Link>
+          </Space>
+        </>
+      )}
+    >
+      <Form {...formProps} form={form} layout="vertical">
         <TrainingPlanOverviewCard variant="edit" />
         <TrainingPlanWorkoutRichField />
       </Form>

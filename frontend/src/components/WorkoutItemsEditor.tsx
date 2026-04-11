@@ -60,6 +60,7 @@ import {
 } from "react";
 import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 
 import { apiPrefix, authHeaders } from "../lib/api";
 import {
@@ -1625,9 +1626,16 @@ export function WorkoutItemsEditor({
         onCancel={closeExercisePickerModal}
         footer={
           <Flex justify="space-between" align="center" wrap="wrap" gap={8}>
-            <Button loading={pickerLoading} onClick={() => void loadExerciseOptions()} style={{ borderRadius: 10 }}>
-              {t("workouts.exerciseBankRefresh")}
-            </Button>
+            <Space wrap size="small">
+              <Button loading={pickerLoading} onClick={() => void loadExerciseOptions()} style={{ borderRadius: 10 }}>
+                {t("workouts.exerciseBankRefresh")}
+              </Button>
+              <Link to="/exercises/create">
+                <Button type="link" style={{ paddingInline: 4 }}>
+                  {t("workouts.quickCreateExercise")}
+                </Button>
+              </Link>
+            </Space>
             <Button type="primary" onClick={closeExercisePickerModal} style={{ borderRadius: 10 }}>
               {t("workouts.pickerDone")}
             </Button>

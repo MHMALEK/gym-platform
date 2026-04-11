@@ -1,6 +1,6 @@
 import { Create, useSelect } from "@refinedev/antd";
 import { useCreate } from "@refinedev/core";
-import { App, Button, Form, Space, Steps, Typography } from "antd";
+import { App, Button, Form, Grid, Space, Steps, Typography } from "antd";
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
@@ -30,10 +30,13 @@ function toClientPayload(v: Record<string, unknown>) {
   };
 }
 
+const STEP_HINT_KEYS = ["hintStep0", "hintStep1", "hintStep2", "hintStep3"] as const;
+
 export function ClientCreate() {
   const { t } = useTranslation();
   const { message } = App.useApp();
   const navigate = useNavigate();
+  const screens = Grid.useBreakpoint();
   const [step, setStep] = useState(0);
   const [form] = Form.useForm();
 
@@ -154,9 +157,11 @@ export function ClientCreate() {
         </Space>
       )}
     >
-      <Space direction="vertical" size="large" style={{ width: "100%" }}>
+      <Space direction="vertical" size="large" style={{ width: "100%", maxWidth: 840, margin: "0 auto" }}>
         <Steps
           current={step}
+          size="small"
+          direction={screens.md ? "horizontal" : "vertical"}
           items={[
             { title: t("clients.wizard.stepContact") },
             { title: t("clients.wizard.stepBodyGoals") },
@@ -164,8 +169,8 @@ export function ClientCreate() {
             { title: t("clients.wizard.stepWorkoutDiet") },
           ]}
         />
-        <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
-          {t("clients.wizard.intro")}
+        <Typography.Paragraph type="secondary" style={{ marginBottom: 0, fontSize: 14, lineHeight: 1.55 }}>
+          {t(`clients.wizard.${STEP_HINT_KEYS[step]}`)}
         </Typography.Paragraph>
         <Form form={form} layout="vertical">
           <ClientFormSections

@@ -53,6 +53,11 @@ export function ClientEdit() {
       headerButtons={({ defaultButtons }) => (
         <>
           {defaultButtons}
+          <Link to="/clients/create">
+            <Button type="default" size="middle">
+              {t("common.quickLinks.newClient")}
+            </Button>
+          </Link>
           {validId ? (
             <Link to={clientWorkoutDietPath(clientId)}>
               <Button type="default" icon={<SnippetsOutlined />} size="middle">

@@ -1,7 +1,9 @@
+import { PlusOutlined } from "@ant-design/icons";
 import { Edit, useForm } from "@refinedev/antd";
-import { Form, Input, Spin } from "antd";
+import { Button, Form, Input, Spin } from "antd";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 
 import { NutritionMealsEditor } from "../../components/NutritionMealsEditor";
 import { dietMealsFromApi, normalizeDietMealsForApi, type DietMeal } from "../../lib/nutritionTotals";
@@ -31,7 +33,20 @@ export function NutritionTemplateEdit() {
   }, [query?.isSuccess, record?.id, record?.meals]);
 
   return (
-    <Edit saveButtonProps={saveButtonProps} title={t("nutritionTemplates.edit.pageTitle")}>
+    <Edit
+      saveButtonProps={saveButtonProps}
+      title={t("nutritionTemplates.edit.pageTitle")}
+      headerButtons={({ defaultButtons }) => (
+        <>
+          {defaultButtons}
+          <Link to="/nutrition-templates/create">
+            <Button type="default" icon={<PlusOutlined />} size="middle">
+              {t("common.quickLinks.newNutritionTemplate")}
+            </Button>
+          </Link>
+        </>
+      )}
+    >
       {query?.isLoading ? (
         <Spin style={{ marginTop: 24 }} />
       ) : (
