@@ -1,5 +1,7 @@
+import Button from "@mui/material/Button";
+import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
 import { useOne } from "@refinedev/core";
-import { Button, Space, Typography } from "antd";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
@@ -23,42 +25,42 @@ export function ClientWorkoutDietPlansPage() {
 
   if (!valid) {
     return (
-      <Typography.Paragraph>
+      <Typography variant="body1">
         {t("clients.plans.invalidClient")}{" "}
         <Link to="/clients">{t("clients.finance.backToClients")}</Link>
-      </Typography.Paragraph>
+      </Typography>
     );
   }
 
   return (
     <div style={{ maxWidth: 960, margin: "0 auto" }}>
-      <Typography.Paragraph style={{ marginBottom: 8 }}>
+      <Typography variant="body1" sx={{ mb: 1 }}>
         <Link to="/clients">{t("clients.finance.breadcrumbClients")}</Link>
         {" / "}
-        <Link to={`/clients/show/${clientId}`}>
-          {clientLoading ? "…" : (clientName ?? `#${clientId}`)}
-        </Link>
+        <Link to={`/clients/show/${clientId}`}>{clientLoading ? "…" : (clientName ?? `#${clientId}`)}</Link>
         {" / "}
         {t("clients.plans.pageTitle")}
-      </Typography.Paragraph>
+      </Typography>
 
-      <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+      <Stack spacing={2} sx={{ width: "100%" }}>
         <div>
-          <Typography.Title level={4} style={{ margin: 0 }}>
+          <Typography variant="h5" component="h1" sx={{ m: 0 }}>
             {t("clients.plans.pageTitle")}
-          </Typography.Title>
-          <Typography.Text type="secondary">{t("clients.plans.pageSubtitle")}</Typography.Text>
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            {t("clients.plans.pageSubtitle")}
+          </Typography>
         </div>
 
         <ClientCoachingPlansEditor
           clientId={clientId}
           extraActions={
-            <Button onClick={() => navigate(`/clients/show/${clientId}#workout`)}>
+            <Button variant="outlined" onClick={() => navigate(`/clients/show/${clientId}#workout`)}>
               {t("clients.plans.backToClient")}
             </Button>
           }
         />
-      </Space>
+      </Stack>
     </div>
   );
 }

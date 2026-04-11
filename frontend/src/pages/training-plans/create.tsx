@@ -1,6 +1,13 @@
-import { Create, useForm } from "@refinedev/antd";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Step from "@mui/material/Step";
+import StepLabel from "@mui/material/StepLabel";
+import Stepper from "@mui/material/Stepper";
+import Typography from "@mui/material/Typography";
+import useMediaQuery from "@mui/material/useMediaQuery";
 import { useInvalidate } from "@refinedev/core";
-import { App, Button, Form, Grid, Space, Steps, Typography } from "antd";
+import { Create } from "@refinedev/mui";
+import { useForm } from "@refinedev/react-hook-form";
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
@@ -10,63 +17,75 @@ import {
   normalizeWorkoutItemsForApi,
   type WorkoutLine,
 } from "../../components/WorkoutItemsEditor";
+import { useAppMessage } from "../../lib/useAppMessage";
 import { apiPrefix, authHeaders } from "../../lib/api";
 import { TrainingPlanOverviewCard, TrainingPlanWorkoutRichField } from "./TrainingPlanSharedFields";
 
 type CreateResponseShape = { id?: number };
 
+type FormValues = {
+  name: string;
+  description?: string;
+  venue_type: string;
+  workout_rich_html: string;
+};
+
 export function TrainingPlanCreate() {
   const { t } = useTranslation();
-  const { message } = App.useApp();
+  const message = useAppMessage();
   const navigate = useNavigate();
   const invalidate = useInvalidate();
-  const screens = Grid.useBreakpoint();
+  const isMdUp = useMediaQuery("(min-width:900px)");
   const [step, setStep] = useState(0);
   const [workoutLines, setWorkoutLines] = useState<WorkoutLine[]>([]);
 
-  const { formProps, saveButtonProps, form } = useForm({
-    resource: "training-plans",
-    redirect: false,
-    onMutationSuccess: async (result) => {
-      const id = (result as { data?: CreateResponseShape })?.data?.id;
-      if (id == null) {
-        message.error(t("trainingPlans.create.missingId"));
-        return;
-      }
-      try {
-        const payload = normalizeWorkoutItemsForApi(workoutLines);
-        if (payload.length > 0) {
-          const res = await fetch(`${apiPrefix}/training-plans/${id}/items`, {
-            method: "PUT",
-            headers: { ...authHeaders(), "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-          });
-          if (!res.ok) {
-            message.error(t("trainingPlans.create.itemsSaveFailed"));
-          }
+  const { control, saveButtonProps, trigger, watch } = useForm<FormValues>({
+    refineCoreProps: {
+      resource: "training-plans",
+      redirect: false,
+      onMutationSuccess: async (result) => {
+        const id = (result as { data?: CreateResponseShape })?.data?.id;
+        if (id == null) {
+          message.error(t("trainingPlans.create.missingId"));
+          return;
         }
-      } catch {
-        message.error(t("trainingPlans.create.itemsSaveFailed"));
-      }
-      await invalidate({ resource: "training-plans", invalidates: ["list"] });
-      navigate(`/training-plans/edit/${id}`, { replace: true });
+        try {
+          const payload = normalizeWorkoutItemsForApi(workoutLines);
+          if (payload.length > 0) {
+            const res = await fetch(`${apiPrefix}/training-plans/${id}/items`, {
+              method: "PUT",
+              headers: { ...authHeaders(), "Content-Type": "application/json" },
+              body: JSON.stringify(payload),
+            });
+            if (!res.ok) {
+              message.error(t("trainingPlans.create.itemsSaveFailed"));
+            }
+          }
+        } catch {
+          message.error(t("trainingPlans.create.itemsSaveFailed"));
+        }
+        await invalidate({ resource: "training-plans", invalidates: ["list"] });
+        navigate(`/training-plans/edit/${id}`, { replace: true });
+      },
+    },
+    defaultValues: {
+      venue_type: "mixed",
+      workout_rich_html: "",
+      name: "",
+      description: "",
     },
   });
 
-  const venueType = Form.useWatch("venue_type", form) ?? "mixed";
+  const venueType = watch("venue_type") ?? "mixed";
 
   const onWorkoutChange = useCallback((next: WorkoutLine[]) => {
     setWorkoutLines(next);
   }, []);
 
   const goNext = useCallback(async () => {
-    try {
-      await form.validateFields(["name", "venue_type"]);
-      setStep(1);
-    } catch {
-      /* validation errors shown on fields */
-    }
-  }, [form]);
+    const ok = await trigger(["name", "venue_type"]);
+    if (ok) setStep(1);
+  }, [trigger]);
 
   const bodyStyle = { maxWidth: 960, margin: "0 auto", width: "100%" as const };
 
@@ -74,69 +93,61 @@ export function TrainingPlanCreate() {
     <Create
       title={t("trainingPlans.create.pageTitle")}
       contentProps={{
-        styles: {
-          body: { paddingTop: 8, paddingInline: 12 },
-        },
+        sx: { pt: 1, px: 1.5 },
       }}
       footerButtons={({ saveButtonProps: sp }) => (
-        <Space wrap>
+        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
           {step === 1 ? (
-            <Button onClick={() => setStep(0)}>{t("trainingPlans.create.backToDetails")}</Button>
+            <Button variant="outlined" onClick={() => setStep(0)}>
+              {t("trainingPlans.create.backToDetails")}
+            </Button>
           ) : null}
           {step === 0 ? (
-            <Button type="primary" onClick={() => void goNext()}>
+            <Button variant="contained" onClick={() => void goNext()}>
               {t("trainingPlans.create.continueToProgram")}
             </Button>
           ) : (
-            <Button type="primary" {...sp}>
+            <Button variant="contained" {...sp}>
               {t("trainingPlans.create.savePlan")}
             </Button>
           )}
-        </Space>
+        </Box>
       )}
     >
-      <div style={bodyStyle}>
-        <Steps
-          current={step}
-          size="small"
-          direction={screens.md ? "horizontal" : "vertical"}
-          style={{ marginBottom: 20 }}
-          items={[
-            {
-              title: t("trainingPlans.create.stepBasicsTitle"),
-              description: t("trainingPlans.create.stepBasicsDesc"),
-            },
-            {
-              title: t("trainingPlans.create.stepProgramTitle"),
-              description: t("trainingPlans.create.stepProgramDesc"),
-            },
-          ]}
-        />
-        <Typography.Paragraph type="secondary" style={{ marginBottom: 16 }}>
+      <Box sx={bodyStyle}>
+        <Stepper activeStep={step} orientation={isMdUp ? "horizontal" : "vertical"} sx={{ mb: 2.5 }}>
+          <Step>
+            <StepLabel>
+              <Typography variant="subtitle2">{t("trainingPlans.create.stepBasicsTitle")}</Typography>
+              <Typography variant="caption" color="text.secondary" display="block">
+                {t("trainingPlans.create.stepBasicsDesc")}
+              </Typography>
+            </StepLabel>
+          </Step>
+          <Step>
+            <StepLabel>
+              <Typography variant="subtitle2">{t("trainingPlans.create.stepProgramTitle")}</Typography>
+              <Typography variant="caption" color="text.secondary" display="block">
+                {t("trainingPlans.create.stepProgramDesc")}
+              </Typography>
+            </StepLabel>
+          </Step>
+        </Stepper>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
           {step === 0 ? t("trainingPlans.create.stepBasicsHint") : t("trainingPlans.create.stepProgramHint")}
-        </Typography.Paragraph>
-      </div>
+        </Typography>
+      </Box>
 
-      <Form
-        {...formProps}
-        form={form}
-        layout="vertical"
-        style={bodyStyle}
-        initialValues={{
-          venue_type: "mixed",
-          workout_rich_html: "",
-          ...formProps.initialValues,
-        }}
-      >
-        <div style={{ display: step === 0 ? "block" : "none" }}>
-          <TrainingPlanOverviewCard variant="create" />
-        </div>
-        <div style={{ display: step === 1 ? "block" : "none" }}>
-          <TrainingPlanWorkoutRichField />
-        </div>
-      </Form>
+      <Box component="form" sx={bodyStyle}>
+        <Box sx={{ display: step === 0 ? "block" : "none" }}>
+          <TrainingPlanOverviewCard control={control} variant="create" />
+        </Box>
+        <Box sx={{ display: step === 1 ? "block" : "none" }}>
+          <TrainingPlanWorkoutRichField control={control} />
+        </Box>
+      </Box>
       {step === 1 ? (
-        <div style={bodyStyle}>
+        <Box sx={bodyStyle}>
           <WorkoutItemsEditor
             mode="training-plan"
             planVenue={venueType}
@@ -144,7 +155,7 @@ export function TrainingPlanCreate() {
             showSaveButton={false}
             onChange={onWorkoutChange}
           />
-        </div>
+        </Box>
       ) : null}
     </Create>
   );

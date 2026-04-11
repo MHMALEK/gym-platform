@@ -6,8 +6,10 @@ import LinkIcon from "@mui/icons-material/Link";
 import SearchIcon from "@mui/icons-material/Search";
 import UndoIcon from "@mui/icons-material/Undo";
 import Alert from "@mui/material/Alert";
+import AlertTitle from "@mui/material/AlertTitle";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
+import IconButton from "@mui/material/IconButton";
 import Chip from "@mui/material/Chip";
 import CircularProgress from "@mui/material/CircularProgress";
 import Dialog from "@mui/material/Dialog";
@@ -200,7 +202,7 @@ function AddSetBelowFooter({ onClick, label }: { onClick: () => void; label: str
         borderTop: "1px solid var(--app-border)",
       }}
     >
-      <Button type="default" block size="small" icon={<PlusOutlined />} onClick={onClick} style={{ borderRadius: 10 }}>
+      <Button variant="outlined" fullWidth size="small" startIcon={<AddIcon />} onClick={onClick} style={{ borderRadius: 10 }}>
         {label}
       </Button>
     </div>
@@ -555,21 +557,21 @@ function WorkoutRow({
                 </div>
               }
             >
-              <Button
-                type="text"
+              <IconButton
                 size="small"
-                icon={<HolderOutlined />}
                 aria-label={t("workouts.rowToolbar.drag")}
-                style={{
+                sx={{
                   margin: 0,
                   cursor: "grab",
-                  borderRadius: 10,
+                  borderRadius: "10px",
                   color: "var(--app-text-muted)",
                   background: "color-mix(in srgb, var(--app-accent) 8%, transparent)",
                 }}
                 {...dragHandleProps.attributes}
                 {...dragHandleProps.listeners}
-              />
+              >
+                <DragIndicatorIcon fontSize="small" />
+              </IconButton>
             </Tooltip>
           ) : showRowDragHandle ? (
             <div style={{ width: 32, height: 32, flexShrink: 0 }} aria-hidden />
@@ -577,29 +579,33 @@ function WorkoutRow({
             <div style={{ width: 32, height: 32, flexShrink: 0 }} aria-hidden />
           )}
           <Tooltip title={t("common.delete")} placement="right">
-            <Button
-              type="text"
+            <IconButton
               size="small"
-              danger
-              icon={<DeleteOutlined />}
+              color="error"
+              aria-label={t("common.delete")}
               onClick={() => removeAt(index)}
-            />
+            >
+              <DeleteOutlineIcon fontSize="small" />
+            </IconButton>
           </Tooltip>
           {showLinkInRail ? (
             <Tooltip title={t("workouts.linkExerciseRow")} placement="right">
-              <Button type="text" size="small" icon={<LinkOutlined />} onClick={onPickExtendBlock} />
+              <IconButton size="small" aria-label={t("workouts.linkExerciseRow")} onClick={onPickExtendBlock}>
+                <LinkIcon fontSize="small" />
+              </IconButton>
             </Tooltip>
           ) : null}
           {isSetUnder && hasSetOverride ? (
             <Tooltip title={t("workouts.clearSetOverrides")} placement="right">
-              <Button
-                type="text"
+              <IconButton
                 size="small"
-                icon={<UndoOutlined />}
+                aria-label={t("workouts.clearSetOverrides")}
                 onClick={() =>
                   updateAt(index, { reps: null, duration_sec: null, rest_sec: null, notes: null })
                 }
-              />
+              >
+                <UndoIcon fontSize="small" />
+              </IconButton>
             </Tooltip>
           ) : null}
         </Flex>
@@ -614,8 +620,10 @@ function WorkoutRow({
           }}
         >
           {presentation === "legacy_combined" && setRunSegment === "runFirst" ? (
-            <Typography.Text
-              type="secondary"
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              component="span"
               style={{
                 display: "block",
                 fontSize: 11,
@@ -625,20 +633,20 @@ function WorkoutRow({
               }}
             >
               {t("workouts.setsGroupedSubtitle")}
-            </Typography.Text>
+            </Typography>
           ) : null}
           {showHeadHint ? (
-            <Typography.Text type="secondary" style={{ display: "block", fontSize: 11, marginBottom: 8, opacity: 0.88 }}>
+            <Typography variant="body2" color="text.secondary" component="span" style={{ display: "block", fontSize: 11, marginBottom: 8, opacity: 0.88 }}>
               {t("workouts.exerciseHeadAppliesToSets")}
-            </Typography.Text>
+            </Typography>
           ) : null}
           <Flex vertical gap={12} style={{ width: "100%" }}>
             <Flex wrap="wrap" gap={8} align="flex-start" style={{ rowGap: 14, columnGap: 10 }}>
               {!hideBlockColumnOnRow ? (
                 <div style={{ minWidth: 100, maxWidth: 140 }}>
-                  <Typography.Text type="secondary" style={labelTiny}>
+                  <Typography variant="body2" color="text.secondary" component="span" style={labelTiny}>
                     {t("workouts.colBlock")}
-                  </Typography.Text>
+                  </Typography>
                   {blockStepLabel ? (
                     <span
                       style={{
@@ -657,9 +665,9 @@ function WorkoutRow({
                       {blockStepLabel}
                     </span>
                   ) : (
-                    <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                    <Typography variant="body2" color="text.secondary" component="span" style={{ fontSize: 12 }}>
                       {t("workouts.block.single")}
-                    </Typography.Text>
+                    </Typography>
                   )}
                 </div>
               ) : null}
@@ -671,23 +679,24 @@ function WorkoutRow({
                     minWidth: 168,
                   }}
                 >
-                  <Typography.Text type="secondary" style={labelTiny}>
+                  <Typography variant="body2" color="text.secondary" component="span" style={labelTiny}>
                     {t("workouts.colExerciseBlock")}
-                  </Typography.Text>
-                  <Typography.Text
-                    strong
-                    style={{
+                  </Typography>
+                  <Typography
+                    variant="body1"
+                    fontWeight={600}
+                    sx={{
                       fontSize: 17,
-                      fontWeight: 600,
                       lineHeight: 1.35,
                       display: "block",
                       letterSpacing: "-0.02em",
                       color: "var(--app-text-heading)",
                     }}
-                    ellipsis={{ tooltip: row.exercise_name ?? `ID ${row.exercise_id}` }}
+                    noWrap
+                    title={row.exercise_name ?? `ID ${row.exercise_id}`}
                   >
                     {row.exercise_name ?? `ID ${row.exercise_id}`}
-                  </Typography.Text>
+                  </Typography>
                 </div>
               ) : (
                 <Flex
@@ -698,36 +707,34 @@ function WorkoutRow({
                     minWidth: compactSetExerciseUi ? 148 : 188,
                     borderLeft:
                       showCompactExerciseColumn && !compactSetExerciseUi
-                        ? "1px solid color-mix(in srgb, var(--ant-color-primary) 18%, var(--app-border, rgba(148,163,184,0.2)))"
+                        ? "1px solid color-mix(in srgb, var(--app-accent) 18%, var(--app-border, rgba(148,163,184,0.2)))"
                         : undefined,
                     paddingLeft: showCompactExerciseColumn && !compactSetExerciseUi ? 14 : 0,
                     marginLeft: showCompactExerciseColumn && !compactSetExerciseUi ? 4 : 0,
                   }}
                 >
                   <div style={{ flexShrink: 0, textAlign: "center", minWidth: 38 }}>
-                    <Typography.Text type="secondary" style={{ ...labelTiny, marginBottom: 5, fontSize: 9 }}>
+                    <Typography variant="body2" color="text.secondary" component="span" style={{ ...labelTiny, marginBottom: 5, fontSize: 9 }}>
                       {t("workouts.colSet")}
-                    </Typography.Text>
-                    <Tag
-                      bordered={false}
+                    </Typography>
+                    <Chip
+                      size="small"
                       color={hasSetOverride ? "warning" : "default"}
-                      style={{
+                      label={setLabel}
+                      sx={{
                         margin: 0,
                         minWidth: 36,
-                        textAlign: "center",
                         fontSize: 11,
                         fontWeight: 600,
-                        lineHeight: "24px",
-                        padding: "0 10px",
+                        height: 24,
                         borderRadius: 999,
-                        background: hasSetOverride
+                        bgcolor: hasSetOverride
                           ? undefined
                           : "color-mix(in srgb, var(--app-accent) 10%, var(--app-surface-elevated))",
                         color: "var(--app-text-heading)",
                       }}
-                    >
-                      {setLabel}
-                    </Tag>
+                      variant={hasSetOverride ? "filled" : "outlined"}
+                    />
                   </div>
                   <div
                     style={{
@@ -738,40 +745,40 @@ function WorkoutRow({
                   >
                     {!showCompactExerciseColumn ? (
                       <>
-                        <Typography.Text type="secondary" style={labelTiny}>
+                        <Typography variant="body2" color="text.secondary" component="span" style={labelTiny}>
                           {t("workouts.colExercise")}
-                        </Typography.Text>
-                        <Typography.Text
-                          strong
-                          style={{
-                            fontSize: 16,
-                            fontWeight: 600,
-                            lineHeight: 1.35,
-                            display: "block",
-                          }}
-                          ellipsis={{ tooltip: row.exercise_name ?? `ID ${row.exercise_id}` }}
+                        </Typography>
+                        <Typography
+                          variant="body1"
+                          fontWeight={600}
+                          sx={{ fontSize: 16, lineHeight: 1.35, display: "block" }}
+                          noWrap
+                          title={row.exercise_name ?? `ID ${row.exercise_id}`}
                         >
                           {row.exercise_name ?? `ID ${row.exercise_id}`}
-                        </Typography.Text>
+                        </Typography>
                       </>
                     ) : (
                       <>
-                        <Typography.Text type="secondary" style={{ ...labelTiny, marginBottom: 4, fontSize: 9 }}>
+                        <Typography variant="body2" color="text.secondary" component="span" style={{ ...labelTiny, marginBottom: 4, fontSize: 9 }}>
                           {isSetUnder ? t("workouts.setInheritsHint") : t("workouts.extraSetExerciseLabel")}
-                        </Typography.Text>
-                        <Typography.Text
-                          type="secondary"
-                          style={{
+                        </Typography>
+                        <Typography
+                          variant="body2"
+                          color="text.secondary"
+                          component="span"
+                          sx={{
                             fontSize: 13,
                             lineHeight: 1.45,
                             display: "block",
                             opacity: 0.92,
                             fontWeight: 500,
                           }}
-                          ellipsis={{ tooltip: row.exercise_name ?? `ID ${row.exercise_id}` }}
+                          noWrap
+                          title={row.exercise_name ?? `ID ${row.exercise_id}`}
                         >
                           {row.exercise_name ?? `ID ${row.exercise_id}`}
-                        </Typography.Text>
+                        </Typography>
                       </>
                     )}
                   </div>
@@ -789,33 +796,48 @@ function WorkoutRow({
                 borderTop: "1px solid var(--app-border)",
               }}
             >
-              <InputNumber
-                min={0}
+              <TextField
+                type="number"
                 size="small"
-                style={{ width: 76, borderRadius: 10 }}
+                inputProps={{ min: 0 }}
+                sx={{ width: 76, "& .MuiOutlinedInput-root": { borderRadius: "10px" } }}
                 placeholder={t("workouts.colReps")}
-                value={displayReps ?? undefined}
-                onChange={(v) => updateAt(index, { reps: v == null ? null : Number(v) })}
+                value={displayReps ?? ""}
+                onChange={(e) =>
+                  updateAt(index, {
+                    reps: e.target.value === "" ? null : Number(e.target.value),
+                  })
+                }
               />
-              <InputNumber
-                min={0}
+              <TextField
+                type="number"
                 size="small"
-                style={{ width: 84, borderRadius: 10 }}
+                inputProps={{ min: 0 }}
+                sx={{ width: 84, "& .MuiOutlinedInput-root": { borderRadius: "10px" } }}
                 placeholder={t("workouts.colDurationSec")}
-                value={displayDur ?? undefined}
-                onChange={(v) => updateAt(index, { duration_sec: v == null ? null : Number(v) })}
+                value={displayDur ?? ""}
+                onChange={(e) =>
+                  updateAt(index, {
+                    duration_sec: e.target.value === "" ? null : Number(e.target.value),
+                  })
+                }
               />
-              <InputNumber
-                min={0}
+              <TextField
+                type="number"
                 size="small"
-                style={{ width: 84, borderRadius: 10 }}
+                inputProps={{ min: 0 }}
+                sx={{ width: 84, "& .MuiOutlinedInput-root": { borderRadius: "10px" } }}
                 placeholder={t("workouts.colRestSec")}
-                value={displayRest ?? undefined}
-                onChange={(v) => updateAt(index, { rest_sec: v == null ? null : Number(v) })}
+                value={displayRest ?? ""}
+                onChange={(e) =>
+                  updateAt(index, {
+                    rest_sec: e.target.value === "" ? null : Number(e.target.value),
+                  })
+                }
               />
-              <Input
+              <TextField
                 size="small"
-                style={{ flex: "1 1 220px", minWidth: 168, maxWidth: 520, borderRadius: 10 }}
+                sx={{ flex: "1 1 220px", minWidth: 168, maxWidth: 520, "& .MuiOutlinedInput-root": { borderRadius: "10px" } }}
                 placeholder={t("workouts.colTipsNotes")}
                 value={displayNotes}
                 onChange={(e) => updateAt(index, { notes: e.target.value || null })}
@@ -837,7 +859,7 @@ export function WorkoutItemsEditor({
   onChange,
 }: WorkoutItemsEditorProps) {
   const { t } = useTranslation();
-  const { message } = App.useApp();
+  const message = useAppMessage();
   const invalidate = useInvalidate();
   const [items, setItems] = useState<WorkoutLine[]>([]);
   const [pickerLoading, setPickerLoading] = useState(false);
@@ -1215,9 +1237,10 @@ export function WorkoutItemsEditor({
       <div style={{ marginBottom: 22 }}>
         <Flex justify="space-between" align="flex-start" wrap="wrap" gap={16}>
           <div style={{ flex: "1 1 280px", minWidth: 0 }}>
-            <Typography.Title
-              level={4}
-              style={{
+            <Typography
+              variant="h5"
+              component="h2"
+              sx={{
                 margin: "0 0 8px",
                 fontWeight: 700,
                 letterSpacing: "-0.02em",
@@ -1225,18 +1248,25 @@ export function WorkoutItemsEditor({
               }}
             >
               {t("workouts.builderTitle")}
-            </Typography.Title>
-            <Typography.Paragraph type="secondary" style={{ marginBottom: 0, maxWidth: 520, fontSize: 14, lineHeight: 1.55 }}>
+            </Typography>
+            <Typography variant="body2" color="text.secondary" component="span" style={{ marginBottom: 0, maxWidth: 520, fontSize: 14, lineHeight: 1.55 }}>
               {t("workouts.builderHint")}
-            </Typography.Paragraph>
+            </Typography>
             {planVenue === "home" || planVenue === "commercial_gym" ? (
-              <Typography.Text type="secondary" style={{ display: "block", marginTop: 10, fontSize: 13 }}>
+              <Typography variant="body2" color="text.secondary" component="span" style={{ display: "block", marginTop: 10, fontSize: 13 }}>
                 {t("workouts.venueFilterHint", { venue: t(`workouts.venue.${planVenue}`) })}
-              </Typography.Text>
+              </Typography>
             ) : null}
           </div>
           {mode === "training-plan" && showSaveButton ? (
-            <Button type="primary" size="large" onClick={() => void saveTrainingPlan()} loading={saving} style={{ borderRadius: 12 }}>
+            <Button
+              variant="contained"
+              color="primary"
+              size="large"
+              onClick={() => void saveTrainingPlan()}
+              disabled={saving}
+              style={{ borderRadius: 12 }}
+            >
               {t("workouts.saveItems")}
             </Button>
           ) : null}
@@ -1244,7 +1274,9 @@ export function WorkoutItemsEditor({
       </div>
 
       {items.length === 0 ? (
-        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("workouts.emptyItems")} style={{ margin: "28px 0" }} />
+        <Box sx={{ textAlign: "center", py: 4, opacity: 0.85 }}>
+          <Typography color="text.secondary">{t("workouts.emptyItems")}</Typography>
+        </Box>
       ) : (
         <DndContext
           sensors={sensors}
@@ -1253,18 +1285,12 @@ export function WorkoutItemsEditor({
           onDragEnd={onDragEnd}
           onDragCancel={onDragCancel}
         >
-          <Alert
-            type="info"
-            showIcon
-            className="workout-items-editor__dnd-tip"
-            style={{ marginBottom: 18 }}
-            message={<span style={{ fontWeight: 600 }}>{t("workouts.dndGuideTitle")}</span>}
-            description={
-              <Typography.Text type="secondary" style={{ fontSize: 13, display: "block", lineHeight: 1.55 }}>
-                {t("workouts.dndGuideBody")}
-              </Typography.Text>
-            }
-          />
+          <Alert severity="info" className="workout-items-editor__dnd-tip" sx={{ mb: 2 }}>
+            <AlertTitle>{t("workouts.dndGuideTitle")}</AlertTitle>
+            <Typography variant="body2" color="text.secondary" sx={{ fontSize: 13, lineHeight: 1.55 }}>
+              {t("workouts.dndGuideBody")}
+            </Typography>
+          </Alert>
           <SortableContext items={sortableHeadIds} strategy={verticalListSortingStrategy}>
             {(() => {
               const nodes: ReactNode[] = [];
@@ -1356,38 +1382,46 @@ export function WorkoutItemsEditor({
                     <div style={{ padding: "16px 18px 14px" }}>
                       <Flex justify="space-between" align="flex-start" wrap="wrap" gap={12} style={{ marginBottom: 14 }}>
                         <Flex vertical gap={10} style={{ minWidth: 0, flex: "1 1 240px" }}>
-                          <Typography.Text style={{ fontSize: 12, fontWeight: 600, color: "var(--app-text-muted)" }}>
+                          <Typography style={{ fontSize: 12, fontWeight: 600, color: "var(--app-text-muted)" }}>
                             {t("workouts.blockGroupLabel")}
-                          </Typography.Text>
+                          </Typography>
                           <Flex align="center" gap={10} wrap="wrap">
-                            <Select<WorkoutBlockType>
-                              size="middle"
-                              style={{
+                            <Select
+                              size="small"
+                              value={bt}
+                              onChange={(e) => updateBlockType(bid, e.target.value as WorkoutBlockType)}
+                              sx={{
                                 minWidth: 200,
                                 maxWidth: 300,
-                                borderRadius: 12,
+                                borderRadius: "12px",
                               }}
-                              value={bt}
-                              options={BLOCK_OPTIONS.map((o) => ({ value: o.value, label: t(o.labelKey) }))}
-                              onChange={(v) => updateBlockType(bid, v)}
-                            />
-                            <Tag
-                              bordered={false}
-                              style={{
+                            >
+                              {BLOCK_OPTIONS.map((o) => (
+                                <MenuItem key={o.value} value={o.value}>
+                                  {t(o.labelKey)}
+                                </MenuItem>
+                              ))}
+                            </Select>
+                            <Chip
+                              size="small"
+                              label={t("workouts.blockMemberCount", { count: exercisesInBlock })}
+                              sx={{
                                 margin: 0,
                                 borderRadius: 999,
                                 fontWeight: 600,
-                                padding: "4px 12px",
+                                px: 1,
+                                height: "auto",
+                                py: 0.5,
                                 background: `color-mix(in srgb, ${accent} 16%, var(--app-surface-elevated))`,
                                 color: "var(--app-text-heading)",
                               }}
-                            >
-                              {t("workouts.blockMemberCount", { count: exercisesInBlock })}
-                            </Tag>
+                            />
                           </Flex>
                         </Flex>
                         <Tooltip title={t("workouts.blockDragBundleHint")}>
-                          <Button type="text" size="small" icon={<QuestionCircleOutlined />} style={{ color: "var(--app-text-muted)" }} />
+                          <IconButton size="small" sx={{ color: "var(--app-text-muted)" }} aria-label={t("workouts.blockDragBundleHint")}>
+                            <HelpOutlineIcon fontSize="small" />
+                          </IconButton>
                         </Tooltip>
                       </Flex>
                       {(() => {
@@ -1504,9 +1538,9 @@ export function WorkoutItemsEditor({
                 }}
               >
                 {activeDragBundleRows.length > 1 ? (
-                  <Typography.Text type="secondary" style={{ fontSize: 11, display: "block", marginBottom: 8 }}>
+                  <Typography variant="body2" color="text.secondary" component="span" style={{ fontSize: 11, display: "block", marginBottom: 8 }}>
                     {t("workouts.dragBundleTogether", { count: activeDragBundleRows.length })}
-                  </Typography.Text>
+                  </Typography>
                 ) : null}
                 {(() => {
                   let setOrd = 0;
@@ -1525,20 +1559,20 @@ export function WorkoutItemsEditor({
                         }}
                       >
                         {showSetTag ? (
-                          <Space align="center" size={8} style={{ width: "100%" }}>
-                            <Tag style={{ margin: 0 }}>{t("workouts.setNumber", { n })}</Tag>
-                            <Typography.Text strong style={{ fontSize: 14 }} ellipsis>
+                          <Stack direction="row" alignItems="center" spacing={1} sx={{ width: "100%" }}>
+                            <Chip size="small" label={t("workouts.setNumber", { n })} sx={{ m: 0 }} />
+                            <Typography fontWeight={600} sx={{ fontSize: 14 }} noWrap title={name}>
                               {name}
-                            </Typography.Text>
-                          </Space>
+                            </Typography>
+                          </Stack>
                         ) : (
                           <>
-                            <Typography.Text type="secondary" style={{ fontSize: 11, display: "block", marginBottom: 4 }}>
+                            <Typography variant="body2" color="text.secondary" component="span" style={{ fontSize: 11, display: "block", marginBottom: 4 }}>
                               {t("workouts.colExerciseBlock")}
-                            </Typography.Text>
-                            <Typography.Text strong style={{ fontSize: 15 }} ellipsis>
+                            </Typography>
+                            <Typography fontWeight={600} sx={{ fontSize: 15 }} noWrap title={name}>
                               {name}
-                            </Typography.Text>
+                            </Typography>
                           </>
                         )}
                       </div>
@@ -1546,9 +1580,9 @@ export function WorkoutItemsEditor({
                   });
                 })()}
                 <Divider style={{ margin: "12px 0 8px" }} />
-                <Typography.Text type="secondary" style={{ fontSize: 11, display: "block", lineHeight: 1.5 }}>
+                <Typography variant="body2" color="text.secondary" component="span" style={{ fontSize: 11, display: "block", lineHeight: 1.5 }}>
                   {t("workouts.dragOverlayHints")}
-                </Typography.Text>
+                </Typography>
               </div>
             ) : null}
           </DragOverlay>
@@ -1557,45 +1591,45 @@ export function WorkoutItemsEditor({
 
       {!exercisePickerModalOpen && pickerBanner.mode !== "append" ? (
         <Alert
-          type="info"
-          showIcon
+          severity="info"
           className="workout-items-editor__banner"
-          style={{ marginTop: 20 }}
-          message={
-            pickerBanner.mode === "newSupersetSecond"
-              ? t("workouts.pickerCollapsedSupersetHint")
-              : t("workouts.pickerCollapsedLinkHint")
-          }
+          sx={{ mt: 2.5 }}
           action={
-            <Space size={8} wrap>
+            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
               {pickerBanner.mode === "newSupersetSecond" ? (
                 <Button size="small" onClick={cancelIncompleteSuperset}>
                   {t("workouts.cancelSupersetDraft")}
                 </Button>
               ) : null}
-              <Button size="small" type="primary" onClick={() => setExercisePickerModalOpen(true)}>
+              <Button size="small" variant="contained" color="primary" onClick={() => setExercisePickerModalOpen(true)}>
                 {t("workouts.openExerciseLibrary")}
               </Button>
-            </Space>
+            </Stack>
           }
-        />
+        >
+          {pickerBanner.mode === "newSupersetSecond"
+            ? t("workouts.pickerCollapsedSupersetHint")
+            : t("workouts.pickerCollapsedLinkHint")}
+        </Alert>
       ) : null}
 
       <Flex vertical gap={10} style={{ width: "100%", marginTop: 20 }}>
         <Button
-          type="primary"
-          block
+          variant="contained"
+          color="primary"
+          fullWidth
           size="large"
-          icon={<PlusOutlined />}
+          startIcon={<AddIcon />}
           onClick={() => armPickerContext({ mode: "append" })}
           style={{ borderRadius: 12, height: 46, fontWeight: 600 }}
         >
           {t("workouts.addExercise")}
         </Button>
         <Button
-          block
+          fullWidth
+          variant="outlined"
           size="large"
-          icon={<LinkOutlined />}
+          startIcon={<LinkIcon />}
           onClick={() => armPickerContext({ mode: "newSupersetFirst" })}
           style={{
             borderRadius: 12,
@@ -1609,146 +1643,128 @@ export function WorkoutItemsEditor({
         </Button>
       </Flex>
 
-      <Modal
-        title={
-          <div>
-            <Typography.Title
-              level={4}
-              style={{ margin: 0, fontSize: 19, fontWeight: 700, letterSpacing: "-0.02em", color: "var(--app-text-heading)" }}
-            >
-              {t("workouts.pickExercise")}
-            </Typography.Title>
-            <Typography.Text type="secondary" style={{ display: "block", marginTop: 6, fontSize: 13, lineHeight: 1.5 }}>
-              {t("workouts.pickerModalSubtitle")}
-            </Typography.Text>
-          </div>
-        }
+      <Dialog
         open={exercisePickerModalOpen}
-        onCancel={closeExercisePickerModal}
-        footer={
-          <Flex justify="space-between" align="center" wrap="wrap" gap={8}>
-            <Space wrap size="small">
-              <Button loading={pickerLoading} onClick={() => void loadExerciseOptions()} style={{ borderRadius: 10 }}>
-                {t("workouts.exerciseBankRefresh")}
-              </Button>
-              <Link to="/exercises/create">
-                <Button type="link" style={{ paddingInline: 4 }}>
-                  {t("workouts.quickCreateExercise")}
-                </Button>
-              </Link>
-            </Space>
-            <Button type="primary" onClick={closeExercisePickerModal} style={{ borderRadius: 10 }}>
-              {t("workouts.pickerDone")}
-            </Button>
-          </Flex>
-        }
-        width={640}
-        centered
-        destroyOnClose
-        rootClassName="workout-items-editor__modal"
-        styles={{
-          content: { borderRadius: 16, overflow: "hidden" },
-          body: {
-            paddingTop: 12,
-            maxHeight: "min(78vh, 640px)",
-            overflow: "hidden",
-            display: "flex",
-            flexDirection: "column",
-          },
-        }}
+        onClose={closeExercisePickerModal}
+        maxWidth="sm"
+        fullWidth
+        className="workout-items-editor__modal"
+        PaperProps={{ sx: { borderRadius: "16px", maxHeight: "min(78vh, 640px)" } }}
       >
+        <DialogTitle>
+          <Typography
+            variant="h5"
+            component="span"
+            sx={{ fontSize: 19, fontWeight: 700, letterSpacing: "-0.02em", color: "var(--app-text-heading)" }}
+          >
+            {t("workouts.pickExercise")}
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ display: "block", mt: 0.75, fontSize: 13, lineHeight: 1.5 }}>
+            {t("workouts.pickerModalSubtitle")}
+          </Typography>
+        </DialogTitle>
+        <DialogContent sx={{ pt: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
         <div id="workout-exercise-bank">
-          <Typography.Paragraph type="secondary" style={{ marginBottom: 12 }}>
+          <Typography variant="body2" color="text.secondary" component="span" style={{ marginBottom: 12 }}>
             {t("workouts.exerciseBankIntro")}
-          </Typography.Paragraph>
+          </Typography>
           {pickerBanner.mode === "extendBlock" ? (
             <Alert
-              type="info"
-              showIcon
+              severity="info"
               className="workout-items-editor__banner"
-              style={{ marginBottom: 12 }}
-              message={t("workouts.pickerActiveExtendBlock")}
+              sx={{ mb: 1.5 }}
               action={
                 <Button size="small" onClick={() => armPickerContext({ mode: "append" })}>
                   {t("workouts.pickerClearMode")}
                 </Button>
               }
-            />
+            >
+              {t("workouts.pickerActiveExtendBlock")}
+            </Alert>
           ) : null}
           {pickerBanner.mode === "newSupersetFirst" ? (
             <Alert
-              type="info"
-              showIcon
+              severity="info"
               className="workout-items-editor__banner"
-              style={{ marginBottom: 12 }}
-              message={t("workouts.pickerActiveSupersetFirst")}
+              sx={{ mb: 1.5 }}
               action={
                 <Button size="small" onClick={() => armPickerContext({ mode: "append" })}>
                   {t("workouts.pickerClearMode")}
                 </Button>
               }
-            />
+            >
+              {t("workouts.pickerActiveSupersetFirst")}
+            </Alert>
           ) : null}
           {pickerBanner.mode === "newSupersetSecond" ? (
             <Alert
-              type="warning"
-              showIcon
+              severity="warning"
               className="workout-items-editor__banner"
-              style={{ marginBottom: 12 }}
-              message={t("workouts.pickerActiveSupersetSecond")}
+              sx={{ mb: 1.5 }}
               action={
                 <Button size="small" onClick={cancelIncompleteSuperset}>
                   {t("workouts.cancelSupersetDraft")}
                 </Button>
               }
-            />
+            >
+              {t("workouts.pickerActiveSupersetSecond")}
+            </Alert>
           ) : null}
           {pickerBanner.mode === "append" ? (
-            <Typography.Text type="secondary" style={{ display: "block", marginBottom: 12, fontSize: 13 }}>
+            <Typography variant="body2" color="text.secondary" component="span" style={{ display: "block", marginBottom: 12, fontSize: 13 }}>
               {t("workouts.pickerActiveAppend")}
-            </Typography.Text>
+            </Typography>
           ) : null}
           {pickerLoading && catalogOpts.length === 0 && mineOpts.length === 0 ? (
             <Flex align="center" justify="center" style={{ minHeight: 160 }}>
-              <Spin />
+              <CircularProgress />
             </Flex>
           ) : (
-            <Space direction="vertical" style={{ width: "100%", flex: 1, minHeight: 0 }} size="middle">
+            <Stack spacing={2} sx={{ width: "100%", flex: 1, minHeight: 0 }}>
               <Flex wrap="wrap" gap={8} align="center" justify="space-between">
-                <Segmented
-                  value={pickerScope}
-                  onChange={(v) => setPickerScope(v as "all" | "mine" | "catalog")}
-                  options={[
-                    { value: "all", label: t("workouts.pickerScopeAll") },
-                    { value: "mine", label: t("workouts.pickerScopeMine") },
-                    { value: "catalog", label: t("workouts.pickerScopeCatalog") },
-                  ]}
-                />
-                <Button
-                  type="primary"
+                <ToggleButtonGroup
+                  exclusive
                   size="small"
-                  icon={<PlusOutlined />}
+                  value={pickerScope}
+                  onChange={(_, v) => v != null && setPickerScope(v as "all" | "mine" | "catalog")}
+                >
+                  <ToggleButton value="all">{t("workouts.pickerScopeAll")}</ToggleButton>
+                  <ToggleButton value="mine">{t("workouts.pickerScopeMine")}</ToggleButton>
+                  <ToggleButton value="catalog">{t("workouts.pickerScopeCatalog")}</ToggleButton>
+                </ToggleButtonGroup>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  size="small"
+                  startIcon={<AddIcon />}
                   onClick={() => armPickerContext({ mode: "append" })}
                 >
                   {t("workouts.addToEnd")}
                 </Button>
               </Flex>
-              <Input.Search
-                allowClear
+              <TextField
+                size="small"
+                fullWidth
                 placeholder={t("workouts.pickerFilterPh")}
                 value={pickerQuery}
                 onChange={(e) => setPickerQuery(e.target.value)}
-                enterButton={<SearchOutlined />}
-                style={{ borderRadius: 12 }}
+                sx={{ "& .MuiOutlinedInput-root": { borderRadius: "12px" } }}
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <SearchIcon fontSize="small" color="action" />
+                    </InputAdornment>
+                  ),
+                }}
               />
               <Flex align="center" justify="space-between" wrap="wrap" gap={8}>
-                <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                <Typography variant="body2" color="text.secondary" component="span" style={{ fontSize: 12 }}>
                   {t("workouts.pickerHint")}
-                </Typography.Text>
+                </Typography>
                 {pickerTotal > 0 ? (
-                  <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                  <Typography variant="body2" color="text.secondary" component="span" style={{ fontSize: 12 }}>
                     {t("workouts.pickerShowingCount", { count: pickerTotal })}
-                  </Typography.Text>
+                  </Typography>
                 ) : null}
               </Flex>
               <div
@@ -1761,18 +1777,20 @@ export function WorkoutItemsEditor({
                 }}
               >
                 {pickerTotal === 0 && !pickerLoading ? (
-                  <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("workouts.pickerNoMatches")} />
+                  <Box sx={{ textAlign: "center", py: 3, opacity: 0.85 }}>
+                    <Typography color="text.secondary">{t("workouts.pickerNoMatches")}</Typography>
+                  </Box>
                 ) : pickerTotal === 0 && pickerLoading ? (
                   <Flex justify="center" style={{ padding: 24 }}>
-                    <Spin />
+                    <CircularProgress />
                   </Flex>
                 ) : (
-                  <Space direction="vertical" size={12} style={{ width: "100%" }}>
+                  <Stack spacing={1.5} sx={{ width: "100%" }}>
                     {pickerLists.mine.length > 0 ? (
                       <>
-                        <Typography.Text strong style={{ display: "block", fontSize: 13 }}>
+                        <Typography fontWeight={600} sx={{ display: "block", fontSize: 13 }}>
                           {t("workouts.pickerGroupMine")}
-                        </Typography.Text>
+                        </Typography>
                         {pickerLists.mine.map((ex) => (
                           <Flex
                             key={`mine-${ex.id}`}
@@ -1783,20 +1801,20 @@ export function WorkoutItemsEditor({
                             className="workout-items-editor__picker-row"
                           >
                             <Flex align="center" gap={10} style={{ minWidth: 0, flex: "1 1 200px" }}>
-                              <Typography.Text ellipsis title={ex.name} style={{ margin: 0 }}>
+                              <Typography noWrap title={ex.name} sx={{ m: 0 }}>
                                 {ex.name}
-                              </Typography.Text>
-                              <Tag
-                                style={{ margin: 0, fontSize: 11, lineHeight: "18px", flexShrink: 0 }}
-                                color="green"
-                              >
-                                {t("workouts.pickerTagMine")}
-                              </Tag>
+                              </Typography>
+                              <Chip
+                                size="small"
+                                color="success"
+                                label={t("workouts.pickerTagMine")}
+                                sx={{ m: 0, fontSize: 11, height: 22, flexShrink: 0 }}
+                              />
                             </Flex>
                             <Button
-                              type="primary"
+                              variant="contained" color="primary"
                               size="small"
-                              icon={<PlusOutlined />}
+                              startIcon={<AddIcon />}
                               onClick={() => addExerciseFromPicker(ex)}
                               style={{ borderRadius: 10 }}
                             >
@@ -1811,9 +1829,9 @@ export function WorkoutItemsEditor({
                     ) : null}
                     {pickerLists.catalog.length > 0 ? (
                       <>
-                        <Typography.Text strong style={{ display: "block", fontSize: 13 }}>
+                        <Typography fontWeight={600} sx={{ display: "block", fontSize: 13 }}>
                           {t("workouts.pickerGroupCatalog")}
-                        </Typography.Text>
+                        </Typography>
                         {pickerLists.catalog.map((ex) => (
                           <Flex
                             key={`cat-${ex.id}`}
@@ -1824,20 +1842,20 @@ export function WorkoutItemsEditor({
                             className="workout-items-editor__picker-row"
                           >
                             <Flex align="center" gap={10} style={{ minWidth: 0, flex: "1 1 200px" }}>
-                              <Typography.Text ellipsis title={ex.name} style={{ margin: 0 }}>
+                              <Typography noWrap title={ex.name} sx={{ m: 0 }}>
                                 {ex.name}
-                              </Typography.Text>
-                              <Tag
-                                style={{ margin: 0, fontSize: 11, lineHeight: "18px", flexShrink: 0 }}
-                                color="geekblue"
-                              >
-                                {t("workouts.pickerBadgeCatalog")}
-                              </Tag>
+                              </Typography>
+                              <Chip
+                                size="small"
+                                color="info"
+                                label={t("workouts.pickerBadgeCatalog")}
+                                sx={{ m: 0, fontSize: 11, height: 22, flexShrink: 0 }}
+                              />
                             </Flex>
                             <Button
-                              type="primary"
+                              variant="contained" color="primary"
                               size="small"
-                              icon={<PlusOutlined />}
+                              startIcon={<AddIcon />}
                               onClick={() => addExerciseFromPicker(ex)}
                               style={{ borderRadius: 10 }}
                             >
@@ -1847,45 +1865,75 @@ export function WorkoutItemsEditor({
                         ))}
                       </>
                     ) : null}
-                  </Space>
+                  </Stack>
                 )}
               </div>
-            </Space>
+            </Stack>
           )}
         </div>
-      </Modal>
+        </DialogContent>
+        <DialogActions sx={{ justifyContent: "space-between", flexWrap: "wrap", gap: 1, px: 3, pb: 2 }}>
+          <Stack direction="row" flexWrap="wrap" spacing={1} useFlexGap>
+            <Button disabled={pickerLoading} onClick={() => void loadExerciseOptions()} sx={{ borderRadius: "10px" }}>
+              {t("workouts.exerciseBankRefresh")}
+            </Button>
+            <Button component={Link} to="/exercises/create" variant="text" sx={{ px: 0.5 }}>
+              {t("workouts.quickCreateExercise")}
+            </Button>
+          </Stack>
+          <Button variant="contained" color="primary" onClick={closeExercisePickerModal} sx={{ borderRadius: "10px" }}>
+            {t("workouts.pickerDone")}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
-      <Modal
-        title={t("workouts.mergeModalTitle")}
+      <Dialog
         open={mergeModal != null}
-        okText={t("workouts.mergeModalOk")}
-        rootClassName="workout-items-editor__modal"
-        styles={{ content: { borderRadius: 16, overflow: "hidden" } }}
-        onOk={() => {
-          if (!mergeModal) return;
-          const committed = applyOrderedItems(
-            mergeExerciseBundleAfterTarget(
-              items,
-              mergeModal.activeLocalId,
-              mergeModal.targetLocalId,
-              mergePickType,
-            ),
-          );
-          if (committed !== null) setMergeModal(null);
-        }}
-        onCancel={() => setMergeModal(null)}
-        destroyOnClose
+        onClose={() => setMergeModal(null)}
+        className="workout-items-editor__modal"
+        PaperProps={{ sx: { borderRadius: "16px" } }}
       >
-        <Typography.Paragraph type="secondary" style={{ marginBottom: 12 }}>
-          {t("workouts.mergeModalHint")}
-        </Typography.Paragraph>
-        <Select<WorkoutBlockType>
-          style={{ width: "100%", borderRadius: 12 }}
-          value={mergePickType}
-          onChange={(v) => setMergePickType(v)}
-          options={BLOCK_OPTIONS.map((o) => ({ value: o.value, label: t(o.labelKey) }))}
-        />
-      </Modal>
+        <DialogTitle>{t("workouts.mergeModalTitle")}</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+            {t("workouts.mergeModalHint")}
+          </Typography>
+          <Select
+            fullWidth
+            size="small"
+            value={mergePickType}
+            onChange={(e) => setMergePickType(e.target.value as WorkoutBlockType)}
+            sx={{ borderRadius: "12px" }}
+          >
+            {BLOCK_OPTIONS.map((o) => (
+              <MenuItem key={o.value} value={o.value}>
+                {t(o.labelKey)}
+              </MenuItem>
+            ))}
+          </Select>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setMergeModal(null)}>{t("actions.cancel")}</Button>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={() => {
+              if (!mergeModal) return;
+              const committed = applyOrderedItems(
+                mergeExerciseBundleAfterTarget(
+                  items,
+                  mergeModal.activeLocalId,
+                  mergeModal.targetLocalId,
+                  mergePickType,
+                ),
+              );
+              if (committed !== null) setMergeModal(null);
+            }}
+          >
+            {t("workouts.mergeModalOk")}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
     </div>
   );

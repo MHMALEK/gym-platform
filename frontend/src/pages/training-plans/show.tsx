@@ -1,6 +1,6 @@
-import { Show } from "@refinedev/antd";
+import Typography from "@mui/material/Typography";
 import { useShow } from "@refinedev/core";
-import { Typography } from "antd";
+import { Show } from "@refinedev/mui";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -42,19 +42,20 @@ export function TrainingPlanShow() {
 
   return (
     <Show isLoading={query?.isLoading}>
-      <Typography.Title level={5}>{record?.name}</Typography.Title>
-      <Typography.Paragraph>{record?.description}</Typography.Paragraph>
-      <Typography.Text type="secondary" style={{ display: "block", marginBottom: 16 }}>
+      <Typography variant="h6">{record?.name}</Typography>
+      <Typography variant="body1" sx={{ mt: 1 }}>
+        {record?.description}
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ display: "block", mb: 2 }}>
         {t("workouts.planVenueLabel")}: {t(`workouts.venue.${record?.venue_type ?? "mixed"}`)}
-      </Typography.Text>
+      </Typography>
 
       {record?.workout_rich_html ? (
         <div style={{ marginBottom: 20 }}>
-          <Typography.Title level={5}>{t("workouts.richSectionTitle")}</Typography.Title>
-          <div
-            className="workout-rich-preview"
-            dangerouslySetInnerHTML={{ __html: record.workout_rich_html }}
-          />
+          <Typography variant="h6" sx={{ mb: 1 }}>
+            {t("workouts.richSectionTitle")}
+          </Typography>
+          <div className="workout-rich-preview" dangerouslySetInnerHTML={{ __html: record.workout_rich_html }} />
         </div>
       ) : null}
 

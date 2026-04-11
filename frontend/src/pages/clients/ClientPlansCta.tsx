@@ -1,5 +1,8 @@
-import { SnippetsOutlined } from "@ant-design/icons";
-import { Alert, Button, Space } from "antd";
+import ArticleIcon from "@mui/icons-material/Article";
+import Alert from "@mui/material/Alert";
+import AlertTitle from "@mui/material/AlertTitle";
+import Button from "@mui/material/Button";
+import Stack from "@mui/material/Stack";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -20,31 +23,27 @@ export function ClientPlansCta({ clientId, compact }: Props) {
   const to = clientWorkoutDietPath(clientId);
   return (
     <Alert
-      type="info"
-      showIcon
-      icon={<SnippetsOutlined />}
-      style={{ marginTop: compact ? 12 : 16 }}
-      message={t("clients.plans.ctaTitle")}
-      description={
-        <Space direction="vertical" size="small" style={{ width: "100%" }}>
-          <span>{t("clients.plans.ctaBody")}</span>
-          <Space wrap size="small">
-            <Button
-              type="primary"
-              size="small"
-              icon={<SnippetsOutlined />}
-              onClick={() =>
-                navigate({ pathname: `/clients/show/${clientId}`, hash: "workout" })
-              }
-            >
-              {t("clients.plans.openWorkoutTab")}
-            </Button>
-            <Link to={to}>
-              <Button size="small">{t("clients.plans.openDedicatedPage")}</Button>
-            </Link>
-          </Space>
-        </Space>
-      }
-    />
+      severity="info"
+      icon={<ArticleIcon fontSize="inherit" />}
+      sx={{ mt: compact ? 1.5 : 2 }}
+    >
+      <AlertTitle>{t("clients.plans.ctaTitle")}</AlertTitle>
+      <Stack spacing={1} sx={{ width: "100%", mt: 0.5 }}>
+        <span>{t("clients.plans.ctaBody")}</span>
+        <Stack direction="row" flexWrap="wrap" gap={1}>
+          <Button
+            variant="contained"
+            size="small"
+            startIcon={<ArticleIcon />}
+            onClick={() => navigate({ pathname: `/clients/show/${clientId}`, hash: "workout" })}
+          >
+            {t("clients.plans.openWorkoutTab")}
+          </Button>
+          <Button component={Link} to={to} size="small" variant="outlined">
+            {t("clients.plans.openDedicatedPage")}
+          </Button>
+        </Stack>
+      </Stack>
+    </Alert>
   );
 }

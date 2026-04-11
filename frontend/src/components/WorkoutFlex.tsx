@@ -17,10 +17,11 @@ export type WorkoutFlexProps = {
   align?: "flex-start" | "flex-end" | "center" | "baseline" | "stretch";
   gap?: number;
   style?: CSSProperties;
+  className?: string;
   children?: ReactNode;
 };
 
-export function WorkoutFlex({ vertical, wrap, justify, align, gap, style, children }: WorkoutFlexProps) {
+export function WorkoutFlex({ vertical, wrap, justify, align, gap, style, className, children }: WorkoutFlexProps) {
   const wrapVal =
     wrap === true || wrap === "wrap"
       ? "wrap"
@@ -37,6 +38,7 @@ export function WorkoutFlex({ vertical, wrap, justify, align, gap, style, childr
 
   return (
     <Stack
+      className={className}
       direction={vertical ? "column" : "row"}
       flexWrap={wrapVal}
       justifyContent={justify}

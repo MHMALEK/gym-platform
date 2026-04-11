@@ -1,7 +1,27 @@
-import { SaveOutlined } from "@ant-design/icons";
+import SaveIcon from "@mui/icons-material/Save";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Card from "@mui/material/Card";
+import CardContent from "@mui/material/CardContent";
+import CircularProgress from "@mui/material/CircularProgress";
+import Divider from "@mui/material/Divider";
+import InputAdornment from "@mui/material/InputAdornment";
+import MenuItem from "@mui/material/MenuItem";
+import Paper from "@mui/material/Paper";
+import Stack from "@mui/material/Stack";
+import Table from "@mui/material/Table";
+import TableBody from "@mui/material/TableBody";
+import TableCell from "@mui/material/TableCell";
+import TableContainer from "@mui/material/TableContainer";
+import TableHead from "@mui/material/TableHead";
+import TablePagination from "@mui/material/TablePagination";
+import TableRow from "@mui/material/TableRow";
+import TextField from "@mui/material/TextField";
+import Typography from "@mui/material/Typography";
+import SearchIcon from "@mui/icons-material/Search";
 import { type BaseRecord, useList } from "@refinedev/core";
-import { App, Button, Card, Divider, Form, Input, Select, Space, Spin, Table, Typography } from "antd";
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
@@ -14,6 +34,7 @@ import {
   WorkoutItemsEditor,
 } from "../../components/WorkoutItemsEditor";
 import { apiPrefix, authHeaders } from "../../lib/api";
+import { useAppMessage } from "../../lib/useAppMessage";
 import { dietMealsFromApi, normalizeDietMealsForApi, type DietMeal } from "../../lib/nutritionTotals";
 
 export type CoachingPayload = {
@@ -37,18 +58,24 @@ export type CoachingPayload = {
   updated_at: string | null;
 };
 
+type FormValues = {
+  program_venue: string;
+  workout_plan: string;
+  workout_rich_html: string;
+  diet_plan: string;
+};
+
 type Props = {
   clientId: number;
-  /** When true, render inside client show tab (no duplicate page chrome). */
   embed?: boolean;
-  /** Optional actions next to save (e.g. back link). */
   extraActions?: ReactNode;
 };
 
+const TABLE_PAGE = 8;
+
 export function ClientCoachingPlansEditor({ clientId, embed, extraActions }: Props) {
   const { t } = useTranslation();
-  const { message } = App.useApp();
-  const [form] = Form.useForm();
+  const message = useAppMessage();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
@@ -56,6 +83,21 @@ export function ClientCoachingPlansEditor({ clientId, embed, extraActions }: Pro
   const [dietMeals, setDietMeals] = useState<DietMeal[]>([]);
   const [nutritionTemplateFilter, setNutritionTemplateFilter] = useState("");
   const [trainingPlanFilter, setTrainingPlanFilter] = useState("");
+  const [tpPage, setTpPage] = useState(0);
+  const [ntPage, setNtPage] = useState(0);
+
+  const { control, handleSubmit, reset, getValues } = useForm<FormValues>({
+    defaultValues: {
+      program_venue: "mixed",
+      workout_plan: "",
+      workout_rich_html: "",
+      diet_plan: "",
+    },
+  });
+
+  const programVenue = useWatch({ control, name: "program_venue" });
+  const planVenueForPicker =
+    programVenue === "home" || programVenue === "commercial_gym" ? programVenue : null;
 
   const { data: trainingPlanList, isLoading: trainingPlansLoading } = useList({
     resource: "training-plans",
@@ -81,10 +123,6 @@ export function ClientCoachingPlansEditor({ clientId, embed, extraActions }: Pro
   }, [nutritionTemplateList?.data, nutritionTemplateFilter]);
   const nutritionTemplatesTotalCount = nutritionTemplateList?.data?.length ?? 0;
 
-  const programVenue = Form.useWatch("program_venue", form);
-  const planVenueForPicker =
-    programVenue === "home" || programVenue === "commercial_gym" ? programVenue : null;
-
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -97,7 +135,7 @@ export function ClientCoachingPlansEditor({ clientId, embed, extraActions }: Pro
       }
       const data = (await res.json()) as CoachingPayload;
       const pv = data.program_venue;
-      form.setFieldsValue({
+      reset({
         program_venue: pv === "home" || pv === "commercial_gym" || pv === "mixed" ? pv : "mixed",
         workout_plan: data.workout_plan ?? "",
         workout_rich_html: data.workout_rich_html ?? "",
@@ -111,7 +149,7 @@ export function ClientCoachingPlansEditor({ clientId, embed, extraActions }: Pro
     } finally {
       setLoading(false);
     }
-  }, [clientId, form, message, t]);
+  }, [clientId, message, reset, t]);
 
   const applyNutritionTemplate = useCallback(
     async (templateId: number) => {
@@ -152,7 +190,8 @@ export function ClientCoachingPlansEditor({ clientId, embed, extraActions }: Pro
         const pv = data.venue_type;
         const programVenueOut =
           pv === "home" || pv === "commercial_gym" || pv === "mixed" ? pv : "mixed";
-        form.setFieldsValue({
+        reset({
+          ...getValues(),
           workout_rich_html: data.workout_rich_html ?? "",
           program_venue: programVenueOut,
         });
@@ -161,19 +200,14 @@ export function ClientCoachingPlansEditor({ clientId, embed, extraActions }: Pro
         message.error(t("clients.plans.workoutTemplateApplyError"));
       }
     },
-    [form, message, t],
+    [getValues, message, reset, t],
   );
 
   useEffect(() => {
     void load();
   }, [load]);
 
-  const onFinish = async (values: {
-    program_venue?: string;
-    workout_plan?: string;
-    workout_rich_html?: string;
-    diet_plan?: string;
-  }) => {
+  const onSubmit = async (values: FormValues) => {
     setSaving(true);
     try {
       const htmlRaw = (values.workout_rich_html ?? "").trim();
@@ -212,235 +246,331 @@ export function ClientCoachingPlansEditor({ clientId, embed, extraActions }: Pro
   };
 
   const saveButtons = (
-    <Space wrap>
-      <Button type="primary" htmlType="submit" icon={<SaveOutlined />} loading={saving}>
+    <Stack direction="row" flexWrap="wrap" gap={1}>
+      <Button type="submit" variant="contained" disabled={saving} startIcon={<SaveIcon />}>
         {t("clients.plans.save")}
       </Button>
       {extraActions}
-    </Space>
+    </Stack>
   );
 
+  const workoutEmptyMsg =
+    trainingPlansTotalCount === 0
+      ? t("clients.plans.workoutTemplateEmptyList")
+      : trainingPlanFilter.trim()
+        ? t("clients.plans.workoutTemplateFilterEmpty")
+        : t("clients.plans.workoutTemplateEmptyList");
+
+  const nutritionEmptyMsg =
+    nutritionTemplatesTotalCount === 0
+      ? t("clients.plans.templateEmptyList")
+      : nutritionTemplateFilter.trim()
+        ? t("clients.plans.templateFilterEmpty")
+        : t("clients.plans.templateEmptyList");
+
   const inner = (
-    <Spin spinning={loading}>
-      {updatedAt ? (
-        <Typography.Text type="secondary" style={{ display: "block", marginBottom: 16, fontSize: 12 }}>
+    <Box component="form" onSubmit={handleSubmit(onSubmit)} noValidate sx={{ position: "relative" }}>
+      {loading ? (
+        <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}>
+          <CircularProgress />
+        </Box>
+      ) : null}
+      {!loading && updatedAt ? (
+        <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 2 }}>
           {t("clients.plans.lastUpdated")}: {new Date(updatedAt).toLocaleString()}
-        </Typography.Text>
+        </Typography>
       ) : null}
 
-      <Form form={form} layout="vertical" onFinish={(v) => void onFinish(v)} initialValues={{ program_venue: "mixed" }}>
-        {saveButtons}
+      {!loading ? (
+        <>
+          {saveButtons}
+          <Divider sx={{ my: 2 }} />
 
-        <Divider style={{ margin: "16px 0" }} />
-
-        <Form.Item name="program_venue" label={t("clients.plans.programVenue")}>
-          <Select
-            options={[
-              { value: "mixed", label: t("workouts.venue.mixed") },
-              { value: "home", label: t("workouts.venue.home") },
-              { value: "commercial_gym", label: t("workouts.venue.commercial_gym") },
-            ]}
+          <Controller
+            name="program_venue"
+            control={control}
+            render={({ field }) => (
+              <TextField {...field} select fullWidth margin="normal" label={t("clients.plans.programVenue")}>
+                <MenuItem value="mixed">{t("workouts.venue.mixed")}</MenuItem>
+                <MenuItem value="home">{t("workouts.venue.home")}</MenuItem>
+                <MenuItem value="commercial_gym">{t("workouts.venue.commercial_gym")}</MenuItem>
+              </TextField>
+            )}
           />
-        </Form.Item>
 
-        <Typography.Title level={5} style={{ marginTop: 0 }}>
-          {t("clients.plans.workoutSectionTitle")}
-        </Typography.Title>
-        <Typography.Paragraph type="secondary">{t("clients.plans.workoutSectionHint")}</Typography.Paragraph>
+          <Typography variant="h6" sx={{ mt: 1 }}>
+            {t("clients.plans.workoutSectionTitle")}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            {t("clients.plans.workoutSectionHint")}
+          </Typography>
 
-        <Form.Item
-          name="workout_rich_html"
-          label={t("clients.plans.workoutRichLabel")}
-          valuePropName="value"
-          getValueFromEvent={(v: string) => v}
-        >
-          <WorkoutRichEditor placeholder={t("clients.plans.workoutRichPlaceholder")} />
-        </Form.Item>
-
-        <WorkoutItemsEditor
-          mode="client"
-          planId={undefined}
-          planVenue={planVenueForPicker}
-          initialItems={lines}
-          showSaveButton={false}
-          onChange={setLines}
-        />
-
-        <Divider />
-
-        <Typography.Title level={5}>{t("clients.plans.notesSectionTitle")}</Typography.Title>
-        <Typography.Paragraph type="secondary">{t("clients.plans.notesSectionHint")}</Typography.Paragraph>
-
-        <Form.Item name="workout_plan" label={t("clients.plans.workoutNotesLabel")}>
-          <Input.TextArea
-            rows={6}
-            placeholder={t("clients.plans.workoutPlaceholder")}
-            showCount
-            maxLength={32000}
+          <Controller
+            name="workout_rich_html"
+            control={control}
+            render={({ field }) => (
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="body2" sx={{ mb: 1 }}>
+                  {t("clients.plans.workoutRichLabel")}
+                </Typography>
+                <WorkoutRichEditor
+                  placeholder={t("clients.plans.workoutRichPlaceholder")}
+                  value={field.value}
+                  onChange={field.onChange}
+                />
+              </Box>
+            )}
           />
-        </Form.Item>
 
-        <Divider />
-        <Typography.Title level={5} style={{ marginTop: 0 }}>
-          {t("clients.plans.workoutTemplatesSectionTitle")}
-        </Typography.Title>
-        <Typography.Paragraph type="secondary" style={{ marginBottom: 12 }}>
-          {t("clients.plans.workoutTemplatesHint")}
-        </Typography.Paragraph>
-        <div style={{ marginBottom: 12 }}>
-          <Link to="/training-plans/create">
-            <Button type="primary">{t("clients.plans.newWorkoutPlan")}</Button>
-          </Link>
-        </div>
-        <Space direction="vertical" size="middle" style={{ width: "100%", marginBottom: 24 }}>
-          <Input.Search
-            allowClear
-            placeholder={t("clients.plans.filterWorkoutPlansPlaceholder")}
-            value={trainingPlanFilter}
-            onChange={(e) => setTrainingPlanFilter(e.target.value)}
-            onSearch={setTrainingPlanFilter}
-            style={{ maxWidth: 400 }}
+          <WorkoutItemsEditor
+            mode="client"
+            planId={undefined}
+            planVenue={planVenueForPicker}
+            initialItems={lines}
+            showSaveButton={false}
+            onChange={setLines}
           />
-          <Table<BaseRecord>
-            size="small"
-            rowKey="id"
-            loading={trainingPlansLoading}
-            dataSource={trainingPlanRows}
-            pagination={{ pageSize: 8, hideOnSinglePage: true, showSizeChanger: false }}
-            locale={{
-              emptyText:
-                trainingPlansTotalCount === 0
-                  ? t("clients.plans.workoutTemplateEmptyList")
-                  : trainingPlanFilter.trim()
-                    ? t("clients.plans.workoutTemplateFilterEmpty")
-                    : t("clients.plans.workoutTemplateEmptyList"),
-            }}
-          >
-            <Table.Column dataIndex="name" title={t("trainingPlans.list.name")} ellipsis />
-            <Table.Column
-              dataIndex="description"
-              title={t("trainingPlans.list.description")}
-              ellipsis
-            />
-            <Table.Column
-              dataIndex="venue_type"
-              title={t("trainingPlans.list.venue")}
-              width={140}
-              render={(v: string) => t(`workouts.venue.${v ?? "mixed"}`)}
-            />
-            <Table.Column<BaseRecord>
-              title={t("nutritionTemplates.list.actions")}
-              width={220}
-              render={(_, r) => (
-                <Space wrap size="small">
-                  <Button
-                    type="primary"
-                    size="small"
-                    onClick={() => void applyTrainingPlan(Number(r.id))}
-                  >
-                    {t("clients.plans.workoutTemplateApply")}
-                  </Button>
-                  <Link to={`/training-plans/edit/${r.id}`}>
-                    <Button size="small">{t("actions.edit")}</Button>
-                  </Link>
-                </Space>
-              )}
-            />
-          </Table>
-        </Space>
 
-        <Typography.Title level={5} style={{ marginTop: 0 }}>
-          {t("clients.plans.templatesSectionTitle")}
-        </Typography.Title>
-        <Typography.Paragraph type="secondary" style={{ marginBottom: 12 }}>
-          {t("clients.plans.templateApplyHint")}
-        </Typography.Paragraph>
-        <div style={{ marginBottom: 12 }}>
-          <Link to="/nutrition-templates/create">
-            <Button type="primary">{t("clients.plans.newTemplate")}</Button>
-          </Link>
-        </div>
-        <Space direction="vertical" size="middle" style={{ width: "100%", marginBottom: 16 }}>
-          <Input.Search
-            allowClear
-            placeholder={t("clients.plans.filterTemplatesPlaceholder")}
-            value={nutritionTemplateFilter}
-            onChange={(e) => setNutritionTemplateFilter(e.target.value)}
-            onSearch={setNutritionTemplateFilter}
-            style={{ maxWidth: 400 }}
+          <Divider sx={{ my: 2 }} />
+
+          <Typography variant="h6">{t("clients.plans.notesSectionTitle")}</Typography>
+          <Typography variant="body2" color="text.secondary">
+            {t("clients.plans.notesSectionHint")}
+          </Typography>
+
+          <Controller
+            name="workout_plan"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                fullWidth
+                margin="normal"
+                multiline
+                minRows={6}
+                label={t("clients.plans.workoutNotesLabel")}
+                placeholder={t("clients.plans.workoutPlaceholder")}
+                inputProps={{ maxLength: 32000 }}
+              />
+            )}
           />
-          <Table<BaseRecord>
-            size="small"
-            rowKey="id"
-            loading={nutritionTemplatesLoading}
-            dataSource={nutritionTemplateRows}
-            pagination={{ pageSize: 8, hideOnSinglePage: true, showSizeChanger: false }}
-            locale={{
-              emptyText:
-                nutritionTemplatesTotalCount === 0
-                  ? t("clients.plans.templateEmptyList")
-                  : nutritionTemplateFilter.trim()
-                    ? t("clients.plans.templateFilterEmpty")
-                    : t("clients.plans.templateEmptyList"),
-            }}
-          >
-            <Table.Column dataIndex="name" title={t("nutritionTemplates.list.name")} ellipsis />
-            <Table.Column
-              dataIndex="meal_count"
-              title={t("nutritionTemplates.list.meals")}
-              width={88}
-              render={(v: number) => v ?? 0}
-            />
-            <Table.Column<BaseRecord>
-              title={t("nutritionTemplates.list.actions")}
-              width={220}
-              render={(_, r) => (
-                <Space wrap size="small">
-                  <Button
-                    type="primary"
-                    size="small"
-                    onClick={() => void applyNutritionTemplate(Number(r.id))}
-                  >
-                    {t("clients.plans.templateApply")}
-                  </Button>
-                  <Link to={`/nutrition-templates/edit/${r.id}`}>
-                    <Button size="small">{t("actions.edit")}</Button>
-                  </Link>
-                </Space>
-              )}
-            />
-          </Table>
-        </Space>
-        <NutritionMealsEditor meals={dietMeals} onChange={setDietMeals} />
 
-        <Form.Item name="diet_plan" label={t("clients.plans.dietLabel")}>
-          <Input.TextArea
-            rows={8}
-            placeholder={t("clients.plans.dietPlaceholder")}
-            showCount
-            maxLength={32000}
+          <Divider sx={{ my: 2 }} />
+          <Typography variant="h6">{t("clients.plans.workoutTemplatesSectionTitle")}</Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+            {t("clients.plans.workoutTemplatesHint")}
+          </Typography>
+          <Box sx={{ mb: 1.5 }}>
+            <Button component={Link} to="/training-plans/create" variant="contained">
+              {t("clients.plans.newWorkoutPlan")}
+            </Button>
+          </Box>
+          <Stack spacing={2} sx={{ mb: 3, width: "100%" }}>
+            <TextField
+              size="small"
+              placeholder={t("clients.plans.filterWorkoutPlansPlaceholder")}
+              value={trainingPlanFilter}
+              onChange={(e) => {
+                setTrainingPlanFilter(e.target.value);
+                setTpPage(0);
+              }}
+              sx={{ maxWidth: 400 }}
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <SearchIcon fontSize="small" color="action" />
+                  </InputAdornment>
+                ),
+              }}
+            />
+            <TableContainer component={Paper} variant="outlined">
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>{t("trainingPlans.list.name")}</TableCell>
+                    <TableCell>{t("trainingPlans.list.description")}</TableCell>
+                    <TableCell width={140}>{t("trainingPlans.list.venue")}</TableCell>
+                    <TableCell width={220}>{t("nutritionTemplates.list.actions")}</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {trainingPlanRows.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={4}>
+                        <Typography variant="body2" color="text.secondary">
+                          {workoutEmptyMsg}
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    trainingPlanRows.slice(tpPage * TABLE_PAGE, tpPage * TABLE_PAGE + TABLE_PAGE).map((r) => (
+                      <TableRow key={String(r.id)}>
+                        <TableCell>{String(r.name ?? "")}</TableCell>
+                        <TableCell sx={{ maxWidth: 280 }}>{String(r.description ?? "")}</TableCell>
+                        <TableCell>{t(`workouts.venue.${(r as Record<string, unknown>).venue_type ?? "mixed"}`)}</TableCell>
+                        <TableCell>
+                          <Stack direction="row" spacing={1} flexWrap="wrap">
+                            <Button
+                              size="small"
+                              variant="contained"
+                              onClick={() => void applyTrainingPlan(Number(r.id))}
+                            >
+                              {t("clients.plans.workoutTemplateApply")}
+                            </Button>
+                            <Button component={Link} to={`/training-plans/edit/${r.id}`} size="small" variant="outlined">
+                              {t("actions.edit")}
+                            </Button>
+                          </Stack>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+            {trainingPlanRows.length > TABLE_PAGE ? (
+              <TablePagination
+                component="div"
+                count={trainingPlanRows.length}
+                page={tpPage}
+                onPageChange={(_, p) => setTpPage(p)}
+                rowsPerPage={TABLE_PAGE}
+                rowsPerPageOptions={[TABLE_PAGE]}
+              />
+            ) : null}
+            {trainingPlansLoading ? <CircularProgress size={24} /> : null}
+          </Stack>
+
+          <Typography variant="h6">{t("clients.plans.templatesSectionTitle")}</Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+            {t("clients.plans.templateApplyHint")}
+          </Typography>
+          <Box sx={{ mb: 1.5 }}>
+            <Button component={Link} to="/nutrition-templates/create" variant="contained">
+              {t("clients.plans.newTemplate")}
+            </Button>
+          </Box>
+          <Stack spacing={2} sx={{ mb: 2, width: "100%" }}>
+            <TextField
+              size="small"
+              placeholder={t("clients.plans.filterTemplatesPlaceholder")}
+              value={nutritionTemplateFilter}
+              onChange={(e) => {
+                setNutritionTemplateFilter(e.target.value);
+                setNtPage(0);
+              }}
+              sx={{ maxWidth: 400 }}
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <SearchIcon fontSize="small" color="action" />
+                  </InputAdornment>
+                ),
+              }}
+            />
+            <TableContainer component={Paper} variant="outlined">
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>{t("nutritionTemplates.list.name")}</TableCell>
+                    <TableCell width={88}>{t("nutritionTemplates.list.meals")}</TableCell>
+                    <TableCell width={220}>{t("nutritionTemplates.list.actions")}</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {nutritionTemplateRows.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={3}>
+                        <Typography variant="body2" color="text.secondary">
+                          {nutritionEmptyMsg}
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    nutritionTemplateRows.slice(ntPage * TABLE_PAGE, ntPage * TABLE_PAGE + TABLE_PAGE).map((r) => (
+                      <TableRow key={String(r.id)}>
+                        <TableCell>{String(r.name ?? "")}</TableCell>
+                        <TableCell>{Number((r as Record<string, unknown>).meal_count ?? 0)}</TableCell>
+                        <TableCell>
+                          <Stack direction="row" spacing={1} flexWrap="wrap">
+                            <Button
+                              size="small"
+                              variant="contained"
+                              onClick={() => void applyNutritionTemplate(Number(r.id))}
+                            >
+                              {t("clients.plans.templateApply")}
+                            </Button>
+                            <Button component={Link} to={`/nutrition-templates/edit/${r.id}`} size="small" variant="outlined">
+                              {t("actions.edit")}
+                            </Button>
+                          </Stack>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+            {nutritionTemplateRows.length > TABLE_PAGE ? (
+              <TablePagination
+                component="div"
+                count={nutritionTemplateRows.length}
+                page={ntPage}
+                onPageChange={(_, p) => setNtPage(p)}
+                rowsPerPage={TABLE_PAGE}
+                rowsPerPageOptions={[TABLE_PAGE]}
+              />
+            ) : null}
+            {nutritionTemplatesLoading ? <CircularProgress size={24} /> : null}
+          </Stack>
+
+          <NutritionMealsEditor meals={dietMeals} onChange={setDietMeals} />
+
+          <Controller
+            name="diet_plan"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                fullWidth
+                margin="normal"
+                multiline
+                minRows={8}
+                label={t("clients.plans.dietLabel")}
+                placeholder={t("clients.plans.dietPlaceholder")}
+                inputProps={{ maxLength: 32000 }}
+              />
+            )}
           />
-        </Form.Item>
 
-        <Divider style={{ margin: "12px 0" }} />
-        {saveButtons}
-      </Form>
-    </Spin>
+          <Divider sx={{ my: 2 }} />
+          {saveButtons}
+        </>
+      ) : null}
+    </Box>
   );
 
   if (embed) {
     return (
       <div id="client-tab-workout" style={{ paddingTop: 4, maxWidth: 960 }}>
-        <Card className="client-section-card client-section-card--editable" styles={{ body: { paddingTop: 16 } }}>
-          <Typography.Title level={5} style={{ marginTop: 0 }}>
-            {t("clients.plans.embedTitle")}
-          </Typography.Title>
-          <Typography.Paragraph type="secondary">{t("clients.plans.embedSubtitle")}</Typography.Paragraph>
-          {inner}
+        <Card className="client-section-card client-section-card--editable">
+          <CardContent sx={{ pt: 2 }}>
+            <Typography variant="h6" sx={{ mt: 0 }}>
+              {t("clients.plans.embedTitle")}
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              {t("clients.plans.embedSubtitle")}
+            </Typography>
+            {inner}
+          </CardContent>
         </Card>
       </div>
     );
   }
 
-  return <Card styles={{ body: { paddingTop: 16 } }}>{inner}</Card>;
+  return (
+    <Card>
+      <CardContent sx={{ pt: 2 }}>{inner}</CardContent>
+    </Card>
+  );
 }
