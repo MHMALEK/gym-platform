@@ -214,3 +214,41 @@ html[data-theme="light"] .client-profile-editor-surface.ant-card {
 .workout-rich-preview p:last-child {
   margin-bottom: 0;
 }
+
+/* Workout builder — calmer cards, works in light + dark */
+.workout-items-editor {
+  max-width: 820px;
+}
+
+.workout-items-editor__dnd-tip.ant-alert {
+  border-radius: 14px;
+  border: 1px solid var(--app-border);
+  background: color-mix(in srgb, var(--app-accent) 7%, var(--app-surface-elevated));
+}
+
+html[data-theme="light"] .workout-items-editor__dnd-tip.ant-alert {
+  background: color-mix(in srgb, var(--app-accent) 9%, #fff);
+}
+
+.workout-items-editor__banner.ant-alert {
+  border-radius: 12px;
+  border: 1px solid var(--app-border);
+}
+
+.workout-items-editor__modal .ant-modal-content {
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.workout-items-editor__picker-row {
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--app-border);
+  background: var(--app-surface-elevated);
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.workout-items-editor__picker-row:hover {
+  border-color: var(--app-border-strong);
+  background: color-mix(in srgb, var(--app-accent) 5%, var(--app-surface-elevated));
+}
