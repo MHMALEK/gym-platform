@@ -608,14 +608,14 @@ const translation = {
   workouts: {
     builderTitle: "Workout builder",
     builderHint:
-      "Use Add exercise below the list to open the picker modal (search, filter, Add). Each row is one set. Add set below duplicates a set line. When an exercise has multiple set rows, drag by the handle to reorder only within that exercise. Drag onto the dashed strip under another row to group (superset, dropset, …). Add linked below opens the same modal for the next exercise in a block. Otherwise drag moves whole blocks or single exercises.",
+      "Use Add exercise to open the picker. Each exercise has a top block (reps, time, rest, notes) that applies to all its sets until you override a set. Add set below adds another set for the same exercise. Drag the handle on a set to reorder sets; drag on the exercise block to move the whole exercise. Drop on the dashed strip under another exercise block to group (superset, …). Add linked below adds the next exercise to the block.",
     mergeDropHint: "Drop to group after this row",
     mergeModalTitle: "Group exercises",
     mergeModalHint:
       "Choose the block type. The exercise you are dragging is placed directly under the row above this drop zone.",
     mergeModalOk: "Group",
     mergeNeedSingleRow:
-      "Drag-to-group only works on a single row. Rows in a multi-exercise block move together — delete a row or change the workout order to adjust the block.",
+      "Drag-to-group from the exercise block (grip on the top row of an exercise), not from a set row. Whole superset blocks move together — adjust the block from the block’s drag handle.",
     reorderSetsOnlyHere: "Sets for this exercise can only be reordered among themselves. Drag onto another set of the same exercise.",
     linkExercisesButton: "Link exercises",
     addLinkedBelow: "Add linked below",
@@ -662,6 +662,10 @@ const translation = {
     add: "Add",
     emptyItems: "No exercises yet. Add from catalog or your library.",
     colExercise: "Exercise",
+    colExerciseBlock: "Exercise",
+    exerciseHeadAppliesToSets: "These targets apply to every set below unless a set overrides them.",
+    setInheritsHint: "Uses exercise targets",
+    clearSetOverrides: "Use exercise targets",
     colSet: "Set",
     extraSetExerciseLabel: "Same exercise",
     setNumber: "{{n}}",
