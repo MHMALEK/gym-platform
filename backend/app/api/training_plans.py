@@ -17,6 +17,7 @@ from app.schemas.training_plan import (
 from app.services.exercise_access import exercise_ids_allowed_for_coach
 from app.services.exercise_muscles import EXERCISE_MUSCLE_LOADER
 from app.services.workout_blocks import block_sequences_for_ordered_items, strip_orphan_workout_blocks
+from app.services.workout_item_tree import validate_training_plan_items_sequence
 
 router = APIRouter(prefix="/training-plans", tags=["training-plans"])
 
@@ -130,6 +131,8 @@ async def copy_from_catalog(catalog_id: int, coach: CurrentCoach, db: DbSession)
                 block_id=it.block_id,
                 block_type=it.block_type,
                 block_sequence=bseq,
+                row_type=it.row_type,
+                exercise_instance_id=it.exercise_instance_id,
             )
         )
     await db.commit()
@@ -180,6 +183,10 @@ async def replace_training_plan_items(
     if not plan:
         raise HTTPException(status_code=404, detail="Training plan not found")
     body = strip_orphan_workout_blocks(body)
+    try:
+        validate_training_plan_items_sequence(body)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     ids = [x.exercise_id for x in body]
     ok, err = await exercise_ids_allowed_for_coach(db, coach.id, ids)
     if not ok:
@@ -201,6 +208,8 @@ async def replace_training_plan_items(
                 block_id=row.block_id,
                 block_type=row.block_type,
                 block_sequence=bseq,
+                row_type=row.row_type,
+                exercise_instance_id=row.exercise_instance_id,
             )
         )
     await db.commit()

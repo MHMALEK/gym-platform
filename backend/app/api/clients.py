@@ -33,6 +33,7 @@ from app.schemas.client import (
 )
 from app.services.diet_meals_json import diet_meals_to_json_column, parse_diet_meals_raw
 from app.services.exercise_access import exercise_ids_allowed_for_coach
+from app.services.workout_item_tree import validate_any_workout_item_writes
 
 from app.schemas.goal_type import GoalTypeSummary
 from app.schemas.plan_template import PlanTemplateRead
@@ -458,6 +459,10 @@ async def upsert_coaching_plans(
         items = body.workout_items
         if items is not None:
             cleaned = strip_orphan_workout_blocks(items)
+            try:
+                validate_any_workout_item_writes(cleaned)
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
             ids = [x.exercise_id for x in cleaned]
             ok, err = await exercise_ids_allowed_for_coach(db, coach.id, ids)
             if not ok:
