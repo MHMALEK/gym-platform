@@ -23,6 +23,10 @@ class TrainingPlanItem(Base, TimestampMixin):
     block_type: Mapped[str | None] = mapped_column(String(24), nullable=True)
     # 0-based index within the same block_id (first exercise in group = 0); None if not in a block.
     block_sequence: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # legacy_line = each row is one line (historical). exercise = head row (defaults for sets). set = row under head.
+    row_type: Mapped[str] = mapped_column(String(24), server_default="legacy_line", default="legacy_line", nullable=False)
+    # Shared id for exercise head + its set rows within a plan (UUID string).
+    exercise_instance_id: Mapped[str | None] = mapped_column(String(40), nullable=True)
 
     training_plan = relationship("TrainingPlan", back_populates="items")
     exercise = relationship("Exercise", back_populates="plan_items")
