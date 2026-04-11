@@ -20,6 +20,17 @@ import { apiPrefix, authHeaders } from "../lib/api";
 
 type Me = { id: number; name: string; email: string };
 
+type FinanceAlertItem = {
+  invoice_id: number;
+  client_id: number;
+  client_name: string;
+  amount: string | number | null;
+  currency: string;
+  due_date: string | null;
+  days_overdue?: number | null;
+  days_until_due?: number | null;
+};
+
 type Summary = {
   clients_total: number;
   clients_active: number;
@@ -29,6 +40,10 @@ type Summary = {
   invoices_pending: number;
   invoices_overdue: number;
   invoices_pending_amount: string | number;
+  invoices_paid_amount_month?: string | number;
+  invoices_paid_amount_30d?: string | number;
+  finance_overdue?: FinanceAlertItem[];
+  finance_due_soon?: FinanceAlertItem[];
   active_memberships: number;
   plan_templates: number;
   exercises: number;
@@ -256,6 +271,99 @@ export function DashboardPage() {
                 />
               </Grid>
             </Grid>
+
+            <Grid container spacing={2} sx={{ mt: 0.5 }}>
+              <Grid size={{ xs: 12, sm: 6, lg: 4 }}>
+                <InsightCard
+                  title={t("dashboard.paidThisMonth")}
+                  value={formatMoney(summary.invoices_paid_amount_month ?? 0, "USD", loc)}
+                  prefix={<AttachMoneyIcon sx={iconPad} />}
+                  foot={<Link to="/invoices">{t("dashboard.viewAll")}</Link>}
+                />
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6, lg: 4 }}>
+                <InsightCard
+                  title={t("dashboard.paidLast30Days")}
+                  value={formatMoney(summary.invoices_paid_amount_30d ?? 0, "USD", loc)}
+                  prefix={<AttachMoneyIcon sx={iconPad} />}
+                />
+              </Grid>
+            </Grid>
+
+            {(summary.finance_overdue?.length ?? 0) > 0 || (summary.finance_due_soon?.length ?? 0) > 0 ? (
+              <Grid container spacing={2} sx={{ mt: 0.5 }}>
+                {(summary.finance_overdue?.length ?? 0) > 0 ? (
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    <Card variant="outlined">
+                      <CardContent>
+                        <Typography variant="subtitle2" gutterBottom>
+                          {t("dashboard.financeOverdueList")}
+                        </Typography>
+                        <Stack spacing={1}>
+                          {summary.finance_overdue!.map((row) => (
+                            <Stack
+                              key={row.invoice_id}
+                              direction="row"
+                              justifyContent="space-between"
+                              alignItems="center"
+                              flexWrap="wrap"
+                              gap={1}
+                            >
+                              <Typography variant="body2">
+                                <Link to={`/clients/show/${row.client_id}#invoices`}>{row.client_name}</Link>
+                                {row.days_overdue != null ? (
+                                  <Typography component="span" variant="caption" color="error" sx={{ ml: 1 }}>
+                                    {t("dashboard.daysOverdue", { n: row.days_overdue })}
+                                  </Typography>
+                                ) : null}
+                              </Typography>
+                              <Typography variant="body2" fontWeight={600}>
+                                {formatMoney(row.amount ?? 0, row.currency || "USD", loc)}
+                              </Typography>
+                            </Stack>
+                          ))}
+                        </Stack>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                ) : null}
+                {(summary.finance_due_soon?.length ?? 0) > 0 ? (
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    <Card variant="outlined">
+                      <CardContent>
+                        <Typography variant="subtitle2" gutterBottom>
+                          {t("dashboard.financeDueSoonList")}
+                        </Typography>
+                        <Stack spacing={1}>
+                          {summary.finance_due_soon!.map((row) => (
+                            <Stack
+                              key={row.invoice_id}
+                              direction="row"
+                              justifyContent="space-between"
+                              alignItems="center"
+                              flexWrap="wrap"
+                              gap={1}
+                            >
+                              <Typography variant="body2">
+                                <Link to={`/clients/show/${row.client_id}#invoices`}>{row.client_name}</Link>
+                                {row.days_until_due != null ? (
+                                  <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+                                    {t("dashboard.daysUntilDue", { n: row.days_until_due })}
+                                  </Typography>
+                                ) : null}
+                              </Typography>
+                              <Typography variant="body2" fontWeight={600}>
+                                {formatMoney(row.amount ?? 0, row.currency || "USD", loc)}
+                              </Typography>
+                            </Stack>
+                          ))}
+                        </Stack>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                ) : null}
+              </Grid>
+            ) : null}
 
             {summary.invoices_overdue > 0 ? (
               <Card

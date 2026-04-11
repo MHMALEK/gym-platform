@@ -120,6 +120,7 @@ export function ClientSubscriptionsPanel({ clientId, allowMutation, compactHeade
       invalidates: ["list", "detail"],
       id: String(clientId),
     });
+    void invalidate({ resource: "invoices", invalidates: ["list"] });
   }, [invalidate, clientId]);
 
   /** Only `clientId` — do not list `message` / `t` (identity can churn → `useEffect([loadSubs])` loops). */
@@ -370,6 +371,25 @@ export function ClientSubscriptionsPanel({ clientId, allowMutation, compactHeade
                           }}
                         >
                           {t("memberships.panel.extend30")}
+                        </Button>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          onClick={async () => {
+                            const res = await fetch(`${apiPrefix}/invoices/from-subscription`, {
+                              method: "POST",
+                              headers: authHeaders(),
+                              body: JSON.stringify({ subscription_id: r.id }),
+                            });
+                            if (res.ok) {
+                              message.success(t("memberships.panel.invoiceCreated"));
+                              refreshClientCaches();
+                              return;
+                            }
+                            message.error(await res.text());
+                          }}
+                        >
+                          {t("memberships.panel.createInvoice")}
                         </Button>
                       </Stack>
                     </Grid>

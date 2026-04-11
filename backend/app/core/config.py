@@ -50,6 +50,9 @@ class Settings(BaseSettings):
 
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
 
+    # POST /api/v1/billing/run-renewals — empty disables the endpoint (403).
+    billing_cron_secret: str = ""
+
     # Local media uploads (multipart POST /media/upload). Use object storage + register in production if preferred.
     media_upload_dir: Path = _BACKEND_ROOT / "uploads"
     media_max_upload_bytes: int = 52_428_800  # 50 MiB

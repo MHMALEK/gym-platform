@@ -36,9 +36,22 @@ import { clientWorkoutDietPath } from "./ClientPlansCta";
 
 const TABLE_PAGE = 8;
 
-type Props = { clientId: number };
+type Props = {
+  clientId: number;
+  /** Called after assign/remove so sibling editors (e.g. full program on show) can reload. */
+  onProgramsUpdated?: () => void;
+  /** Passed to assigned-program summary (view = link to edit client; edit = hint text). */
+  summaryVariant?: "edit" | "view";
+  /** Omit nutrition template pickers and summary row (client edit — use view / full program page for diet). */
+  hideNutritionSection?: boolean;
+};
 
-export function ClientCoachingPlanAssignmentPanel({ clientId }: Props) {
+export function ClientCoachingPlanAssignmentPanel({
+  clientId,
+  onProgramsUpdated,
+  summaryVariant = "edit",
+  hideNutritionSection = false,
+}: Props) {
   const { t } = useTranslation();
   const message = useAppMessage();
   const [summaryTick, setSummaryTick] = useState(0);
@@ -87,6 +100,7 @@ export function ClientCoachingPlanAssignmentPanel({ clientId }: Props) {
   const { data: nutritionTemplateList, isLoading: nutritionTemplatesLoading } = useList({
     resource: "nutrition-templates",
     pagination: REFINE_LIST_FIRST_PAGE_200,
+    queryOptions: { enabled: !hideNutritionSection },
   });
   const nutritionTemplateRows = useMemo(() => {
     const raw = (nutritionTemplateList?.data ?? []) as BaseRecord[];
@@ -106,6 +120,7 @@ export function ClientCoachingPlanAssignmentPanel({ clientId }: Props) {
       }
       message.success(t("clients.plans.editWorkoutAssigned"));
       setSummaryTick((k) => k + 1);
+      onProgramsUpdated?.();
     } finally {
       setAssigningWorkoutId(null);
     }
@@ -121,6 +136,7 @@ export function ClientCoachingPlanAssignmentPanel({ clientId }: Props) {
       }
       message.success(t("clients.plans.editNutritionAssigned"));
       setSummaryTick((k) => k + 1);
+      onProgramsUpdated?.();
     } finally {
       setAssigningNutritionId(null);
     }
@@ -143,7 +159,7 @@ export function ClientCoachingPlanAssignmentPanel({ clientId }: Props) {
   const fullEditorPath = clientWorkoutDietPath(clientId);
 
   return (
-    <div id="client-tab-workout" style={{ paddingTop: 4, maxWidth: 960 }}>
+    <div className="client-coaching-assign-panel" style={{ paddingTop: 4, maxWidth: 960 }}>
       <Card className="client-section-card client-section-card--editable">
         <CardContent sx={{ pt: 2 }}>
           <Typography variant="h6" sx={{ mt: 0 }}>
@@ -170,9 +186,13 @@ export function ClientCoachingPlanAssignmentPanel({ clientId }: Props) {
 
           <ClientAssignedPlansSummary
             clientId={clientId}
-            variant="edit"
+            variant={summaryVariant}
+            hideNutrition={hideNutritionSection}
             refreshKey={summaryTick}
-            onMutated={() => setSummaryTick((k) => k + 1)}
+            onMutated={() => {
+              setSummaryTick((k) => k + 1);
+              onProgramsUpdated?.();
+            }}
           />
 
           <Typography variant="subtitle1" fontWeight={600} sx={{ mt: 1 }}>
@@ -278,106 +298,110 @@ export function ClientCoachingPlanAssignmentPanel({ clientId }: Props) {
             {trainingPlansLoading ? <CircularProgress size={24} /> : null}
           </Stack>
 
-          <Typography variant="subtitle1" fontWeight={600}>
-            {t("clients.plans.templatesSectionTitle")}
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-            {t("clients.plans.editPickersNutritionSub")}
-          </Typography>
-          <Box sx={{ mb: 1.5 }}>
-            <Button component={Link} to="/nutrition-templates/create" variant="outlined" size="small">
-              {t("clients.plans.newTemplate")}
-            </Button>
-          </Box>
-          <Stack spacing={2} sx={{ mb: 1, width: "100%" }}>
-            <TextField
-              size="small"
-              placeholder={t("clients.plans.filterTemplatesPlaceholder")}
-              value={nutritionTemplateFilter}
-              onChange={(e) => {
-                setNutritionTemplateFilter(e.target.value);
-                setNtPage(0);
-              }}
-              sx={{ maxWidth: 400 }}
-              InputProps={{
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <SearchIcon fontSize="small" color="action" />
-                  </InputAdornment>
-                ),
-              }}
-            />
-            <TableContainer component={Paper} variant="outlined">
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>{t("nutritionTemplates.list.name")}</TableCell>
-                    <TableCell width={88}>{t("nutritionTemplates.list.meals")}</TableCell>
-                    <TableCell width={220}>{t("nutritionTemplates.list.actions")}</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {nutritionTemplateRows.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={3}>
-                        <Typography variant="body2" color="text.secondary">
-                          {nutritionEmptyMsg}
-                        </Typography>
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    nutritionTemplateRows.slice(ntPage * TABLE_PAGE, ntPage * TABLE_PAGE + TABLE_PAGE).map((r) => {
-                      const id = Number(r.id);
-                      const busy = assigningNutritionId === id;
-                      const isAssigned = assignedNutritionId != null && id === assignedNutritionId;
-                      return (
-                        <TableRow
-                          key={String(r.id)}
-                          sx={isAssigned ? { bgcolor: (theme) => `${theme.palette.primary.main}14` } : undefined}
-                        >
-                          <TableCell>
-                            <Stack direction="row" alignItems="center" spacing={1} flexWrap="wrap">
-                              <span>{String(r.name ?? "")}</span>
-                              {isAssigned ? (
-                                <Chip size="small" label={t("clients.plans.rowAssignedBadge")} color="primary" variant="outlined" />
-                              ) : null}
-                            </Stack>
-                          </TableCell>
-                          <TableCell>{Number((r as Record<string, unknown>).meal_count ?? 0)}</TableCell>
-                          <TableCell>
-                            <Stack direction="row" spacing={1} flexWrap="wrap">
-                              <Button
-                                size="small"
-                                variant="contained"
-                                disabled={busy}
-                                onClick={() => void onAssignNutrition(id)}
-                              >
-                                {busy ? <CircularProgress size={18} color="inherit" /> : t("clients.plans.assignNutritionToClient")}
-                              </Button>
-                              <Button component={Link} to={`/nutrition-templates/edit/${r.id}`} size="small" variant="outlined">
-                                {t("actions.edit")}
-                              </Button>
-                            </Stack>
+          {!hideNutritionSection ? (
+            <>
+              <Typography variant="subtitle1" fontWeight={600}>
+                {t("clients.plans.templatesSectionTitle")}
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                {t("clients.plans.editPickersNutritionSub")}
+              </Typography>
+              <Box sx={{ mb: 1.5 }}>
+                <Button component={Link} to="/nutrition-templates/create" variant="outlined" size="small">
+                  {t("clients.plans.newTemplate")}
+                </Button>
+              </Box>
+              <Stack spacing={2} sx={{ mb: 1, width: "100%" }}>
+                <TextField
+                  size="small"
+                  placeholder={t("clients.plans.filterTemplatesPlaceholder")}
+                  value={nutritionTemplateFilter}
+                  onChange={(e) => {
+                    setNutritionTemplateFilter(e.target.value);
+                    setNtPage(0);
+                  }}
+                  sx={{ maxWidth: 400 }}
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <SearchIcon fontSize="small" color="action" />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+                <TableContainer component={Paper} variant="outlined">
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>{t("nutritionTemplates.list.name")}</TableCell>
+                        <TableCell width={88}>{t("nutritionTemplates.list.meals")}</TableCell>
+                        <TableCell width={220}>{t("nutritionTemplates.list.actions")}</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {nutritionTemplateRows.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={3}>
+                            <Typography variant="body2" color="text.secondary">
+                              {nutritionEmptyMsg}
+                            </Typography>
                           </TableCell>
                         </TableRow>
-                      );
-                    })
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
-            {nutritionTemplateRows.length > TABLE_PAGE ? (
-              <TablePagination
-                component="div"
-                count={nutritionTemplateRows.length}
-                page={ntPage}
-                onPageChange={(_, p) => setNtPage(p)}
-                rowsPerPage={TABLE_PAGE}
-                rowsPerPageOptions={[TABLE_PAGE]}
-              />
-            ) : null}
-            {nutritionTemplatesLoading ? <CircularProgress size={24} /> : null}
-          </Stack>
+                      ) : (
+                        nutritionTemplateRows.slice(ntPage * TABLE_PAGE, ntPage * TABLE_PAGE + TABLE_PAGE).map((r) => {
+                          const id = Number(r.id);
+                          const busy = assigningNutritionId === id;
+                          const isAssigned = assignedNutritionId != null && id === assignedNutritionId;
+                          return (
+                            <TableRow
+                              key={String(r.id)}
+                              sx={isAssigned ? { bgcolor: (theme) => `${theme.palette.primary.main}14` } : undefined}
+                            >
+                              <TableCell>
+                                <Stack direction="row" alignItems="center" spacing={1} flexWrap="wrap">
+                                  <span>{String(r.name ?? "")}</span>
+                                  {isAssigned ? (
+                                    <Chip size="small" label={t("clients.plans.rowAssignedBadge")} color="primary" variant="outlined" />
+                                  ) : null}
+                                </Stack>
+                              </TableCell>
+                              <TableCell>{Number((r as Record<string, unknown>).meal_count ?? 0)}</TableCell>
+                              <TableCell>
+                                <Stack direction="row" spacing={1} flexWrap="wrap">
+                                  <Button
+                                    size="small"
+                                    variant="contained"
+                                    disabled={busy}
+                                    onClick={() => void onAssignNutrition(id)}
+                                  >
+                                    {busy ? <CircularProgress size={18} color="inherit" /> : t("clients.plans.assignNutritionToClient")}
+                                  </Button>
+                                  <Button component={Link} to={`/nutrition-templates/edit/${r.id}`} size="small" variant="outlined">
+                                    {t("actions.edit")}
+                                  </Button>
+                                </Stack>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })
+                      )}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+                {nutritionTemplateRows.length > TABLE_PAGE ? (
+                  <TablePagination
+                    component="div"
+                    count={nutritionTemplateRows.length}
+                    page={ntPage}
+                    onPageChange={(_, p) => setNtPage(p)}
+                    rowsPerPage={TABLE_PAGE}
+                    rowsPerPageOptions={[TABLE_PAGE]}
+                  />
+                ) : null}
+                {nutritionTemplatesLoading ? <CircularProgress size={24} /> : null}
+              </Stack>
+            </>
+          ) : null}
         </CardContent>
       </Card>
     </div>

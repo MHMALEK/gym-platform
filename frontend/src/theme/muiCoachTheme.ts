@@ -18,6 +18,10 @@ export function buildCoachMuiTheme(
       ? "0 1px 2px rgba(0, 0, 0, 0.35), 0 4px 16px -4px rgba(0, 0, 0, 0.45)"
       : "0 1px 2px rgba(15, 23, 42, 0.06), 0 4px 12px -2px rgba(15, 23, 42, 0.08)";
 
+  /** In-app links (incl. react-router `<Link>`) — sky / cyan, not browser purple */
+  const linkColor = mode === "dark" ? "#38bdf8" : "#0284c7";
+  const linkHover = mode === "dark" ? "#7dd3fc" : "#0369a1";
+
   return createTheme({
     direction,
     palette: {
@@ -58,6 +62,35 @@ export function buildCoachMuiTheme(
           body: {
             backgroundColor: brand.layoutBg,
             color: brand.text,
+          },
+          "a:not(.MuiButton-root):not(.MuiIconButton-root):not(.MuiTab-root)": {
+            color: linkColor,
+            textDecoration: "none",
+            fontWeight: 500,
+            "&:visited": {
+              color: linkColor,
+            },
+            "&:hover": {
+              color: linkHover,
+              textDecoration: "underline",
+            },
+          },
+        },
+      },
+      MuiLink: {
+        defaultProps: {
+          underline: "hover",
+        },
+        styleOverrides: {
+          root: {
+            fontWeight: 500,
+            color: linkColor,
+            "&:visited": {
+              color: linkColor,
+            },
+            "&:hover": {
+              color: linkHover,
+            },
           },
         },
       },

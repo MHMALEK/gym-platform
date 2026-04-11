@@ -27,8 +27,7 @@ import { useTranslation } from "react-i18next";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import { formatMoney } from "../../lib/money";
-import { ClientAssignedPlansSummary } from "./ClientAssignedPlansSummary";
-import { ClientCoachingPlansEditor } from "./ClientCoachingPlansEditor";
+import { ClientCoachingPlanAssignmentPanel } from "./ClientCoachingPlanAssignmentPanel";
 import { ClientPlansCta, clientWorkoutDietPath } from "./ClientPlansCta";
 import {
   type ClientDetailTab,
@@ -129,7 +128,6 @@ export function ClientShow() {
   const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState<ClientDetailTab>(() => tabFromHash(window.location.hash));
-  const [coachingSync, setCoachingSync] = useState(0);
 
   const reg = record?.registration_date ?? record?.created_at;
 
@@ -303,9 +301,13 @@ export function ClientShow() {
   return (
     <Show
       isLoading={query?.isLoading}
+      contentProps={{ sx: { pt: 1, px: 1.5 } }}
       headerButtons={({ defaultButtons }) => (
         <>
           {defaultButtons}
+          <Button component={Link} to="/clients/create" variant="outlined" size="medium">
+            {t("common.quickLinks.newClient")}
+          </Button>
           {record?.id != null ? (
             <Stack direction="row" spacing={0.5} alignItems="center" flexWrap="wrap">
               <Button
@@ -318,7 +320,7 @@ export function ClientShow() {
               >
                 {t("clients.plans.headerButton")}
               </Button>
-              <Button component={Link} to={clientWorkoutDietPath(record.id)} size="small">
+              <Button component={Link} to={clientWorkoutDietPath(record.id)} size="small" variant="outlined">
                 {t("clients.plans.openFullPage")}
               </Button>
             </Stack>
@@ -379,28 +381,21 @@ export function ClientShow() {
 
         <Box sx={{ display: activeTab === "profile" ? "block" : "none" }}>{profileTab}</Box>
         {clientId != null ? (
-          <Box id="client-tab-workout" sx={{ display: activeTab === "workout" ? "block" : "none", pt: 0.5 }}>
-            <ClientAssignedPlansSummary
+          <Box id={clientTabScrollIds.workout} sx={{ display: activeTab === "workout" ? "block" : "none", pt: 0.5 }}>
+            <ClientCoachingPlanAssignmentPanel
               clientId={clientId}
-              variant="view"
-              refreshKey={coachingSync}
-              onMutated={() => setCoachingSync((k) => k + 1)}
-            />
-            <ClientCoachingPlansEditor
-              clientId={clientId}
-              embed
-              reloadToken={coachingSync}
-              onCoachingPlansMutated={() => setCoachingSync((k) => k + 1)}
+              summaryVariant="view"
+              hideNutritionSection
             />
           </Box>
         ) : null}
         {clientId != null ? (
-          <Box id="client-tab-invoices" sx={{ display: activeTab === "invoices" ? "block" : "none", pt: 0.5 }}>
+          <Box id={clientTabScrollIds.invoices} sx={{ display: activeTab === "invoices" ? "block" : "none", pt: 0.5 }}>
             <ClientInvoicesPanel clientId={clientId} />
           </Box>
         ) : null}
         {clientId != null ? (
-          <Box id="client-tab-membership" sx={{ display: activeTab === "membership" ? "block" : "none", pt: 0.5 }}>
+          <Box id={clientTabScrollIds.membership} sx={{ display: activeTab === "membership" ? "block" : "none", pt: 0.5 }}>
             <ClientMembershipPanel clientId={clientId} />
           </Box>
         ) : null}

@@ -32,9 +32,17 @@ type Props = {
   /** Bump to refetch assignment state (e.g. after sibling saves). */
   refreshKey?: number;
   onMutated?: () => void;
+  /** Hide nutrition assignment line (e.g. client edit workout tab — nutrition is managed on view / full editor). */
+  hideNutrition?: boolean;
 };
 
-export function ClientAssignedPlansSummary({ clientId, variant, refreshKey = 0, onMutated }: Props) {
+export function ClientAssignedPlansSummary({
+  clientId,
+  variant,
+  refreshKey = 0,
+  onMutated,
+  hideNutrition = false,
+}: Props) {
   const { t } = useTranslation();
   const message = useAppMessage();
   const [loading, setLoading] = useState(true);
@@ -73,6 +81,7 @@ export function ClientAssignedPlansSummary({ clientId, variant, refreshKey = 0, 
   const { data: nutritionList } = useList({
     resource: "nutrition-templates",
     pagination: REFINE_LIST_FIRST_PAGE_200,
+    queryOptions: { enabled: !hideNutrition },
   });
 
   const workoutName = useMemo(() => {
@@ -126,7 +135,7 @@ export function ClientAssignedPlansSummary({ clientId, variant, refreshKey = 0, 
 
   const hasWorkout = snapshot?.assigned_training_plan_id != null;
   const hasNutrition = snapshot?.assigned_nutrition_template_id != null;
-  const showEmpty = !hasWorkout && !hasNutrition;
+  const showFullEmpty = !hasWorkout && !hasNutrition;
 
   return (
     <>
@@ -140,7 +149,7 @@ export function ClientAssignedPlansSummary({ clientId, variant, refreshKey = 0, 
           </Typography>
         ) : null}
 
-        {showEmpty ? (
+        {showFullEmpty ? (
           <Typography variant="body2" color="text.secondary">
             {t("clients.plans.noneAssigned")}
           </Typography>
@@ -163,23 +172,25 @@ export function ClientAssignedPlansSummary({ clientId, variant, refreshKey = 0, 
                 </Button>
               ) : null}
             </Stack>
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ sm: "center" }} flexWrap="wrap">
-              <Typography variant="body2" component="span" sx={{ minWidth: 0 }}>
-                <strong>{t("clients.plans.assignedNutritionLabel")}:</strong>{" "}
-                {hasNutrition ? nutritionName : t("clients.plans.noneDash")}
-              </Typography>
-              {hasNutrition ? (
-                <Button
-                  size="small"
-                  color="error"
-                  variant="outlined"
-                  startIcon={<DeleteOutlineIcon />}
-                  onClick={() => setConfirmClear("nutrition")}
-                >
-                  {t("clients.plans.removeNutritionAssignment")}
-                </Button>
-              ) : null}
-            </Stack>
+            {!hideNutrition ? (
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ sm: "center" }} flexWrap="wrap">
+                <Typography variant="body2" component="span" sx={{ minWidth: 0 }}>
+                  <strong>{t("clients.plans.assignedNutritionLabel")}:</strong>{" "}
+                  {hasNutrition ? nutritionName : t("clients.plans.noneDash")}
+                </Typography>
+                {hasNutrition ? (
+                  <Button
+                    size="small"
+                    color="error"
+                    variant="outlined"
+                    startIcon={<DeleteOutlineIcon />}
+                    onClick={() => setConfirmClear("nutrition")}
+                  >
+                    {t("clients.plans.removeNutritionAssignment")}
+                  </Button>
+                ) : null}
+              </Stack>
+            ) : null}
           </Stack>
         )}
 

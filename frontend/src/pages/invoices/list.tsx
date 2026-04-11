@@ -1,10 +1,19 @@
+import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
+import FileDownloadIcon from "@mui/icons-material/FileDownload";
+import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
+import IconButton from "@mui/material/IconButton";
 import Stack from "@mui/material/Stack";
+import Tooltip from "@mui/material/Tooltip";
 import { DataGrid, type GridColDef } from "@mui/x-data-grid";
 import { type BaseRecord } from "@refinedev/core";
 import { CreateButton, DeleteButton, EditButton, List, useDataGrid } from "@refinedev/mui";
 import dayjs from "dayjs";
 import { useTranslation } from "react-i18next";
+
+import { apiPrefix, authBearerHeaders } from "../../lib/api";
+import { downloadBlob } from "../../lib/downloadBlob";
+import { useAppMessage } from "../../lib/useAppMessage";
 
 const statusColor: Record<string, "warning" | "success" | "error" | "default"> = {
   pending: "warning",
@@ -15,7 +24,22 @@ const statusColor: Record<string, "warning" | "success" | "error" | "default"> =
 
 export function InvoiceList() {
   const { t } = useTranslation();
+  const message = useAppMessage();
   const { dataGridProps } = useDataGrid({ resource: "invoices", syncWithLocation: true });
+
+  const exportCsv = async () => {
+    try {
+      const res = await fetch(`${apiPrefix}/invoices/export/csv`, { headers: authBearerHeaders() });
+      if (!res.ok) {
+        message.error(await res.text());
+        return;
+      }
+      const blob = await res.blob();
+      downloadBlob(blob, "invoices.csv");
+    } catch (e) {
+      message.error(String(e));
+    }
+  };
 
   const columns: GridColDef<BaseRecord>[] = [
     {
@@ -70,11 +94,35 @@ export function InvoiceList() {
     {
       field: "actions",
       headerName: t("invoices.list.actions"),
-      width: 100,
+      width: 140,
       sortable: false,
       filterable: false,
       renderCell: ({ row }) => (
-        <Stack direction="row" spacing={0.5}>
+        <Stack direction="row" spacing={0.5} alignItems="center">
+          <Tooltip title={t("invoices.list.pdf")}>
+            <IconButton
+              size="small"
+              aria-label={t("invoices.list.pdf")}
+              onClick={async () => {
+                try {
+                  const res = await fetch(`${apiPrefix}/invoices/${row.id}/pdf`, {
+                    headers: authBearerHeaders(),
+                  });
+                  if (!res.ok) {
+                    message.error(await res.text());
+                    return;
+                  }
+                  const blob = await res.blob();
+                  const ref = (row as BaseRecord).reference as string | undefined;
+                  downloadBlob(blob, `${ref || `invoice-${row.id}`}.pdf`);
+                } catch (e) {
+                  message.error(String(e));
+                }
+              }}
+            >
+              <PictureAsPdfIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
           <EditButton hideText size="small" recordItemId={row.id} />
           <DeleteButton hideText size="small" recordItemId={row.id} />
         </Stack>
@@ -83,11 +131,20 @@ export function InvoiceList() {
   ];
 
   return (
-    <List headerButtons={<CreateButton />}>
+    <List
+      headerButtons={
+        <>
+          <Button variant="outlined" size="small" startIcon={<FileDownloadIcon />} onClick={() => void exportCsv()}>
+            {t("invoices.list.exportCsv")}
+          </Button>
+          <CreateButton />
+        </>
+      }
+    >
       <DataGrid
         {...dataGridProps}
         columns={columns}
-        getRowId={(r) => r.id as string | number}
+        getRowId={(row) => row.id as string | number}
         autoHeight
         pageSizeOptions={[10, 25, 50]}
         disableRowSelectionOnClick

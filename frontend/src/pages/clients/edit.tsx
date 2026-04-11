@@ -20,6 +20,7 @@ import { useTranslation } from "react-i18next";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 
 import { ClientCoachingPlanAssignmentPanel } from "./ClientCoachingPlanAssignmentPanel";
+import { ClientPlansCta, clientWorkoutDietPath } from "./ClientPlansCta";
 import {
   type ClientDetailTab,
   clientDetailTabsSx,
@@ -116,6 +117,9 @@ export function ClientEdit() {
               >
                 {t("clients.plans.headerButton")}
               </Button>
+              <Button component={Link} to={clientWorkoutDietPath(clientId)} size="small" variant="outlined">
+                {t("clients.plans.openFullPage")}
+              </Button>
               <Button
                 component={Link}
                 to={`/clients/show/${clientId}`}
@@ -199,11 +203,12 @@ export function ClientEdit() {
             planSelect={planSelect}
             isCreate={false}
           />
+          {validId ? <ClientPlansCta clientId={clientId} compact /> : null}
         </Box>
 
         {validId ? (
           <Box id={clientTabScrollIds.workout} sx={{ display: activeTab === "workout" ? "block" : "none", pt: 0.5 }}>
-            <ClientCoachingPlanAssignmentPanel clientId={clientId} />
+            <ClientCoachingPlanAssignmentPanel clientId={clientId} hideNutritionSection />
           </Box>
         ) : null}
 

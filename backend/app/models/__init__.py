@@ -8,6 +8,7 @@ from app.models.exercise import Exercise
 from app.models.exercise_muscle_group import ExerciseMuscleGroup
 from app.models.goal_type import GoalType
 from app.models.muscle_group import MuscleGroup
+from app.models.coach_invoice_sequence import CoachInvoiceSequence
 from app.models.invoice import Invoice
 from app.models.media_asset import ExerciseMedia, MediaAsset
 from app.models.nutrition_template import NutritionTemplate
@@ -27,6 +28,7 @@ __all__ = [
     "GoalType",
     "MuscleGroup",
     "ExerciseMedia",
+    "CoachInvoiceSequence",
     "Invoice",
     "MediaAsset",
     "NutritionTemplate",

@@ -1,3 +1,4 @@
+import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import MenuItem from "@mui/material/MenuItem";
 import TextField from "@mui/material/TextField";
@@ -8,6 +9,7 @@ import dayjs from "dayjs";
 import { useMemo } from "react";
 import { Controller } from "react-hook-form";
 import { useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 
@@ -22,9 +24,11 @@ type InvoiceFormValues = {
   due_date?: string | null;
   status?: string | null;
   notes?: string | null;
+  internal_notes?: string | null;
 };
 
 export function InvoiceCreate() {
+  const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const presetClientId = searchParams.get("client_id");
   const initialClientId = useMemo(
@@ -41,6 +45,7 @@ export function InvoiceCreate() {
       amount: null as number | null,
       due_date: null as string | null,
       notes: "",
+      internal_notes: "",
     }),
     [initialClientId],
   );
@@ -60,6 +65,9 @@ export function InvoiceCreate() {
   return (
     <Create saveButtonProps={saveButtonProps}>
       <Box component="form" sx={{ maxWidth: 560 }}>
+        <Alert severity="info" sx={{ mb: 2 }}>
+          {t("invoices.form.paymentsPlaceholder")}
+        </Alert>
         <Controller
           name="client_id"
           control={control}
@@ -81,7 +89,13 @@ export function InvoiceCreate() {
           name="reference"
           control={control}
           render={({ field }) => (
-            <TextField {...field} value={field.value ?? ""} label="Invoice # / reference" fullWidth margin="normal" />
+            <TextField
+              {...field}
+              value={field.value ?? ""}
+              label="Invoice # / reference (optional — auto if empty)"
+              fullWidth
+              margin="normal"
+            />
           )}
         />
         <Controller
@@ -136,7 +150,30 @@ export function InvoiceCreate() {
           name="notes"
           control={control}
           render={({ field }) => (
-            <TextField {...field} value={field.value ?? ""} label="Notes" fullWidth margin="normal" multiline minRows={3} />
+            <TextField
+              {...field}
+              value={field.value ?? ""}
+              label={t("invoices.form.notesClient")}
+              fullWidth
+              margin="normal"
+              multiline
+              minRows={3}
+            />
+          )}
+        />
+        <Controller
+          name="internal_notes"
+          control={control}
+          render={({ field }) => (
+            <TextField
+              {...field}
+              value={field.value ?? ""}
+              label={t("invoices.form.internalNotes")}
+              fullWidth
+              margin="normal"
+              multiline
+              minRows={2}
+            />
           )}
         />
       </Box>

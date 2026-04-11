@@ -38,3 +38,8 @@ class Coach(Base, TimestampMixin):
         foreign_keys=[logo_media_asset_id],
         uselist=False,
     )
+    invoice_sequences = relationship(
+        "CoachInvoiceSequence",
+        back_populates="coach",
+        cascade="all, delete-orphan",
+    )

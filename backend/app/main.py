@@ -6,6 +6,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.api import (
     auth,
+    billing,
     clients,
     dashboard,
     directory,
@@ -52,6 +53,7 @@ app.include_router(training_plans.router, prefix=v1)
 app.include_router(nutrition_templates.router, prefix=v1)
 app.include_router(clients.router, prefix=v1)
 app.include_router(invoices.router, prefix=v1)
+app.include_router(billing.router, prefix=v1)
 app.include_router(plan_templates.router, prefix=v1)
 
 app.mount(

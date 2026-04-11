@@ -3,14 +3,24 @@ import MenuItem from "@mui/material/MenuItem";
 import Select from "@mui/material/Select";
 import { useTranslation } from "react-i18next";
 
+type LanguageSwitcherProps = {
+  /** Full-width row under the title (sidebar layout title). */
+  layout?: "default" | "sider";
+};
+
 /** Compact language control; Persian default, English ready for future use. */
-export function LanguageSwitcher() {
+export function LanguageSwitcher({ layout = "default" }: LanguageSwitcherProps) {
   const { i18n, t } = useTranslation();
 
   const value = i18n.language.startsWith("fa") ? "fa" : "en";
+  const fullWidth = layout === "sider";
 
   return (
-    <FormControl size="small" sx={{ minWidth: 118 }}>
+    <FormControl
+      size="small"
+      fullWidth={fullWidth}
+      sx={{ minWidth: fullWidth ? 0 : 118, maxWidth: "100%" }}
+    >
       <Select
         value={value}
         onChange={(e) => void i18n.changeLanguage(String(e.target.value))}

@@ -61,6 +61,36 @@ function lastInvoiceSummary(r: BaseRecord): LastInvoiceSummary | undefined {
   return (x.last_invoice_summary ?? x.lastInvoiceSummary) as LastInvoiceSummary | undefined;
 }
 
+type SubscriptionPlanTemplateRow = { name?: string; code?: string | null } | null | undefined;
+
+/** Resolve display title; avoid repeating the client name when plan template name was set equal to it. */
+function membershipPlanTitle(
+  row: BaseRecord,
+  ms: MembershipSummary,
+  t: (key: string, opt?: Record<string, unknown>) => string,
+): string {
+  const rowName = String(row.name ?? "").trim();
+  const raw = (ms.plan_name ?? "").trim();
+  const tpl = (row as Record<string, unknown>).subscription_plan_template as SubscriptionPlanTemplateRow;
+  const subType = String((row as Record<string, unknown>).subscription_type ?? "").trim();
+  const fromTpl = (tpl?.name ?? "").trim();
+
+  if (raw && raw !== rowName) return raw;
+
+  if (raw === rowName) {
+    if (ms.plan_code != null && String(ms.plan_code).trim() !== "") {
+      return t("clients.membershipPlanCode", { code: String(ms.plan_code).trim() });
+    }
+    if (fromTpl && fromTpl !== rowName) return fromTpl;
+    if (subType && subType !== rowName) return subType;
+    return raw;
+  }
+
+  if (!raw && fromTpl) return fromTpl;
+  if (!raw && subType) return subType;
+  return raw || fromTpl || subType;
+}
+
 export function ClientList() {
   const { t, i18n } = useTranslation();
   const { dataGridProps } = useDataGrid({ resource: "clients", syncWithLocation: true });
@@ -110,8 +140,14 @@ export function ClientList() {
         minWidth: 220,
         sortable: false,
         renderCell: ({ row }) => (
-          <Stack spacing={0} sx={{ py: 0.5 }}>
-            <MuiLink component={Link} to={`/clients/show/${row.id}`} fontWeight={600} underline="hover">
+          <Stack spacing={0} justifyContent="center" sx={{ py: 1, minHeight: 52 }}>
+            <MuiLink
+              component={Link}
+              to={`/clients/show/${row.id}`}
+              fontWeight={600}
+              underline="hover"
+              sx={{ color: "primary.main" }}
+            >
               {String(row.name ?? "")}
             </MuiLink>
             {row.email ? (
@@ -131,13 +167,32 @@ export function ClientList() {
         renderCell: ({ row }) => {
           const ms = membershipSummary(row);
           if (!ms) {
-            return <Typography color="text.secondary">{t("clients.none")}</Typography>;
+            return (
+              <Typography color="text.secondary" sx={{ py: 1 }}>
+                {t("clients.none")}
+              </Typography>
+            );
           }
+          const title = membershipPlanTitle(row, ms, t);
+          const rowName = String(row.name ?? "").trim();
+          const rawPlan = (ms.plan_name ?? "").trim();
+          const codeStr = ms.plan_code != null ? String(ms.plan_code).trim() : "";
+          const titleShowsCode = rawPlan === rowName && codeStr !== "";
+          const dupName = rawPlan === rowName && Boolean(codeStr);
           return (
-            <Stack spacing={0.5} sx={{ py: 0.5 }}>
-              <Typography fontWeight={600}>{ms.plan_name}</Typography>
+            <Stack spacing={0.5} justifyContent="center" sx={{ py: 1, minHeight: 52 }}>
+              <Typography fontWeight={600} component="div">
+                {title || t("clients.membershipUnknown")}
+              </Typography>
               <Stack direction="row" gap={0.5} flexWrap="wrap" alignItems="center">
-                {ms.plan_code ? <Chip size="small" label={ms.plan_code} /> : null}
+                {codeStr && !titleShowsCode ? (
+                  <Chip size="small" variant="outlined" label={codeStr} />
+                ) : null}
+                {dupName ? (
+                  <Typography variant="caption" color="text.secondary">
+                    {t("clients.membershipRenamePlanHint")}
+                  </Typography>
+                ) : null}
                 {ms.source === "designated_only" && ms.ends_at == null ? (
                   <Typography variant="caption" color="text.secondary">
                     {t("clients.noActiveTerm")}
@@ -156,12 +211,16 @@ export function ClientList() {
         renderCell: ({ row }) => {
           const ms = membershipSummary(row);
           if (!ms || (ms.source === "designated_only" && ms.ends_at == null)) {
-            return timeLeftTag(ms);
+            return (
+              <Stack justifyContent="center" sx={{ py: 1, minHeight: 52, width: "100%" }}>
+                {timeLeftTag(ms)}
+              </Stack>
+            );
           }
           const line =
             ms.ends_at != null ? dayjs(ms.ends_at).format("MMM D, YYYY") : t("clients.noEndDate");
           return (
-            <Stack spacing={0.5} sx={{ py: 0.5 }}>
+            <Stack spacing={0.5} justifyContent="center" sx={{ py: 1, minHeight: 52 }}>
               <Typography variant="caption" color="text.secondary">
                 {line}
               </Typography>
@@ -179,7 +238,11 @@ export function ClientList() {
         renderCell: ({ row }) => {
           const inv = lastInvoiceSummary(row);
           if (!inv) {
-            return <Typography color="text.secondary">{t("clients.noInvoices")}</Typography>;
+            return (
+              <Typography color="text.secondary" sx={{ py: 1 }}>
+                {t("clients.noInvoices")}
+              </Typography>
+            );
           }
           const cur = inv.currency ?? "USD";
           const chipColor = inv.is_paid
@@ -188,7 +251,7 @@ export function ClientList() {
               ? "error"
               : "warning";
           return (
-            <Stack spacing={0.25} sx={{ py: 0.5 }}>
+            <Stack spacing={0.35} justifyContent="center" alignItems="flex-start" sx={{ py: 1, minHeight: 52 }}>
               <Stack direction="row" gap={0.75} flexWrap="wrap" alignItems="center">
                 <Chip
                   size="small"
@@ -199,7 +262,7 @@ export function ClientList() {
                   <Typography variant="body2">{formatMoney(inv.amount, cur, loc)}</Typography>
                 ) : null}
               </Stack>
-              <Typography variant="caption" color="text.secondary">
+              <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.35 }}>
                 {inv.reference ? `${inv.reference} · ` : ""}
                 {inv.due_date
                   ? `${t("clients.due")} ${dayjs(inv.due_date).format("MMM D")}`
@@ -226,9 +289,9 @@ export function ClientList() {
           const acKnown = ["good_standing", "payment_issue", "onboarding", "churned"].includes(ac);
           const acLabel = acKnown ? t(`clients.accountStatus.${ac}` as never) : ac;
           return (
-            <Stack direction="column" spacing={0.5} sx={{ py: 0.5 }}>
+            <Stack direction="row" spacing={0.75} flexWrap="wrap" alignItems="center" sx={{ py: 1, minHeight: 52 }}>
               <Chip size="small" color={rosterChipColor[st] ?? "default"} label={roster} />
-              <Chip size="small" color={accountChipColor[ac] ?? "default"} label={acLabel} />
+              <Chip size="small" variant="outlined" color={accountChipColor[ac] ?? "default"} label={acLabel} />
             </Stack>
           );
         },
@@ -241,8 +304,24 @@ export function ClientList() {
         align: "right",
         headerAlign: "right",
         renderCell: ({ row }) => (
-          <Stack direction="row" spacing={0.5} flexWrap="wrap" justifyContent="flex-end" alignItems="center">
-            <MuiLink component={Link} to={`/clients/show/${row.id}#invoices`} variant="body2">
+          <Stack
+            direction="row"
+            spacing={0.5}
+            flexWrap="wrap"
+            justifyContent="flex-end"
+            alignItems="center"
+            sx={{ py: 1, minHeight: 52 }}
+          >
+            <MuiLink
+              component={Link}
+              to={`/clients/show/${row.id}#invoices`}
+              variant="body2"
+              sx={{
+                color: "text.secondary",
+                fontWeight: 500,
+                "&:hover": { color: "primary.light" },
+              }}
+            >
               {t("actions.financial")}
             </MuiLink>
             <EditButton resource="clients" hideText size="small" recordItemId={row.id} />

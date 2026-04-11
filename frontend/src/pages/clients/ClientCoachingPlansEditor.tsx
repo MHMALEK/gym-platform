@@ -606,7 +606,7 @@ export function ClientCoachingPlansEditor({
 
   if (embed) {
     return (
-      <div id="client-tab-workout" style={{ paddingTop: 4, maxWidth: 960 }}>
+      <div className="client-coaching-editor-embed" style={{ paddingTop: 4, maxWidth: 960 }}>
         <Card className="client-section-card client-section-card--editable">
           <CardContent sx={{ pt: 2 }}>
             <Typography variant="h6" sx={{ mt: 0 }}>

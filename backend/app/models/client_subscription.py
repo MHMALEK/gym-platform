@@ -21,3 +21,4 @@ class ClientSubscription(Base, TimestampMixin):
 
     client = relationship("Client", back_populates="subscriptions")
     plan_template = relationship("PlanTemplate", back_populates="subscriptions")
+    invoices = relationship("Invoice", back_populates="subscription")

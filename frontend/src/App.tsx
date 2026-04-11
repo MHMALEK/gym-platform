@@ -8,7 +8,9 @@ import HomeIcon from "@mui/icons-material/Home";
 import LibraryBooksIcon from "@mui/icons-material/LibraryBooks";
 import GroupsIcon from "@mui/icons-material/Groups";
 import ViewListIcon from "@mui/icons-material/ViewList";
+import Box from "@mui/material/Box";
 import CssBaseline from "@mui/material/CssBaseline";
+import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { ThemeProvider } from "@mui/material/styles";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
@@ -74,36 +76,69 @@ function AppLayoutTitle() {
   const { branding } = useCoachBranding();
   const displayName = branding.loading ? t("app.title") : branding.name || t("app.title");
   return (
-    <span
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 12,
-        marginInlineStart: 8,
-        flexWrap: "wrap",
-        minHeight: 40,
+    <Stack
+      className="app-sider-title"
+      spacing={1.25}
+      sx={{
+        py: 1,
+        pr: 0.5,
+        width: "100%",
+        minWidth: 0,
+        alignItems: "stretch",
       }}
     >
-      {branding.logoUrl && !branding.loading ? (
-        <img
-          src={mediaSrc(branding.logoUrl)}
-          alt=""
-          width={28}
-          height={28}
-          style={{ borderRadius: 6, objectFit: "cover" }}
-        />
-      ) : null}
-      <span style={{ display: "inline-flex", flexDirection: "column", justifyContent: "center", lineHeight: 1.25 }}>
-        <span>{displayName}</span>
-        {branding.tagline && !branding.loading ? (
-          <Typography variant="body2" color="text.secondary" sx={{ fontSize: 11 }}>
-            {branding.tagline}
-          </Typography>
+      <Stack
+        direction="row"
+        alignItems="center"
+        spacing={1}
+        sx={{
+          flexWrap: "nowrap",
+          minWidth: 0,
+          columnGap: 1,
+        }}
+      >
+        {branding.logoUrl && !branding.loading ? (
+          <Box
+            component="img"
+            src={mediaSrc(branding.logoUrl)}
+            alt=""
+            sx={{
+              width: 28,
+              height: 28,
+              borderRadius: 1,
+              objectFit: "cover",
+              flexShrink: 0,
+              display: "block",
+            }}
+          />
         ) : null}
-      </span>
-      <ThemeSwitcher />
-      <LanguageSwitcher />
-    </span>
+        <Box sx={{ minWidth: 0, flex: "1 1 auto" }}>
+          <Typography
+            component="span"
+            variant="body2"
+            sx={{
+              fontWeight: 600,
+              lineHeight: 1.35,
+              display: "block",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {displayName}
+          </Typography>
+          {branding.tagline && !branding.loading ? (
+            <Typography variant="caption" color="text.secondary" sx={{ fontSize: 11, display: "block", mt: 0.25 }}>
+              {branding.tagline}
+            </Typography>
+          ) : null}
+        </Box>
+        <Box sx={{ flexShrink: 0, alignSelf: "center" }}>
+          <ThemeSwitcher />
+        </Box>
+      </Stack>
+      <LanguageSwitcher layout="sider" />
+    </Stack>
   );
 }
 

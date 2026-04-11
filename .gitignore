@@ -1,6 +1,7 @@
 backend/.venv/
 backend/dev.db
 backend/uploads/
+backend/vendor-fpdf2/
 backend/**/__pycache__/
 *.pyc
 .env
