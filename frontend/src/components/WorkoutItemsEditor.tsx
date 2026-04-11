@@ -1,20 +1,15 @@
-import {
-  DeleteOutlined,
-  DownOutlined,
-  HolderOutlined,
-  PlusOutlined,
-  SearchOutlined,
-  UpOutlined,
-} from "@ant-design/icons";
+import { DeleteOutlined, HolderOutlined, PlusOutlined, SearchOutlined } from "@ant-design/icons";
 import {
   DndContext,
+  DragOverlay,
   type CollisionDetection,
   type DragEndEvent,
   type DragStartEvent,
   KeyboardSensor,
   PointerSensor,
-  closestCenter,
+  closestCorners,
   pointerWithin,
+  rectIntersection,
   useDroppable,
   useSensor,
   useSensors,
@@ -35,7 +30,6 @@ import {
   Flex,
   Input,
   InputNumber,
-  Card,
   Divider,
   Modal,
   Segmented,
@@ -120,6 +114,18 @@ function contiguousSameExerciseRun(items: WorkoutLine[], index: number): [number
   return [lo, hi];
 }
 
+/** Position within consecutive rows for the same exercise + block (for grouped set UI). */
+function exerciseSetRunSegment(
+  items: WorkoutLine[],
+  index: number,
+): "single" | "runFirst" | "runMiddle" | "runLast" {
+  const [lo, hi] = contiguousSameExerciseRun(items, index);
+  if (lo === hi) return "single";
+  if (index === lo) return "runFirst";
+  if (index === hi) return "runLast";
+  return "runMiddle";
+}
+
 function arrayMove<T>(arr: T[], from: number, to: number): T[] {
   if (from === to || from < 0 || to < 0 || from >= arr.length || to >= arr.length) return arr.slice();
   const next = arr.slice();
@@ -186,6 +192,39 @@ function linkAfterDroppableId(localId: string) {
   return `${LINK_AFTER_PREFIX}${localId}`;
 }
 
+const exerciseGroupShellStyle: CSSProperties = {
+  marginBottom: 14,
+  padding: "12px 12px 10px",
+  borderRadius: 14,
+  border: "1px solid color-mix(in srgb, var(--ant-color-primary) 14%, var(--app-border, rgba(148, 163, 184, 0.2)))",
+  background: "color-mix(in srgb, var(--ant-color-primary) 4%, var(--app-surface, rgba(18, 24, 38, 0.5)))",
+  boxShadow: "inset 0 1px 0 color-mix(in srgb, var(--ant-color-primary) 8%, transparent)",
+};
+
+const exerciseGroupInBlockShellStyle: CSSProperties = {
+  marginBottom: 10,
+  padding: "10px 10px 8px",
+  borderRadius: 12,
+  border: "1px solid var(--app-border, rgba(148, 163, 184, 0.18))",
+  background: "color-mix(in srgb, var(--app-surface-elevated, #1a2234) 88%, transparent)",
+};
+
+function AddSetBelowFooter({ onClick, label }: { onClick: () => void; label: string }) {
+  return (
+    <div
+      style={{
+        marginTop: 4,
+        paddingTop: 10,
+        borderTop: "1px dashed color-mix(in srgb, var(--ant-color-primary) 20%, var(--app-border, rgba(148,163,184,0.25)))",
+      }}
+    >
+      <Button type="dashed" block size="small" icon={<PlusOutlined />} onClick={onClick}>
+        {label}
+      </Button>
+    </div>
+  );
+}
+
 /** Move active row to sit right after target, then share target's block or create a new pair. */
 function mergeDraggedAfterTarget(
   items: WorkoutLine[],
@@ -226,11 +265,50 @@ function mergeDraggedAfterTarget(
   return rows.map((r, i) => ({ ...r, sort_order: i }));
 }
 
+/** Stabilize grouping: when several “link after” zones overlap the drag rect, pick the nearest to the dragged item center. */
+function pickNearestLinkCollision(
+  args: Parameters<CollisionDetection>[0],
+  linkCollisions: ReturnType<CollisionDetection>,
+): ReturnType<CollisionDetection> {
+  if (linkCollisions.length <= 1) return linkCollisions;
+  const cr = args.collisionRect;
+  const acx = cr.left + cr.width / 2;
+  const acy = cr.top + cr.height / 2;
+  let best = linkCollisions[0];
+  let bestD = Infinity;
+  for (const hit of linkCollisions) {
+    const node = args.droppableContainers.find((d) => d.id === hit.id);
+    const r = node?.rect.current;
+    if (!r) continue;
+    const cx = r.left + r.width / 2;
+    const cy = r.top + r.height / 2;
+    const d = (cx - acx) ** 2 + (cy - acy) ** 2;
+    if (d < bestD) {
+      bestD = d;
+      best = hit;
+    }
+  }
+  return [best];
+}
+
 function workoutLinkCollisionDetection(args: Parameters<CollisionDetection>[0]) {
-  const pointerHits = pointerWithin(args);
-  const linkHits = pointerHits.filter((c) => String(c.id).startsWith(LINK_AFTER_PREFIX));
-  if (linkHits.length > 0) return linkHits;
-  return closestCenter(args);
+  const linkContainers = args.droppableContainers.filter((c) => String(c.id).startsWith(LINK_AFTER_PREFIX));
+  if (linkContainers.length === 0) {
+    return closestCorners(args);
+  }
+  const linkArgs = { ...args, droppableContainers: linkContainers };
+
+  const pointerLink = pointerWithin(linkArgs);
+  if (pointerLink.length > 0) {
+    return pickNearestLinkCollision(args, pointerLink);
+  }
+
+  const rectLink = rectIntersection(linkArgs);
+  if (rectLink.length > 0) {
+    return pickNearestLinkCollision(args, rectLink);
+  }
+
+  return closestCorners(args);
 }
 
 function blockAccent(blockId: string): string {
@@ -306,8 +384,8 @@ function insertLinkedChildAfter(items: WorkoutLine[], afterIndex: number, ex: Ex
     exercise_id: ex.id,
     exercise_name: ex.name,
     sort_order: 0,
-    sets: null,
-    reps: row.reps,
+            sets: 1,
+            reps: row.reps,
     duration_sec: row.duration_sec,
     rest_sec: row.rest_sec,
     notes: null,
@@ -322,12 +400,12 @@ function SortableRow({
   row,
   index,
   insideBlock,
+  packInExerciseGroup,
   blockStepLabel,
   setLabel,
-  isExtraSetRow,
+  setRunSegment,
   canExtendLink,
   onPickExtendBlock,
-  onAddSetBelow,
   mergeDropEnabled,
   t,
   updateAt,
@@ -336,13 +414,14 @@ function SortableRow({
   row: WorkoutLine;
   index: number;
   insideBlock: boolean;
+  /** Row sits inside the per-exercise shell; outer vertical gaps come from the shell + footer. */
+  packInExerciseGroup: boolean;
   blockStepLabel: string | null;
   setLabel: string;
-  /** Set 2+ for the same exercise run — only delete is shown; quieter exercise column. */
-  isExtraSetRow: boolean;
+  /** Where this row sits in a same-exercise set run (drives spacing + nested look for extra sets). */
+  setRunSegment: "single" | "runFirst" | "runMiddle" | "runLast";
   canExtendLink: boolean;
   onPickExtendBlock: () => void;
-  onAddSetBelow: (i: number) => void;
   /** Show dashed drop zone to group dragged exercise after this row (superset / dropset / …). */
   mergeDropEnabled: boolean;
   t: (k: string) => string;
@@ -352,6 +431,7 @@ function SortableRow({
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: row.localId,
   });
+  const isExtraSetRow = setRunSegment === "runMiddle" || setRunSegment === "runLast";
   const showMergeDrop = mergeDropEnabled && !isExtraSetRow;
   const mergeDropId = linkAfterDroppableId(row.localId);
   const { setNodeRef: setMergeDropRef, isOver: mergeDropOver } = useDroppable({
@@ -362,21 +442,76 @@ function SortableRow({
     insideBlock || !row.block_id
       ? "4px solid transparent"
       : `4px solid ${blockAccent(row.block_id)}`;
+
+  const setRail = "3px solid color-mix(in srgb, var(--ant-color-primary) 55%, transparent)";
+  const nestedBg = "color-mix(in srgb, var(--ant-color-primary) 8%, var(--app-surface, #141a28))";
+  const nestedBorder = "1px solid color-mix(in srgb, var(--ant-color-primary) 22%, var(--app-border, rgba(148,163,184,0.2)))";
+
+  let borderRadius: string | number = 8;
+  let marginTop = 0;
+  let marginBottom = insideBlock ? 0 : 8;
+  let paddingTop = 12;
+  let paddingBottom = 12;
+  let background = "var(--app-surface-elevated, #1a2234)";
+  let border = "1px solid var(--app-border, rgba(148,163,184,0.16))";
+  let extraPaddingLeft = 0;
+
+  if (setRunSegment === "runFirst") {
+    borderRadius = "12px 12px 6px 6px";
+    marginBottom = insideBlock ? 6 : 6;
+    paddingBottom = 10;
+  } else if (setRunSegment === "runMiddle") {
+    marginTop = insideBlock ? 6 : 10;
+    marginBottom = 4;
+    paddingTop = 10;
+    paddingBottom = 10;
+    borderRadius = 8;
+    background = nestedBg;
+    border = nestedBorder;
+    extraPaddingLeft = 12;
+  } else if (setRunSegment === "runLast") {
+    marginTop = insideBlock ? 6 : 10;
+    marginBottom = insideBlock ? 0 : 14;
+    paddingTop = 10;
+    paddingBottom = 12;
+    borderRadius = "8px 8px 12px 12px";
+    background = nestedBg;
+    border = nestedBorder;
+    extraPaddingLeft = 12;
+  }
+
+  if (packInExerciseGroup) {
+    if (setRunSegment === "single" || setRunSegment === "runLast") {
+      marginBottom = 0;
+    }
+    if (setRunSegment === "single") {
+      marginTop = 0;
+    }
+  }
+
+  if (isExtraSetRow) {
+    paddingTop = Math.min(paddingTop, 10);
+    paddingBottom = Math.min(paddingBottom, 10);
+  }
+
   const style: CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.75 : 1,
-    borderLeft: rowStripe,
-    paddingLeft: 10,
+    opacity: isDragging ? 0 : 1,
+    borderLeft: isExtraSetRow ? setRail : rowStripe,
+    paddingLeft: 10 + extraPaddingLeft,
     paddingRight: 8,
-    paddingTop: isExtraSetRow ? 8 : 12,
-    paddingBottom: isExtraSetRow ? 8 : 12,
-    marginBottom: insideBlock ? 0 : 8,
-    background: isExtraSetRow
-      ? "var(--app-surface, rgba(22, 28, 42, 0.65))"
-      : "var(--app-surface-elevated, #1a2234)",
-    borderRadius: 8,
-    border: "1px solid var(--app-border, rgba(148,163,184,0.16))",
+    paddingTop,
+    paddingBottom,
+    marginTop,
+    marginBottom,
+    background,
+    border,
+    borderRadius,
+    boxShadow:
+      setRunSegment === "runMiddle" || setRunSegment === "runLast"
+        ? "inset 0 1px 0 color-mix(in srgb, var(--ant-color-primary) 12%, transparent)"
+        : undefined,
   };
 
   const labelTiny: CSSProperties = {
@@ -390,6 +525,21 @@ function SortableRow({
 
   return (
     <div ref={setNodeRef} style={style}>
+      {setRunSegment === "runFirst" ? (
+        <Typography.Text
+          type="secondary"
+          style={{
+            display: "block",
+            fontSize: 11,
+            fontStyle: "italic",
+            marginBottom: 10,
+            paddingLeft: 36,
+            opacity: 0.9,
+          }}
+        >
+          {t("workouts.setsGroupedSubtitle")}
+        </Typography.Text>
+      ) : null}
       <Space wrap align="start" style={{ width: "100%" }} size={[8, 8]}>
         <Button type="text" size="small" icon={<HolderOutlined />} {...attributes} {...listeners} />
         <div style={{ minWidth: 120 }}>
@@ -413,8 +563,9 @@ function SortableRow({
             flex: "1 1 260px",
             minWidth: 200,
             paddingTop: 2,
-            borderLeft: isExtraSetRow ? "1px solid var(--app-border, rgba(148,163,184,0.22))" : undefined,
-            paddingLeft: isExtraSetRow ? 14 : 0,
+            borderLeft: isExtraSetRow ? "1px dashed color-mix(in srgb, var(--ant-color-primary) 35%, transparent)" : undefined,
+            paddingLeft: isExtraSetRow ? 12 : 0,
+            marginLeft: isExtraSetRow ? 4 : 0,
           }}
         >
           <div style={{ flexShrink: 0, textAlign: "center", minWidth: 44 }}>
@@ -509,11 +660,6 @@ function SortableRow({
               {t("workouts.addLinkedBelow")}
             </Button>
           ) : null}
-          {!isExtraSetRow ? (
-            <Button size="small" icon={<PlusOutlined />} onClick={() => onAddSetBelow(index)}>
-              {t("workouts.addSetBelow")}
-            </Button>
-          ) : null}
           <Button size="small" danger icon={<DeleteOutlined />} onClick={() => removeAt(index)} />
         </Space>
       </Space>
@@ -523,20 +669,21 @@ function SortableRow({
         style={
           showMergeDrop
             ? {
-                marginTop: 6,
-                minHeight: 16,
-                borderRadius: 6,
+                marginTop: 8,
+                minHeight: 40,
+                borderRadius: 8,
                 border: `1px dashed ${
                   mergeDropOver ? "var(--ant-color-primary)" : "var(--app-border, rgba(148,163,184,0.4))"
                 }`,
-                background: mergeDropOver ? "var(--ant-color-primary-bg)" : "rgba(148,163,184,0.05)",
+                background: mergeDropOver ? "var(--ant-color-primary-bg)" : "rgba(148,163,184,0.06)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                fontSize: 11,
+                fontSize: 12,
                 color: "var(--ant-color-text-tertiary)",
-                padding: "5px 8px",
+                padding: "10px 12px",
                 textAlign: "center",
+                boxSizing: "border-box",
               }
             : { display: "none" }
         }
@@ -570,8 +717,8 @@ export function WorkoutItemsEditor({
     null,
   );
   const [mergePickType, setMergePickType] = useState<WorkoutBlockType>("superset");
-  /** Exercise bank is below the workout list; expand to search and add. */
-  const [pickerExpanded, setPickerExpanded] = useState(false);
+  /** Add-exercise picker in a modal (opened from the button below the list or from “Add linked below”). */
+  const [exercisePickerModalOpen, setExercisePickerModalOpen] = useState(false);
   const pickerContextRef = useRef<PickerContext>({ mode: "append" });
   /** Mirrors ref so the UI can show which add mode is active (append vs linking). */
   const [pickerBanner, setPickerBanner] = useState<PickerContext>({ mode: "append" });
@@ -598,6 +745,11 @@ export function WorkoutItemsEditor({
     (rowLocalId: string) =>
       Boolean(activeDragId && activeDragId !== rowLocalId && draggedRowIsSingle),
     [activeDragId, draggedRowIsSingle],
+  );
+
+  const activeDragRow = useMemo(
+    () => (activeDragId ? items.find((r) => r.localId === activeDragId) : undefined),
+    [activeDragId, items],
   );
 
   useEffect(() => {
@@ -633,14 +785,20 @@ export function WorkoutItemsEditor({
   }, [message, t, venueCompat]);
 
   useEffect(() => {
-    if (!pickerExpanded) return;
+    if (!exercisePickerModalOpen) return;
     void loadExerciseOptions();
-  }, [pickerExpanded, loadExerciseOptions]);
+  }, [exercisePickerModalOpen, loadExerciseOptions]);
+
+  const closeExercisePickerModal = useCallback(() => {
+    setExercisePickerModalOpen(false);
+    pickerContextRef.current = { mode: "append" };
+    setPickerBanner({ mode: "append" });
+  }, []);
 
   const armPickerContext = useCallback((ctx: PickerContext) => {
     pickerContextRef.current = ctx;
     setPickerBanner(ctx);
-    if (ctx.mode !== "append") setPickerExpanded(true);
+    setExercisePickerModalOpen(true);
   }, []);
 
   const pickerLists = useMemo(() => {
@@ -668,7 +826,7 @@ export function WorkoutItemsEditor({
             localId: newLocalId(),
             exercise_id: ex.id,
             sort_order: items.length,
-            sets: null,
+            sets: 1,
             reps: 10,
             duration_sec: null,
             rest_sec: 60,
@@ -838,28 +996,37 @@ export function WorkoutItemsEditor({
               while (i < items.length) {
                 const row = items[i];
                 if (!row.block_id) {
-                  const idx = i;
-                  const setRun = setIndexInExerciseRun(items, idx);
+                  const [lo, hi] = contiguousSameExerciseRun(items, i);
                   nodes.push(
-                    <Fragment key={row.localId}>
-                      <SortableRow
-                        row={row}
-                        index={idx}
-                        insideBlock={false}
-                        blockStepLabel={null}
-                        setLabel={t("workouts.setNumber", { n: setRun })}
-                        isExtraSetRow={setRun > 1}
-                        canExtendLink={false}
-                        onPickExtendBlock={() => armPickerContext({ mode: "extendBlock", afterIndex: idx })}
-                        onAddSetBelow={addSetBelow}
-                        mergeDropEnabled={mergeDropActiveForRow(row.localId)}
-                        t={t}
-                        updateAt={updateAt}
-                        removeAt={removeAt}
-                      />
-                    </Fragment>,
+                    <div key={`exercise-group-${items[lo].localId}`} style={exerciseGroupShellStyle}>
+                      {Array.from({ length: hi - lo + 1 }, (_, off) => {
+                        const idx = lo + off;
+                        const r = items[idx];
+                        const setRun = setIndexInExerciseRun(items, idx);
+                        return (
+                          <Fragment key={r.localId}>
+                            <SortableRow
+                              row={r}
+                              index={idx}
+                              insideBlock={false}
+                              packInExerciseGroup
+                              blockStepLabel={null}
+                              setLabel={t("workouts.setNumber", { n: setRun })}
+                              setRunSegment={exerciseSetRunSegment(items, idx)}
+                              canExtendLink={false}
+                              onPickExtendBlock={() => armPickerContext({ mode: "extendBlock", afterIndex: idx })}
+                              mergeDropEnabled={mergeDropActiveForRow(r.localId)}
+                              t={t}
+                              updateAt={updateAt}
+                              removeAt={removeAt}
+                            />
+                          </Fragment>
+                        );
+                      })}
+                      <AddSetBelowFooter onClick={() => addSetBelow(hi)} label={t("workouts.addSetBelow")} />
+                    </div>,
                   );
-                  i += 1;
+                  i = hi + 1;
                   continue;
                 }
                 const bid = row.block_id!;
@@ -900,71 +1067,116 @@ export function WorkoutItemsEditor({
                         {t("workouts.blockDragBundleHint")}
                       </Typography.Text>
                     </Flex>
-                    {Array.from({ length: blockLen }, (_, k) => {
-                      const globalIndex = start + k;
-                      const r = items[globalIndex];
-                      const stepLabel = t("workouts.blockMemberStep", { current: k + 1, total: blockLen });
-                      const setRun = setIndexInExerciseRun(items, globalIndex);
-                      return (
-                        <Fragment key={r.localId}>
-                          {k > 0 ? (
-                            <div
-                              style={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 8,
-                                margin: "4px 0 4px 28px",
-                                color: "var(--ant-color-text-tertiary)",
-                                fontSize: 12,
-                              }}
-                            >
-                              <span aria-hidden style={{ fontWeight: 600 }}>
-                                ↳
-                              </span>
-                              <div
-                                style={{
-                                  flex: 1,
-                                  height: 1,
-                                  background: "var(--app-border, rgba(148, 163, 184, 0.22))",
-                                }}
-                              />
+                    {(() => {
+                      const dividerStyle: CSSProperties = {
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        margin: "4px 0 8px 28px",
+                        color: "var(--ant-color-text-tertiary)",
+                        fontSize: 12,
+                      };
+                      let k = 0;
+                      const blockChildren: ReactNode[] = [];
+                      while (k < blockLen) {
+                        const globalIndex = start + k;
+                        const [lo, hi] = contiguousSameExerciseRun(items, globalIndex);
+                        blockChildren.push(
+                          <Fragment key={`ex-in-block-${items[lo].localId}`}>
+                            {lo > start ? (
+                              <div style={dividerStyle}>
+                                <span aria-hidden style={{ fontWeight: 600 }}>
+                                  ↳
+                                </span>
+                                <div
+                                  style={{
+                                    flex: 1,
+                                    height: 1,
+                                    background: "var(--app-border, rgba(148, 163, 184, 0.22))",
+                                  }}
+                                />
+                              </div>
+                            ) : null}
+                            <div style={exerciseGroupInBlockShellStyle}>
+                              {Array.from({ length: hi - lo + 1 }, (_, d) => {
+                                const idx = lo + d;
+                                const r = items[idx];
+                                const stepLabel = t("workouts.blockMemberStep", {
+                                  current: idx - start + 1,
+                                  total: blockLen,
+                                });
+                                const setRun = setIndexInExerciseRun(items, idx);
+                                const seg = exerciseSetRunSegment(items, idx);
+                                return (
+                                  <Fragment key={r.localId}>
+                                    <SortableRow
+                                      row={r}
+                                      index={idx}
+                                      insideBlock
+                                      packInExerciseGroup
+                                      blockStepLabel={stepLabel}
+                                      setLabel={t("workouts.setNumber", { n: setRun })}
+                                      setRunSegment={seg}
+                                      canExtendLink
+                                      onPickExtendBlock={() =>
+                                        armPickerContext({ mode: "extendBlock", afterIndex: idx })
+                                      }
+                                      mergeDropEnabled={mergeDropActiveForRow(r.localId)}
+                                      t={t}
+                                      updateAt={updateAt}
+                                      removeAt={removeAt}
+                                    />
+                                  </Fragment>
+                                );
+                              })}
+                              <AddSetBelowFooter onClick={() => addSetBelow(hi)} label={t("workouts.addSetBelow")} />
                             </div>
-                          ) : null}
-                          <SortableRow
-                            row={r}
-                            index={globalIndex}
-                            insideBlock
-                            blockStepLabel={stepLabel}
-                            setLabel={t("workouts.setNumber", { n: setRun })}
-                            isExtraSetRow={setRun > 1}
-                            canExtendLink
-                            onPickExtendBlock={() => armPickerContext({ mode: "extendBlock", afterIndex: globalIndex })}
-                            onAddSetBelow={addSetBelow}
-                            mergeDropEnabled={mergeDropActiveForRow(r.localId)}
-                            t={t}
-                            updateAt={updateAt}
-                            removeAt={removeAt}
-                          />
-                        </Fragment>
-                      );
-                    })}
+                          </Fragment>,
+                        );
+                        k = hi - start + 1;
+                      }
+                      return blockChildren;
+                    })()}
                   </div>,
                 );
               }
               return nodes;
             })()}
           </SortableContext>
+          <DragOverlay dropAnimation={null} style={{ zIndex: 1100 }}>
+            {activeDragRow ? (
+              <div
+                style={{
+                  padding: "14px 18px",
+                  minWidth: 280,
+                  maxWidth: 440,
+                  borderRadius: 10,
+                  background: "var(--app-surface-elevated, #1a2234)",
+                  border: "1px solid color-mix(in srgb, var(--ant-color-primary) 45%, var(--app-border, rgba(148,163,184,0.3)))",
+                  boxShadow: "0 14px 32px rgba(0, 0, 0, 0.38)",
+                  cursor: "grabbing",
+                }}
+              >
+                <Typography.Text type="secondary" style={{ fontSize: 11, display: "block", marginBottom: 4 }}>
+                  {t("workouts.colExercise")}
+                </Typography.Text>
+                <Typography.Text strong style={{ fontSize: 15 }}>
+                  {activeDragRow.exercise_name ?? `ID ${activeDragRow.exercise_id}`}
+                </Typography.Text>
+              </div>
+            ) : null}
+          </DragOverlay>
         </DndContext>
       )}
 
-      {!pickerExpanded && pickerBanner.mode !== "append" ? (
+      {!exercisePickerModalOpen && pickerBanner.mode !== "append" ? (
         <Alert
           type="info"
           showIcon
           style={{ marginTop: 16 }}
           message={t("workouts.pickerCollapsedLinkHint")}
           action={
-            <Button size="small" type="primary" onClick={() => setPickerExpanded(true)}>
+            <Button size="small" type="primary" onClick={() => setExercisePickerModalOpen(true)}>
               {t("workouts.openExerciseLibrary")}
             </Button>
           }
@@ -975,25 +1187,50 @@ export function WorkoutItemsEditor({
         type="dashed"
         block
         size="large"
-        icon={pickerExpanded ? <UpOutlined /> : <DownOutlined />}
-        onClick={() => setPickerExpanded((open) => !open)}
+        icon={<PlusOutlined />}
+        onClick={() => armPickerContext({ mode: "append" })}
         style={{ marginTop: 16 }}
       >
-        {pickerExpanded ? t("workouts.addExerciseCollapse") : t("workouts.addExerciseExpand")}
+        {t("workouts.addExercise")}
       </Button>
 
-      {pickerExpanded ? (
-        <Card
-          id="workout-exercise-bank"
-          size="small"
-          title={t("workouts.exerciseBankTitle")}
-          style={{ marginTop: 12 }}
-          extra={
-            <Button size="small" loading={pickerLoading} onClick={() => void loadExerciseOptions()}>
+      <Modal
+        title={
+          <div>
+            <Typography.Title level={4} style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>
+              {t("workouts.pickExercise")}
+            </Typography.Title>
+            <Typography.Text type="secondary" style={{ display: "block", marginTop: 4, fontWeight: 400 }}>
+              {t("workouts.pickerModalSubtitle")}
+            </Typography.Text>
+          </div>
+        }
+        open={exercisePickerModalOpen}
+        onCancel={closeExercisePickerModal}
+        footer={
+          <Flex justify="space-between" align="center" wrap="wrap" gap={8}>
+            <Button loading={pickerLoading} onClick={() => void loadExerciseOptions()}>
               {t("workouts.exerciseBankRefresh")}
             </Button>
-          }
-        >
+            <Button type="primary" onClick={closeExercisePickerModal}>
+              {t("workouts.pickerDone")}
+            </Button>
+          </Flex>
+        }
+        width={640}
+        centered
+        destroyOnClose
+        styles={{
+          body: {
+            paddingTop: 8,
+            maxHeight: "min(78vh, 640px)",
+            overflow: "hidden",
+            display: "flex",
+            flexDirection: "column",
+          },
+        }}
+      >
+        <div id="workout-exercise-bank">
           <Typography.Paragraph type="secondary" style={{ marginBottom: 12 }}>
             {t("workouts.exerciseBankIntro")}
           </Typography.Paragraph>
@@ -1020,7 +1257,7 @@ export function WorkoutItemsEditor({
               <Spin />
             </Flex>
           ) : (
-            <Space direction="vertical" style={{ width: "100%" }} size="middle">
+            <Space direction="vertical" style={{ width: "100%", flex: 1, minHeight: 0 }} size="middle">
               <Flex wrap="wrap" gap={8} align="center" justify="space-between">
                 <Segmented
                   value={pickerScope}
@@ -1059,7 +1296,9 @@ export function WorkoutItemsEditor({
               </Flex>
               <div
                 style={{
-                  maxHeight: 320,
+                  flex: 1,
+                  minHeight: 200,
+                  maxHeight: 380,
                   overflowY: "auto",
                   paddingInlineEnd: 4,
                 }}
@@ -1164,8 +1403,8 @@ export function WorkoutItemsEditor({
               </div>
             </Space>
           )}
-        </Card>
-      ) : null}
+        </div>
+      </Modal>
 
       <Modal
         title={t("workouts.mergeModalTitle")}
