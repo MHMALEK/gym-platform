@@ -13,6 +13,7 @@ import {
 import { ApiError } from "@/lib/api";
 import { getClient, deleteClient, type ClientRow } from "@/lib/clients";
 import { listInvoices, type InvoiceRow } from "@/lib/invoices";
+import { getClientCoachingPlan, getTrainingPlan } from "@/lib/planner";
 
 export default function ClientDetailScreen() {
   const { id: idParam } = useLocalSearchParams<{ id: string }>();
@@ -20,6 +21,8 @@ export default function ClientDetailScreen() {
   const id = Number(idParam);
   const [c, setC] = useState<ClientRow | null>(null);
   const [invoices, setInvoices] = useState<InvoiceRow[]>([]);
+  const [assignedPlanName, setAssignedPlanName] = useState<string | null>(null);
+  const [assignedPlanId, setAssignedPlanId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
@@ -31,6 +34,18 @@ export default function ClientDetailScreen() {
       setC(client);
       const inv = await listInvoices({ limit: 10, offset: 0 }, { client_id: id });
       setInvoices(inv.items);
+      const coaching = await getClientCoachingPlan(id);
+      setAssignedPlanId(coaching.assigned_training_plan_id ?? null);
+      if (coaching.assigned_training_plan_id) {
+        try {
+          const plan = await getTrainingPlan(coaching.assigned_training_plan_id);
+          setAssignedPlanName(plan.name);
+        } catch {
+          setAssignedPlanName(`Plan #${coaching.assigned_training_plan_id}`);
+        }
+      } else {
+        setAssignedPlanName(null);
+      }
     } catch (e) {
       setErr(e instanceof ApiError ? e.message : String(e));
     } finally {
@@ -79,6 +94,18 @@ export default function ClientDetailScreen() {
         Status: {c.status ?? "—"} · Account: {c.account_status ?? "—"}
       </Text>
       {c.notes ? <Text style={styles.notes}>{c.notes}</Text> : null}
+      <View style={styles.planCard}>
+        <Text style={styles.planTitle}>Assigned training plan</Text>
+        <Text style={styles.planValue}>{assignedPlanName ?? "None assigned"}</Text>
+        {assignedPlanId ? (
+          <Pressable
+            style={styles.planLink}
+            onPress={() => router.push({ pathname: "/(tabs)/planner/[id]", params: { id: String(assignedPlanId), client_id: String(id) } })}
+          >
+            <Text style={styles.planLinkText}>View assigned plan</Text>
+          </Pressable>
+        ) : null}
+      </View>
 
       <View style={styles.actions}>
         <Pressable style={styles.btn} onPress={() => router.push(`/(tabs)/clients/edit/${id}`)}>
@@ -91,6 +118,12 @@ export default function ClientDetailScreen() {
           }
         >
           <Text style={styles.btnText}>New invoice</Text>
+        </Pressable>
+        <Pressable
+          style={styles.btn}
+          onPress={() => router.push({ pathname: "/(tabs)/planner/assign", params: { client_id: String(id) } })}
+        >
+          <Text style={styles.btnText}>Assign plan</Text>
         </Pressable>
         <Pressable style={styles.btnDanger} onPress={onDelete}>
           <Text style={styles.btnDangerText}>Delete</Text>
@@ -126,6 +159,18 @@ const styles = StyleSheet.create({
   line: { fontSize: 16, color: "#374151", marginBottom: 4 },
   meta: { fontSize: 14, color: "#6b7280", marginTop: 8 },
   notes: { marginTop: 16, fontSize: 15, color: "#111827", lineHeight: 22 },
+  planCard: {
+    marginTop: 16,
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#dbeafe",
+    backgroundColor: "#eff6ff",
+  },
+  planTitle: { fontSize: 13, fontWeight: "600", color: "#1e40af" },
+  planValue: { marginTop: 4, fontSize: 15, fontWeight: "600", color: "#111827" },
+  planLink: { marginTop: 8 },
+  planLinkText: { color: "#1d4ed8", fontWeight: "600" },
   actions: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 24, marginBottom: 8 },
   btn: {
     backgroundColor: "#eff6ff",

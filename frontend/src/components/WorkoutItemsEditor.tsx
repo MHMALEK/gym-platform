@@ -1663,8 +1663,19 @@ export function WorkoutItemsEditor({
             {t("workouts.pickerModalSubtitle")}
           </Typography>
         </DialogTitle>
-        <DialogContent sx={{ pt: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-        <div id="workout-exercise-bank">
+        <DialogContent
+          sx={{
+            pt: 1,
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden",
+            minHeight: 0,
+          }}
+        >
+        <div
+          id="workout-exercise-bank"
+          style={{ display: "flex", flexDirection: "column", minHeight: 0, flex: 1 }}
+        >
           <Typography variant="body2" color="text.secondary" component="span" style={{ marginBottom: 12 }}>
             {t("workouts.exerciseBankIntro")}
           </Typography>
@@ -1770,11 +1781,14 @@ export function WorkoutItemsEditor({
               <div
                 style={{
                   flex: 1,
-                  minHeight: 200,
+                  minHeight: 0,
                   maxHeight: 380,
                   overflowY: "auto",
+                  overscrollBehavior: "contain",
+                  WebkitOverflowScrolling: "touch",
                   paddingInlineEnd: 4,
                 }}
+                onWheel={(e) => e.stopPropagation()}
               >
                 {pickerTotal === 0 && !pickerLoading ? (
                   <Box sx={{ textAlign: "center", py: 3, opacity: 0.85 }}>

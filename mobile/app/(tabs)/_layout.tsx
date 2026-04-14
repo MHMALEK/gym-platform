@@ -50,6 +50,14 @@ export default function TabLayout() {
           headerShown: false,
         }}
       />
+      <Tabs.Screen
+        name="planner"
+        options={{
+          title: "Planner",
+          tabBarIcon: ({ color }) => <TabBarIcon name="calendar" color={color} />,
+          headerShown: false,
+        }}
+      />
     </Tabs>
   );
 }
