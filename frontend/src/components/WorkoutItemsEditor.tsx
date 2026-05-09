@@ -759,9 +759,10 @@ export function WorkoutItemsEditor({
                       marginBottom: 10,
                       borderRadius: 10,
                       overflow: "hidden",
-                      border: "1px solid var(--app-border-strong)",
+                      border: "1px solid var(--app-border)",
                       background: "var(--app-surface-elevated)",
-                      boxShadow: "none",
+                      boxShadow:
+                        "0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 1px rgba(15, 23, 42, 0.03)",
                     }}
                   >
                     <div style={{ padding: "10px 12px" }}>

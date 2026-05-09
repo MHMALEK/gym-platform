@@ -130,7 +130,7 @@ export function CoachDeskPage() {
   }
 
   return (
-    <Box sx={{ maxWidth: 1440, mx: "auto" }}>
+    <Box sx={{ width: "100%" }}>
       <PageHeader
         title={t("coachDesk.title")}
         subtitle={t("coachDesk.subtitle")}

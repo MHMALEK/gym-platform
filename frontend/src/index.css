@@ -12,9 +12,11 @@
 }
 
 html[data-theme="light"] {
-  --app-layout-bg: #f8fafc;
+  /* Page background is a clearly grey field; surfaces are pure white,
+     so cards read as "paper" lifted off the page. */
+  --app-layout-bg: #f1f5f9;
   --app-surface: #ffffff;
-  --app-surface-elevated: #fafafb;
+  --app-surface-elevated: #ffffff;
   --app-border: rgba(15, 23, 42, 0.10);
   --app-border-strong: rgba(15, 23, 42, 0.16);
   --app-accent: #6366f1;

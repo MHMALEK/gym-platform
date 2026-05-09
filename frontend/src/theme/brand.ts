@@ -23,16 +23,17 @@ export const coachBrand = {
   borderSecondary: "rgba(148, 163, 184, 0.08)",
 } as const;
 
-/** Light shell — same indigo accent, cool neutrals for daytime use */
+/** Light shell — same indigo accent, cool neutrals for daytime use.
+ *  Page bg is grey, surfaces are pure white — paper lifted off page. */
 export const coachBrandLight = {
   primary: "#6366f1",
   primaryHover: "#818cf8",
   primaryActive: "#4f46e5",
   primaryBgSoft: "rgba(99, 102, 241, 0.12)",
   primaryBgHover: "rgba(99, 102, 241, 0.06)",
-  layoutBg: "#f8fafc",
+  layoutBg: "#f1f5f9",
   surface: "#ffffff",
-  surfaceElevated: "#fafafb",
+  surfaceElevated: "#ffffff",
   text: "#0f172a",
   textSecondary: "#64748b",
   border: "rgba(15, 23, 42, 0.10)",

@@ -53,7 +53,9 @@ type FormValues = {
   workout_rich_html: string;
 };
 
-const PAGE_MAX_WIDTH = 1440;
+// Pages stretch to fill the AppShell content area. The shell itself caps
+// the visible width via its own px padding; nothing else clamps content.
+const PAGE_MAX_WIDTH = "100%";
 
 export function TrainingPlanEdit() {
   const { t } = useTranslation();

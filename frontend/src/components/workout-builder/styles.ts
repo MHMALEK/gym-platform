@@ -2,14 +2,15 @@ import type { CSSProperties } from "react";
 
 import { WORKOUT_ROW_RAIL_WIDTH } from "./constants";
 
-/** Standalone exercise card — flat boxed surface + crisp hairline */
+/** Standalone exercise card — paper lifted off the page bg. */
 export const exerciseGroupShellStyle: CSSProperties = {
   marginBottom: 10,
   padding: 0,
   borderRadius: 10,
-  border: "1px solid var(--app-border-strong)",
+  border: "1px solid var(--app-border)",
   background: "var(--app-surface-elevated)",
-  boxShadow: "none",
+  // Soft paper shadow; near-invisible on dark mode (already lifts via bg contrast).
+  boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 1px rgba(15, 23, 42, 0.03)",
 };
 
 /** Nested card inside a block — quieter, recedes inside the block container. */
