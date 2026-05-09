@@ -756,15 +756,13 @@ export function WorkoutItemsEditor({
                   <div
                     key={bid}
                     style={{
-                      marginBottom: 10,
-                      borderRadius: 8,
-                      overflow: "hidden",
-                      border: "1px solid var(--app-border)",
+                      marginBottom: 12,
+                      borderLeft: `3px solid ${accent}`,
+                      paddingLeft: 10,
                       background: "transparent",
-                      boxShadow: "none",
                     }}
                   >
-                    <div style={{ padding: "8px 10px" }}>
+                    <div style={{ padding: "0 0 4px 0" }}>
                       <Flex align="center" wrap="wrap" gap={8} style={{ marginBottom: collapsedBlocks.has(bid) ? 0 : 6 }}>
                         <Tooltip
                           title={

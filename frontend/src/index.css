@@ -214,9 +214,9 @@ html[data-theme="light"] .client-profile-editor-surface.MuiCard-root {
   margin-bottom: 0;
 }
 
-/* Workout builder — calmer cards, works in light + dark */
+/* Workout builder — fills the available width inside its wrapping section card. */
 .workout-items-editor {
-  max-width: 820px;
+  width: 100%;
 }
 
 .workout-items-editor__dnd-tip.MuiAlert-root {
