@@ -4,7 +4,8 @@ from sqlalchemy.orm import selectinload
 
 from app.api.deps import CurrentCoach, DbSession
 from app.models.exercise import Exercise
-from app.services.exercise_muscles import EXERCISE_MUSCLE_LOADER
+from app.models.exercise_muscle_group import ExerciseMuscleGroup
+from app.services.exercise_muscles import EXERCISE_DETAIL_LOADERS
 from app.models.goal_type import GoalType
 from app.models.muscle_group import MuscleGroup
 from app.models.nutrition_template import NutritionTemplate
@@ -81,12 +82,33 @@ def _exercise_filters(
     q: str | None,
     venue_type: str | None,
     venue_compat: str | None,
+    equipment: str | None = None,
+    muscle_group_id: int | None = None,
 ):
     cond = [Exercise.coach_id.is_(None)]
     if category:
         cond.append(Exercise.category == category)
+    if equipment:
+        cond.append(Exercise.equipment.ilike(f"%{equipment.strip()}%"))
+    if muscle_group_id:
+        cond.append(
+            Exercise.id.in_(
+                select(ExerciseMuscleGroup.exercise_id).where(
+                    ExerciseMuscleGroup.muscle_group_id == muscle_group_id
+                )
+            )
+        )
     if q:
-        cond.append(Exercise.name.ilike(f"%{q}%"))
+        term = f"%{q.strip()}%"
+        cond.append(
+            or_(
+                Exercise.name.ilike(term),
+                Exercise.description.ilike(term),
+                Exercise.tips.ilike(term),
+                Exercise.common_mistakes.ilike(term),
+                Exercise.correct_form_cues.ilike(term),
+            )
+        )
     if venue_type:
         cond.append(Exercise.venue_type == venue_type)
     if venue_compat == "home":
@@ -106,14 +128,16 @@ async def list_directory_exercises(
     q: str | None = None,
     venue_type: str | None = None,
     venue_compat: str | None = None,
+    equipment: str | None = None,
+    muscle_group_id: int | None = None,
 ):
-    cond = _exercise_filters(category, q, venue_type, venue_compat)
+    cond = _exercise_filters(category, q, venue_type, venue_compat, equipment, muscle_group_id)
     total = (
         await db.execute(select(func.count()).select_from(Exercise).where(*cond))
     ).scalar_one()
     stmt = (
         select(Exercise)
-        .options(EXERCISE_MUSCLE_LOADER)
+        .options(*EXERCISE_DETAIL_LOADERS)
         .where(*cond)
         .order_by(Exercise.name)
         .offset(offset)
@@ -171,7 +195,7 @@ async def get_catalog_training_plan(
         select(TrainingPlan)
         .options(
             selectinload(TrainingPlan.items).selectinload(TrainingPlanItem.exercise).options(
-                EXERCISE_MUSCLE_LOADER
+                *EXERCISE_DETAIL_LOADERS
             )
         )
         .where(TrainingPlan.id == plan_id, TrainingPlan.coach_id.is_(None))

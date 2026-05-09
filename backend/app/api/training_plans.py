@@ -15,7 +15,7 @@ from app.schemas.training_plan import (
     TrainingPlanUpdate,
 )
 from app.services.exercise_access import exercise_ids_allowed_for_coach
-from app.services.exercise_muscles import EXERCISE_MUSCLE_LOADER
+from app.services.exercise_muscles import EXERCISE_DETAIL_LOADERS
 from app.services.workout_blocks import block_sequences_for_ordered_items, strip_orphan_workout_blocks
 from app.services.workout_item_tree import validate_training_plan_items_sequence
 
@@ -28,7 +28,7 @@ async def _get_owned_plan(db, coach_id: int, plan_id: int) -> TrainingPlan | Non
         .options(
             selectinload(TrainingPlan.items)
             .selectinload(TrainingPlanItem.exercise)
-            .options(EXERCISE_MUSCLE_LOADER)
+            .options(*EXERCISE_DETAIL_LOADERS)
         )
         .where(TrainingPlan.id == plan_id, TrainingPlan.coach_id == coach_id)
     )

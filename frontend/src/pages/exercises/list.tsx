@@ -1,4 +1,4 @@
-import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
 import FormControl from "@mui/material/FormControl";
 import InputLabel from "@mui/material/InputLabel";
 import MenuItem from "@mui/material/MenuItem";
@@ -6,12 +6,14 @@ import Select from "@mui/material/Select";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
-import { DataGrid, type GridColDef } from "@mui/x-data-grid";
-import { type BaseRecord } from "@refinedev/core";
+import { type BaseRecord, useList } from "@refinedev/core";
 import { CreateButton, DeleteButton, EditButton, List, useDataGrid } from "@refinedev/mui";
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
+
+import { ExerciseLibraryCards } from "../../components/ExerciseLibraryCards";
+import type { ExerciseRecord } from "../../types/exercise";
 
 export function ExerciseList() {
   const { t } = useTranslation();
@@ -21,15 +23,25 @@ export function ExerciseList() {
   });
   const [q, setQ] = useState("");
   const [venue, setVenue] = useState<string | undefined>();
+  const [category, setCategory] = useState("");
+  const [equipment, setEquipment] = useState("");
+  const [muscleGroupId, setMuscleGroupId] = useState("");
+  const { data: muscleGroups } = useList<BaseRecord>({
+    resource: "directory-muscle-groups",
+    pagination: { pageSize: 200, mode: "server" },
+  });
 
   const applyFilters = useCallback(
-    (nextQ: string, nextVenue?: string) => {
+    (nextQ: string, nextVenue?: string, nextCategory = category, nextEquipment = equipment, nextMuscle = muscleGroupId) => {
       const f: { field: string; operator: "eq"; value: string }[] = [];
       if (nextQ.trim()) f.push({ field: "q", operator: "eq", value: nextQ.trim() });
       if (nextVenue) f.push({ field: "venue_type", operator: "eq", value: nextVenue });
+      if (nextCategory.trim()) f.push({ field: "category", operator: "eq", value: nextCategory.trim() });
+      if (nextEquipment.trim()) f.push({ field: "equipment", operator: "eq", value: nextEquipment.trim() });
+      if (nextMuscle) f.push({ field: "muscle_group_id", operator: "eq", value: nextMuscle });
       setFilters(f, "replace");
     },
-    [setFilters],
+    [category, equipment, muscleGroupId, setFilters],
   );
 
   const venueFilterOptions = [
@@ -38,42 +50,7 @@ export function ExerciseList() {
     { value: "commercial_gym", label: t("workouts.venue.commercial_gym") },
   ];
 
-  const columns: GridColDef<BaseRecord>[] = [
-    { field: "name", headerName: t("exercises.list.name"), flex: 1, minWidth: 160 },
-    { field: "category", headerName: t("exercises.list.category"), width: 140 },
-    {
-      field: "venue_type",
-      headerName: t("exercises.list.venue"),
-      width: 140,
-      renderCell: ({ row }) => t(`workouts.venue.${(row as BaseRecord).venue_type ?? "both"}`),
-    },
-    {
-      field: "muscle_groups",
-      headerName: t("exercises.list.muscles"),
-      flex: 1,
-      minWidth: 180,
-      sortable: false,
-      renderCell: ({ row }) => {
-        const m = (row as BaseRecord).muscle_groups as { label?: string }[] | undefined;
-        if (m?.length) return m.map((x) => x.label).filter(Boolean).join(", ");
-        return "—";
-      },
-    },
-    { field: "equipment", headerName: t("exercises.list.equipment"), width: 140 },
-    {
-      field: "actions",
-      headerName: t("exercises.list.actions"),
-      width: 120,
-      sortable: false,
-      filterable: false,
-      renderCell: ({ row }) => (
-        <Stack direction="row" spacing={0.5}>
-          <EditButton hideText size="small" recordItemId={row.id} />
-          <DeleteButton hideText size="small" recordItemId={row.id} />
-        </Stack>
-      ),
-    },
-  ];
+  const rows = ((dataGridProps.rows ?? []) as BaseRecord[]).map((row) => row as ExerciseRecord);
 
   return (
     <List headerButtons={<CreateButton />}>
@@ -81,8 +58,8 @@ export function ExerciseList() {
         <Typography variant="body2" color="text.secondary">
           {t("exercises.list.intro")}
         </Typography>
-        <Stack direction="row" flexWrap="wrap" gap={2} alignItems="center" justifyContent="space-between">
-          <Stack direction="row" flexWrap="wrap" gap={1} alignItems="center">
+        <Stack direction="row" flexWrap="wrap" gap={2} alignItems="flex-start" justifyContent="space-between">
+          <Stack direction="row" flexWrap="wrap" gap={1} alignItems="center" sx={{ flex: 1 }}>
             <TextField
               size="small"
               placeholder={t("exercises.list.searchPlaceholder")}
@@ -92,6 +69,26 @@ export function ExerciseList() {
                 if (e.key === "Enter") applyFilters(q, venue);
               }}
               sx={{ maxWidth: 360 }}
+            />
+            <TextField
+              size="small"
+              label="Category"
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") applyFilters(q, venue);
+              }}
+              sx={{ width: 150 }}
+            />
+            <TextField
+              size="small"
+              label="Equipment"
+              value={equipment}
+              onChange={(e) => setEquipment(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") applyFilters(q, venue);
+              }}
+              sx={{ width: 160 }}
             />
             <FormControl size="small" sx={{ minWidth: 180 }}>
               <InputLabel id="ex-venue-filter">{t("exercises.list.filterVenue")}</InputLabel>
@@ -117,20 +114,44 @@ export function ExerciseList() {
                 ))}
               </Select>
             </FormControl>
+            <FormControl size="small" sx={{ minWidth: 200 }}>
+              <InputLabel id="ex-muscle-filter">Muscle</InputLabel>
+              <Select
+                labelId="ex-muscle-filter"
+                label="Muscle"
+                value={muscleGroupId}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  setMuscleGroupId(next);
+                  applyFilters(q, venue, category, equipment, next);
+                }}
+              >
+                <MenuItem value="">
+                  <em>{t("common.dash")}</em>
+                </MenuItem>
+                {(muscleGroups?.data ?? []).map((row) => (
+                  <MenuItem key={row.id as number} value={String(row.id)}>
+                    {String(row.label)}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <Button variant="contained" onClick={() => applyFilters(q, venue)}>
+              Apply
+            </Button>
           </Stack>
           <Link to="/library/exercises">{t("exercises.list.openCatalog")}</Link>
         </Stack>
-        <Box sx={{ width: "100%" }}>
-          <DataGrid
-            {...dataGridProps}
-            columns={columns}
-            getRowId={(r) => r.id as string | number}
-            autoHeight
-            pageSizeOptions={[10, 25, 50]}
-            disableRowSelectionOnClick
-            localeText={{ noRowsLabel: t("exercises.list.empty") }}
-          />
-        </Box>
+        <ExerciseLibraryCards
+          rows={rows}
+          emptyText={t("exercises.list.empty")}
+          action={(exercise) => (
+            <Stack direction="row" spacing={0.5}>
+              <EditButton hideText size="small" recordItemId={exercise.id} />
+              <DeleteButton hideText size="small" recordItemId={exercise.id} />
+            </Stack>
+          )}
+        />
       </Stack>
     </List>
   );

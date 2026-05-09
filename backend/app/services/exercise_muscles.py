@@ -9,6 +9,10 @@ from app.models.muscle_group import MuscleGroup
 EXERCISE_MUSCLE_LOADER = (
     selectinload(Exercise.muscle_links).selectinload(ExerciseMuscleGroup.muscle_group)
 )
+EXERCISE_DETAIL_LOADERS = (
+    EXERCISE_MUSCLE_LOADER,
+    selectinload(Exercise.video_links),
+)
 
 
 async def replace_exercise_muscle_groups(db, exercise_id: int, ids: list[int]) -> None:

@@ -63,6 +63,15 @@ function appendListQueryParams(searchParams: URLSearchParams, resource: string, 
       if (f.field === "venue_type" && f.value != null && String(f.value) !== "") {
         searchParams.set("venue_type", String(f.value));
       }
+      if (f.field === "category" && f.value != null && String(f.value).trim()) {
+        searchParams.set("category", String(f.value).trim());
+      }
+      if (f.field === "equipment" && f.value != null && String(f.value).trim()) {
+        searchParams.set("equipment", String(f.value).trim());
+      }
+      if (f.field === "muscle_group_id" && f.value != null && String(f.value) !== "") {
+        searchParams.set("muscle_group_id", String(f.value));
+      }
     }
   }
   if (resource === "training-plans") {

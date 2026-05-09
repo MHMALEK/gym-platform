@@ -4,7 +4,7 @@ import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { Create } from "@refinedev/mui";
 import { useForm } from "@refinedev/react-hook-form";
-import { Controller } from "react-hook-form";
+import { Controller, type Control } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
@@ -71,6 +71,20 @@ export function ExerciseCreate() {
           )}
         />
         <Controller
+          name="difficulty"
+          control={control}
+          render={({ field }) => (
+            <TextField {...field} value={field.value ?? ""} label="Difficulty" fullWidth margin="normal" />
+          )}
+        />
+        <Controller
+          name="exercise_type"
+          control={control}
+          render={({ field }) => (
+            <TextField {...field} value={field.value ?? ""} label="Exercise type" fullWidth margin="normal" />
+          )}
+        />
+        <Controller
           name="muscle_group_ids"
           control={control}
           render={({ field }) => (
@@ -109,6 +123,7 @@ export function ExerciseCreate() {
             <TextField {...field} value={field.value ?? ""} label={t("exercises.form.tips")} fullWidth margin="normal" multiline minRows={3} />
           )}
         />
+        <LinesController name="instructions" control={control} label="Instructions" />
         <Controller
           name="common_mistakes"
           control={control}
@@ -124,6 +139,22 @@ export function ExerciseCreate() {
             />
           )}
         />
+        <Controller
+          name="setup_notes"
+          control={control}
+          render={({ field }) => (
+            <TextField {...field} value={field.value ?? ""} label="Setup notes" fullWidth margin="normal" multiline minRows={2} />
+          )}
+        />
+        <Controller
+          name="safety_notes"
+          control={control}
+          render={({ field }) => (
+            <TextField {...field} value={field.value ?? ""} label="Safety notes" fullWidth margin="normal" multiline minRows={2} />
+          )}
+        />
+        <LinesController name="body_parts" control={control} label="Body parts" />
+        <LinesController name="secondary_muscles" control={control} label="Secondary muscles" />
         <Controller
           name="correct_form_cues"
           control={control}
@@ -170,5 +201,35 @@ export function ExerciseCreate() {
         />
       </Box>
     </Create>
+  );
+}
+
+function LinesController({
+  name,
+  control,
+  label,
+}: {
+  name: string;
+  control: Control<ExerciseFormValues>;
+  label: string;
+}) {
+  return (
+    <Controller
+      name={name}
+      control={control}
+      render={({ field }) => (
+        <TextField
+          value={Array.isArray(field.value) ? field.value.join("\n") : field.value ?? ""}
+          label={label}
+          fullWidth
+          margin="normal"
+          multiline
+          minRows={2}
+          onChange={(e) => field.onChange(e.target.value.split("\n").map((x) => x.trim()).filter(Boolean))}
+          onBlur={field.onBlur}
+          inputRef={field.ref}
+        />
+      )}
+    />
   );
 }

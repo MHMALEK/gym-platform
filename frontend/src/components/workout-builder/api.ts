@@ -14,13 +14,13 @@ export async function loadExercisesGrouped(
     fetch(`${apiPrefix}/directory/exercises?${sp}`, { headers: h }),
     fetch(`${apiPrefix}/exercises?${sp}`, { headers: h }),
   ]);
-  const aj = (await a.json()) as { items?: Array<{ id: number; name: string }> };
-  const bj = (await b.json()) as { items?: Array<{ id: number; name: string }> };
+  const aj = (await a.json()) as { items?: ExerciseOpt[] };
+  const bj = (await b.json()) as { items?: ExerciseOpt[] };
   const catalog = (aj.items ?? [])
-    .map((x) => ({ id: x.id, name: x.name, source: "catalog" as const }))
+    .map((x) => ({ ...x, source: "catalog" as const }))
     .sort((u, v) => u.name.localeCompare(v.name));
   const mine = (bj.items ?? [])
-    .map((x) => ({ id: x.id, name: x.name, source: "mine" as const }))
+    .map((x) => ({ ...x, source: "mine" as const }))
     .sort((u, v) => u.name.localeCompare(v.name));
   return { catalog, mine };
 }

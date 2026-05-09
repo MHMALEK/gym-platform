@@ -9,6 +9,7 @@ import Button from "@mui/material/Button";
 import Checkbox from "@mui/material/Checkbox";
 import Chip from "@mui/material/Chip";
 import CircularProgress from "@mui/material/CircularProgress";
+import Collapse from "@mui/material/Collapse";
 import Dialog from "@mui/material/Dialog";
 import IconButton from "@mui/material/IconButton";
 import InputAdornment from "@mui/material/InputAdornment";
@@ -21,7 +22,9 @@ import TextField from "@mui/material/TextField";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import type { TFunction } from "i18next";
+import { useState } from "react";
 
+import { ExerciseMediaPreview } from "../ExerciseMediaPreview";
 import { BLOCK_OPTIONS } from "./constants";
 import type { ExerciseOpt, PickerContext, WorkoutBlockType } from "./types";
 
@@ -399,78 +402,113 @@ function PickerRow({
   onAdd: () => void;
   actionLabel: string;
 }) {
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const handleRowClick = () => {
     if (isGroupMode) onToggleSelect();
   };
+  const chips = [
+    ...(exercise.muscle_groups?.map((m) => m.label).filter(Boolean).slice(0, 2) ?? []),
+    exercise.equipment,
+    exercise.difficulty,
+  ].filter(Boolean) as string[];
 
   return (
-    <Box
-      role={isGroupMode ? "button" : undefined}
-      tabIndex={isGroupMode ? 0 : undefined}
-      onClick={handleRowClick}
-      onKeyDown={(e) => {
-        if (!isGroupMode) return;
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onToggleSelect();
-        }
-      }}
-      sx={{
-        display: "flex",
-        alignItems: "center",
-        gap: 1,
-        px: 1,
-        py: 0.5,
-        borderRadius: 1.5,
-        cursor: isGroupMode ? "pointer" : "default",
-        bgcolor: selected ? "action.selected" : "transparent",
-        "&:hover": isGroupMode
-          ? { bgcolor: selected ? "action.selected" : "action.hover" }
-          : undefined,
-      }}
-    >
-      {isGroupMode ? (
-        <Checkbox
-          size="small"
-          checked={selected}
-          onChange={onToggleSelect}
-          onClick={(e) => e.stopPropagation()}
-          sx={{ p: 0.5 }}
-        />
-      ) : null}
-      <Typography
-        sx={{
-          flex: 1,
-          minWidth: 0,
-          fontSize: 14,
-          fontWeight: 500,
-          color: "text.primary",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
+    <Box sx={{ borderRadius: 2, bgcolor: selected ? "action.selected" : "transparent", "&:hover": { bgcolor: "action.hover" } }}>
+      <Box
+        role={isGroupMode ? "button" : undefined}
+        tabIndex={isGroupMode ? 0 : undefined}
+        onClick={handleRowClick}
+        onKeyDown={(e) => {
+          if (!isGroupMode) return;
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onToggleSelect();
+          }
         }}
-        title={exercise.name}
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          gap: 1,
+          px: 1,
+          py: 0.75,
+          cursor: isGroupMode ? "pointer" : "default",
+        }}
       >
-        {exercise.name}
-      </Typography>
-      {!isGroupMode ? (
-        <Button
-          variant="text"
-          size="small"
-          startIcon={<AddIcon fontSize="small" />}
-          onClick={onAdd}
+        {isGroupMode ? (
+          <Checkbox
+            size="small"
+            checked={selected}
+            onChange={onToggleSelect}
+            onClick={(e) => e.stopPropagation()}
+            sx={{ p: 0.5 }}
+          />
+        ) : null}
+        <Box
           sx={{
-            color: "primary.main",
-            fontWeight: 600,
-            textTransform: "none",
-            minWidth: 0,
-            px: 1.25,
-            "&:hover": { bgcolor: "action.hover" },
+            width: 48,
+            height: 42,
+            flexShrink: 0,
+            "& > *": { height: "42px !important", borderRadius: "10px !important" },
           }}
         >
-          {actionLabel}
+          <ExerciseMediaPreview url={exercise.thumbnail_url || exercise.demo_media_url} title={exercise.name} compact />
+        </Box>
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Typography
+            sx={{
+              fontSize: 14,
+              fontWeight: 650,
+              color: "text.primary",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+            title={exercise.name}
+          >
+            {exercise.name}
+          </Typography>
+          <Stack direction="row" gap={0.5} flexWrap="wrap" sx={{ mt: 0.35 }}>
+            {chips.slice(0, 3).map((chip) => (
+              <Chip key={chip} label={chip} size="small" sx={{ height: 20, fontSize: 11 }} />
+            ))}
+          </Stack>
+        </Box>
+        <Button size="small" variant="text" onClick={(e) => { e.stopPropagation(); setDetailsOpen((v) => !v); }}>
+          Details
         </Button>
-      ) : null}
+        {!isGroupMode ? (
+          <Button
+            variant="text"
+            size="small"
+            startIcon={<AddIcon fontSize="small" />}
+            onClick={onAdd}
+            sx={{
+              color: "primary.main",
+              fontWeight: 600,
+              textTransform: "none",
+              minWidth: 0,
+              px: 1.25,
+              "&:hover": { bgcolor: "action.hover" },
+            }}
+          >
+            {actionLabel}
+          </Button>
+        ) : null}
+      </Box>
+      <Collapse in={detailsOpen} unmountOnExit>
+        <Stack spacing={0.75} sx={{ px: 7.5, pb: 1.25 }}>
+          {exercise.description ? (
+            <Typography variant="body2" color="text.secondary">
+              {exercise.description}
+            </Typography>
+          ) : null}
+          {[exercise.tips, exercise.correct_form_cues, exercise.common_mistakes].filter(Boolean).slice(0, 2).map((text) => (
+            <Typography key={text} variant="caption" color="text.secondary">
+              {String(text).split("\n")[0]}
+            </Typography>
+          ))}
+        </Stack>
+      </Collapse>
     </Box>
   );
 }

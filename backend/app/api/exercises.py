@@ -1,13 +1,24 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import func, or_, select
+from fastapi import APIRouter, HTTPException, Query
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from app.api.deps import CurrentCoach, DbSession
-from app.models.exercise import Exercise
+from app.models.exercise import Exercise, ExerciseVideoLink
+from app.models.exercise_muscle_group import ExerciseMuscleGroup
 from app.models.media_asset import ExerciseMedia
 from app.models.training_plan_item import TrainingPlanItem
-from app.schemas.exercise import ExerciseCreate, ExerciseRead, ExerciseUpdate, exercise_to_read
+from app.schemas.exercise import (
+    ExerciseCreate,
+    ExerciseRead,
+    ExerciseUpdate,
+    ExerciseVideoLinkCreate,
+    ExerciseVideoLinkRead,
+    ExerciseVideoLinkUpdate,
+    encoded_list,
+    exercise_to_read,
+    video_link_to_read,
+)
 from app.services.exercise_muscles import (
-    EXERCISE_MUSCLE_LOADER,
+    EXERCISE_DETAIL_LOADERS,
     copy_exercise_muscle_groups,
     replace_exercise_muscle_groups,
 )
@@ -19,10 +30,18 @@ router = APIRouter(prefix="/exercises", tags=["exercises"])
 async def _load_exercise(db, exercise_id: int, coach_id: int) -> Exercise | None:
     result = await db.execute(
         select(Exercise)
-        .options(EXERCISE_MUSCLE_LOADER)
+        .options(*EXERCISE_DETAIL_LOADERS)
         .where(Exercise.id == exercise_id, Exercise.coach_id == coach_id)
     )
     return result.scalar_one_or_none()
+
+
+def _apply_exercise_payload(ex: Exercise, data: dict) -> None:
+    for field in ("body_parts", "secondary_muscles", "instructions"):
+        if field in data:
+            data[field] = encoded_list(data[field])
+    for k, v in data.items():
+        setattr(ex, k, v)
 
 
 @router.get("", response_model=dict)
@@ -34,23 +53,46 @@ async def list_my_exercises(
     q: str | None = None,
     venue_type: str | None = None,
     venue_compat: str | None = None,
+    category: str | None = None,
+    equipment: str | None = None,
+    muscle_group_id: int | None = None,
 ):
     cond = [Exercise.coach_id == coach.id]
     if venue_type:
         cond.append(Exercise.venue_type == venue_type)
+    if category:
+        cond.append(Exercise.category == category)
+    if equipment:
+        cond.append(Exercise.equipment.ilike(f"%{equipment.strip()}%"))
+    if muscle_group_id:
+        cond.append(
+            Exercise.id.in_(
+                select(ExerciseMuscleGroup.exercise_id).where(
+                    ExerciseMuscleGroup.muscle_group_id == muscle_group_id
+                )
+            )
+        )
     if venue_compat == "home":
         cond.append(or_(Exercise.venue_type == "home", Exercise.venue_type == "both"))
     elif venue_compat == "commercial_gym":
         cond.append(or_(Exercise.venue_type == "commercial_gym", Exercise.venue_type == "both"))
     if q and q.strip():
         term = f"%{q.strip()}%"
-        cond.append(or_(Exercise.name.ilike(term), Exercise.description.ilike(term)))
+        cond.append(
+            or_(
+                Exercise.name.ilike(term),
+                Exercise.description.ilike(term),
+                Exercise.tips.ilike(term),
+                Exercise.common_mistakes.ilike(term),
+                Exercise.correct_form_cues.ilike(term),
+            )
+        )
     total = (
         await db.execute(select(func.count()).select_from(Exercise).where(*cond))
     ).scalar_one()
     stmt = (
         select(Exercise)
-        .options(EXERCISE_MUSCLE_LOADER)
+        .options(*EXERCISE_DETAIL_LOADERS)
         .where(*cond)
         .order_by(Exercise.name)
         .offset(offset)
@@ -80,6 +122,15 @@ async def create_exercise(body: ExerciseCreate, coach: CurrentCoach, db: DbSessi
         correct_form_cues=body.correct_form_cues,
         demo_media_url=body.demo_media_url,
         thumbnail_url=body.thumbnail_url,
+        difficulty=body.difficulty,
+        exercise_type=body.exercise_type,
+        body_parts=encoded_list(body.body_parts),
+        secondary_muscles=encoded_list(body.secondary_muscles),
+        instructions=encoded_list(body.instructions),
+        setup_notes=body.setup_notes,
+        safety_notes=body.safety_notes,
+        source_url=body.source_url,
+        license_status=body.license_status,
     )
     db.add(ex)
     await db.flush()
@@ -87,7 +138,7 @@ async def create_exercise(body: ExerciseCreate, coach: CurrentCoach, db: DbSessi
     await db.commit()
     loaded = (
         await db.execute(
-            select(Exercise).where(Exercise.id == ex.id).options(EXERCISE_MUSCLE_LOADER)
+            select(Exercise).where(Exercise.id == ex.id).options(*EXERCISE_DETAIL_LOADERS)
         )
     ).scalar_one()
     return exercise_to_read(loaded)
@@ -102,7 +153,7 @@ async def copy_exercise_from_directory(
     """Copy a platform catalog exercise (coach_id null) into the current coach's library."""
     result = await db.execute(
         select(Exercise)
-        .options(EXERCISE_MUSCLE_LOADER)
+        .options(*EXERCISE_DETAIL_LOADERS)
         .where(
             Exercise.id == directory_exercise_id,
             Exercise.coach_id.is_(None),
@@ -123,14 +174,37 @@ async def copy_exercise_from_directory(
         correct_form_cues=src.correct_form_cues,
         demo_media_url=src.demo_media_url,
         thumbnail_url=src.thumbnail_url,
+        external_source=src.external_source,
+        external_id=src.external_id,
+        difficulty=src.difficulty,
+        exercise_type=src.exercise_type,
+        body_parts=src.body_parts,
+        secondary_muscles=src.secondary_muscles,
+        instructions=src.instructions,
+        setup_notes=src.setup_notes,
+        safety_notes=src.safety_notes,
+        source_url=src.source_url,
+        license_status=src.license_status,
     )
     db.add(ex)
     await db.flush()
     await copy_exercise_muscle_groups(db, src.id, ex.id)
+    for index, link in enumerate(src.video_links or []):
+        db.add(
+            ExerciseVideoLink(
+                exercise_id=ex.id,
+                provider=link.provider,
+                url=link.url,
+                title=link.title,
+                description=link.description,
+                sort_order=index,
+                source=link.source,
+            )
+        )
     await db.commit()
     loaded = (
         await db.execute(
-            select(Exercise).where(Exercise.id == ex.id).options(EXERCISE_MUSCLE_LOADER)
+            select(Exercise).where(Exercise.id == ex.id).options(*EXERCISE_DETAIL_LOADERS)
         )
     ).scalar_one()
     return exercise_to_read(loaded)
@@ -156,14 +230,86 @@ async def update_exercise(
         raise HTTPException(status_code=404, detail="Exercise not found")
     data = body.model_dump(exclude_unset=True)
     mg_ids = data.pop("muscle_group_ids", None)
-    for k, v in data.items():
-        setattr(ex, k, v)
+    _apply_exercise_payload(ex, data)
     if mg_ids is not None:
         await replace_exercise_muscle_groups(db, ex.id, mg_ids)
     await db.commit()
     reloaded = await _load_exercise(db, exercise_id, coach.id)
     assert reloaded is not None
     return exercise_to_read(reloaded)
+
+
+@router.post("/{exercise_id}/video-links", response_model=ExerciseVideoLinkRead, status_code=201)
+async def create_exercise_video_link(
+    exercise_id: int,
+    body: ExerciseVideoLinkCreate,
+    coach: CurrentCoach,
+    db: DbSession,
+):
+    ex = await _load_exercise(db, exercise_id, coach.id)
+    if not ex:
+        raise HTTPException(status_code=404, detail="Exercise not found")
+    sort_order = body.sort_order
+    if sort_order is None:
+        sort_order = (await db.scalar(select(func.max(ExerciseVideoLink.sort_order)).where(ExerciseVideoLink.exercise_id == exercise_id)) or 0) + 1
+    link = ExerciseVideoLink(
+        exercise_id=exercise_id,
+        provider=body.provider,
+        url=body.url,
+        title=body.title,
+        description=body.description,
+        sort_order=sort_order,
+        source=body.source,
+    )
+    db.add(link)
+    await db.commit()
+    await db.refresh(link)
+    return video_link_to_read(link)
+
+
+@router.patch("/{exercise_id}/video-links/{link_id}", response_model=ExerciseVideoLinkRead)
+async def update_exercise_video_link(
+    exercise_id: int,
+    link_id: int,
+    body: ExerciseVideoLinkUpdate,
+    coach: CurrentCoach,
+    db: DbSession,
+):
+    ex = await _load_exercise(db, exercise_id, coach.id)
+    if not ex:
+        raise HTTPException(status_code=404, detail="Exercise not found")
+    link = await db.scalar(
+        select(ExerciseVideoLink).where(
+            ExerciseVideoLink.id == link_id,
+            ExerciseVideoLink.exercise_id == exercise_id,
+        )
+    )
+    if not link:
+        raise HTTPException(status_code=404, detail="Video link not found")
+    for key, value in body.model_dump(exclude_unset=True).items():
+        setattr(link, key, value)
+    await db.commit()
+    await db.refresh(link)
+    return video_link_to_read(link)
+
+
+@router.delete("/{exercise_id}/video-links/{link_id}", status_code=204)
+async def delete_exercise_video_link(
+    exercise_id: int,
+    link_id: int,
+    coach: CurrentCoach,
+    db: DbSession,
+):
+    ex = await _load_exercise(db, exercise_id, coach.id)
+    if not ex:
+        raise HTTPException(status_code=404, detail="Exercise not found")
+    await db.execute(
+        delete(ExerciseVideoLink).where(
+            ExerciseVideoLink.id == link_id,
+            ExerciseVideoLink.exercise_id == exercise_id,
+        )
+    )
+    await db.commit()
 
 
 @router.delete("/{exercise_id}", status_code=204)

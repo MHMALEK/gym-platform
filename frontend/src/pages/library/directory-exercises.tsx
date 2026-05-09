@@ -1,6 +1,5 @@
 import Alert from "@mui/material/Alert";
 import AlertTitle from "@mui/material/AlertTitle";
-import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import FormControl from "@mui/material/FormControl";
 import InputLabel from "@mui/material/InputLabel";
@@ -9,16 +8,17 @@ import Select from "@mui/material/Select";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
-import { DataGrid, type GridColDef } from "@mui/x-data-grid";
-import { useInvalidate } from "@refinedev/core";
+import { useInvalidate, useList } from "@refinedev/core";
 import { type BaseRecord } from "@refinedev/core";
 import { List, useDataGrid } from "@refinedev/mui";
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
+import { CopyExerciseButton, ExerciseLibraryCards } from "../../components/ExerciseLibraryCards";
 import { useAppMessage } from "../../lib/useAppMessage";
 import { apiPrefix, authHeaders } from "../../lib/api";
+import type { ExerciseRecord } from "../../types/exercise";
 
 export function DirectoryExercisesPage() {
   const { t } = useTranslation();
@@ -27,19 +27,29 @@ export function DirectoryExercisesPage() {
   const [copyingId, setCopyingId] = useState<number | null>(null);
   const [q, setQ] = useState("");
   const [venue, setVenue] = useState<string | undefined>();
+  const [category, setCategory] = useState("");
+  const [equipment, setEquipment] = useState("");
+  const [muscleGroupId, setMuscleGroupId] = useState("");
   const { dataGridProps, setFilters } = useDataGrid({
     resource: "directory-exercises",
     syncWithLocation: true,
   });
+  const { data: muscleGroups } = useList<BaseRecord>({
+    resource: "directory-muscle-groups",
+    pagination: { pageSize: 200, mode: "server" },
+  });
 
   const applyFilters = useCallback(
-    (nextQ: string, nextVenue?: string) => {
+    (nextQ: string, nextVenue?: string, nextCategory = category, nextEquipment = equipment, nextMuscle = muscleGroupId) => {
       const f: { field: string; operator: "eq"; value: string }[] = [];
       if (nextQ.trim()) f.push({ field: "q", operator: "eq", value: nextQ.trim() });
       if (nextVenue) f.push({ field: "venue_type", operator: "eq", value: nextVenue });
+      if (nextCategory.trim()) f.push({ field: "category", operator: "eq", value: nextCategory.trim() });
+      if (nextEquipment.trim()) f.push({ field: "equipment", operator: "eq", value: nextEquipment.trim() });
+      if (nextMuscle) f.push({ field: "muscle_group_id", operator: "eq", value: nextMuscle });
       setFilters(f, "replace");
     },
-    [setFilters],
+    [category, equipment, muscleGroupId, setFilters],
   );
 
   const venueFilterOptions = [
@@ -72,47 +82,7 @@ export function DirectoryExercisesPage() {
     [invalidate, message, t],
   );
 
-  const columns: GridColDef<BaseRecord>[] = [
-    { field: "name", headerName: t("library.name"), flex: 1, minWidth: 140 },
-    { field: "category", headerName: t("library.category"), width: 120 },
-    {
-      field: "venue_type",
-      headerName: t("library.venueColumn"),
-      width: 140,
-      renderCell: ({ value }) => t(`workouts.venue.${(value as string) ?? "both"}`),
-    },
-    {
-      field: "muscle_groups",
-      headerName: t("library.muscles"),
-      flex: 1,
-      minWidth: 160,
-      sortable: false,
-      renderCell: ({ row }) => {
-        const m = row.muscle_groups as { label?: string }[] | undefined;
-        if (m?.length) return m.map((x) => x.label).filter(Boolean).join(", ");
-        return "—";
-      },
-    },
-    { field: "equipment", headerName: t("library.equipment"), width: 120 },
-    { field: "description", headerName: t("library.description"), flex: 1, minWidth: 120 },
-    {
-      field: "actions",
-      headerName: t("library.actions"),
-      width: 180,
-      sortable: false,
-      filterable: false,
-      renderCell: ({ row }) => (
-        <Button
-          variant="contained"
-          size="small"
-          disabled={copyingId === Number(row.id)}
-          onClick={() => void copyToMine(Number(row.id))}
-        >
-          {t("library.copyExerciseToMine")}
-        </Button>
-      ),
-    },
-  ];
+  const rows = ((dataGridProps.rows ?? []) as BaseRecord[]).map((row) => row as ExerciseRecord);
 
   return (
     <List title={t("library.exercisesTitle")} breadcrumb={false}>
@@ -124,8 +94,8 @@ export function DirectoryExercisesPage() {
         <Typography variant="body2" color="text.secondary">
           {t("library.readOnlyHint")}
         </Typography>
-        <Stack direction="row" flexWrap="wrap" gap={2} alignItems="center" justifyContent="space-between">
-          <Stack direction="row" flexWrap="wrap" gap={1} alignItems="center">
+        <Stack direction="row" flexWrap="wrap" gap={2} alignItems="flex-start" justifyContent="space-between">
+          <Stack direction="row" flexWrap="wrap" gap={1} alignItems="center" sx={{ flex: 1 }}>
             <TextField
               size="small"
               placeholder={t("library.searchCatalog")}
@@ -135,6 +105,26 @@ export function DirectoryExercisesPage() {
                 if (e.key === "Enter") applyFilters(q, venue);
               }}
               sx={{ maxWidth: 360 }}
+            />
+            <TextField
+              size="small"
+              label="Category"
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") applyFilters(q, venue);
+              }}
+              sx={{ width: 150 }}
+            />
+            <TextField
+              size="small"
+              label="Equipment"
+              value={equipment}
+              onChange={(e) => setEquipment(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") applyFilters(q, venue);
+              }}
+              sx={{ width: 160 }}
             />
             <FormControl size="small" sx={{ minWidth: 200 }}>
               <InputLabel id="dir-ex-venue">{t("library.filterVenue")}</InputLabel>
@@ -160,20 +150,44 @@ export function DirectoryExercisesPage() {
                 ))}
               </Select>
             </FormControl>
+            <FormControl size="small" sx={{ minWidth: 200 }}>
+              <InputLabel id="dir-ex-muscle">Muscle</InputLabel>
+              <Select
+                labelId="dir-ex-muscle"
+                label="Muscle"
+                value={muscleGroupId}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  setMuscleGroupId(next);
+                  applyFilters(q, venue, category, equipment, next);
+                }}
+              >
+                <MenuItem value="">
+                  <em>—</em>
+                </MenuItem>
+                {(muscleGroups?.data ?? []).map((row) => (
+                  <MenuItem key={row.id as number} value={String(row.id)}>
+                    {String(row.label)}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <Button variant="contained" onClick={() => applyFilters(q, venue)}>
+              Apply
+            </Button>
           </Stack>
           <Link to="/exercises">{t("library.goToMyExercises")}</Link>
         </Stack>
-        <Box sx={{ width: "100%" }}>
-          <DataGrid
-            {...dataGridProps}
-            columns={columns}
-            getRowId={(r) => r.id as string | number}
-            autoHeight
-            pageSizeOptions={[10, 25, 50]}
-            disableRowSelectionOnClick
-            localeText={{ noRowsLabel: t("library.catalogEmpty") }}
-          />
-        </Box>
+        <ExerciseLibraryCards
+          rows={rows}
+          emptyText={t("library.catalogEmpty")}
+          action={(exercise) => (
+            <CopyExerciseButton
+              disabled={copyingId === Number(exercise.id)}
+              onClick={() => void copyToMine(Number(exercise.id))}
+            />
+          )}
+        />
       </Stack>
     </List>
   );

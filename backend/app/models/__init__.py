@@ -5,7 +5,7 @@ from app.models.client_subscription import ClientSubscription
 from app.models.coach import Coach
 from app.models.coach_api_key import CoachApiKey
 from app.models.coach_device_token import CoachDeviceToken
-from app.models.exercise import Exercise
+from app.models.exercise import Exercise, ExerciseVideoLink
 from app.models.exercise_muscle_group import ExerciseMuscleGroup
 from app.models.goal_type import GoalType
 from app.models.muscle_group import MuscleGroup
@@ -26,6 +26,7 @@ __all__ = [
     "CoachApiKey",
     "CoachDeviceToken",
     "Exercise",
+    "ExerciseVideoLink",
     "ExerciseMuscleGroup",
     "GoalType",
     "MuscleGroup",

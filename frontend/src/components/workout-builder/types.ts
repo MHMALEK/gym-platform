@@ -1,7 +1,21 @@
 import type { DraggableAttributes } from "@dnd-kit/core";
 import type { WorkoutBlockType, WorkoutLine } from "../../lib/workoutLineModel";
 
-export type ExerciseOpt = { id: number; name: string; source: "catalog" | "mine" };
+export type ExerciseOpt = {
+  id: number;
+  name: string;
+  source: "catalog" | "mine";
+  description?: string | null;
+  equipment?: string | null;
+  difficulty?: string | null;
+  exercise_type?: string | null;
+  thumbnail_url?: string | null;
+  demo_media_url?: string | null;
+  muscle_groups?: { id?: number; label?: string }[];
+  tips?: string | null;
+  common_mistakes?: string | null;
+  correct_form_cues?: string | null;
+};
 
 export type SaveStatus = "idle" | "saving" | "saved";
 
