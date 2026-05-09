@@ -15,7 +15,20 @@ export type WorkoutItemsEditorProps = {
    * when applicable). Use on pages that already provide a page header.
    */
   hideHeader?: boolean;
+  /**
+   * When true, the inline "Add exercise" / "Add superset" buttons
+   * underneath the items list are hidden — useful when the parent
+   * page renders these in a sticky bar instead.
+   */
+  hideAddButtons?: boolean;
   onChange?: (items: WorkoutLine[]) => void;
+};
+
+/** Imperative handle exposed by `<WorkoutItemsEditor>` so a parent page
+ *  can trigger the add flows from a sticky toolbar. */
+export type WorkoutItemsEditorHandle = {
+  openAddExercise: () => void;
+  openAddGroup: () => void;
 };
 
 /**

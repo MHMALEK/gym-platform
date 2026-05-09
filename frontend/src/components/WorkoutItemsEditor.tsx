@@ -30,8 +30,10 @@ import {
   Fragment,
   type CSSProperties,
   type ReactNode,
+  forwardRef,
   useCallback,
   useEffect,
+  useImperativeHandle,
   useMemo,
   useRef,
   useState,
@@ -67,6 +69,7 @@ import type {
   ExerciseOpt,
   PickerContext,
   RowPresentation,
+  WorkoutItemsEditorHandle,
   WorkoutItemsEditorProps,
 } from "./workout-builder/types";
 import { WorkoutRow } from "./workout-builder/WorkoutRow";
@@ -96,15 +99,22 @@ export type { WorkoutBlockType, WorkoutLine } from "../lib/workoutLineModel";
 export { normalizeWorkoutLinesForApi as normalizeWorkoutItemsForApi, workoutLinesFromApiItems } from "../lib/workoutLineModel";
 
 
-export function WorkoutItemsEditor({
-  mode,
-  planId,
-  planVenue,
-  initialItems,
-  showSaveButton = true,
-  hideHeader = false,
-  onChange,
-}: WorkoutItemsEditorProps) {
+export const WorkoutItemsEditor = forwardRef<
+  WorkoutItemsEditorHandle,
+  WorkoutItemsEditorProps
+>(function WorkoutItemsEditor(
+  {
+    mode,
+    planId,
+    planVenue,
+    initialItems,
+    showSaveButton = true,
+    hideHeader = false,
+    hideAddButtons = false,
+    onChange,
+  },
+  forwardedRef,
+) {
   const { t } = useTranslation();
   const message = useAppMessage();
   const invalidate = useInvalidate();
@@ -384,6 +394,17 @@ export function WorkoutItemsEditor({
     }
     setExercisePickerModalOpen(true);
   }, []);
+
+  // Expose the add flows so a parent page (e.g. the sticky action bar on
+  // the training-plan edit page) can trigger them without re-rendering.
+  useImperativeHandle(
+    forwardedRef,
+    () => ({
+      openAddExercise: () => armPickerContext({ mode: "append" }),
+      openAddGroup: () => armPickerContext({ mode: "groupSelect" }),
+    }),
+    [armPickerContext],
+  );
 
   const toggleGroupSelected = useCallback((ex: ExerciseOpt) => {
     setGroupSelected((prev) => {
@@ -1105,8 +1126,8 @@ export function WorkoutItemsEditor({
       )}
 
       {/* Add toolbar at the bottom of the list — primary "Add exercise" + secondary
-          "Add superset". Breathing room above + a subtle top divider so the toolbar
-          doesn't look glued onto the last set row. */}
+          "Add superset". Hidden when the parent page renders these in a sticky bar. */}
+      {hideAddButtons ? null : (
       <Stack
         direction="row"
         spacing={1.5}
@@ -1160,6 +1181,7 @@ export function WorkoutItemsEditor({
           {t("workouts.addSuperset")}
         </Button>
       </Stack>
+      )}
 
       {!exercisePickerModalOpen && pickerBanner.mode === "extendBlock" ? (
         <Alert
@@ -1226,7 +1248,7 @@ export function WorkoutItemsEditor({
 
     </div>
   );
-}
+});
 
 /** Compact "Saving... / Saved" pill shown in the workout-builder toolbar so
  *  the coach gets visible confirmation that auto-save is doing its job. */

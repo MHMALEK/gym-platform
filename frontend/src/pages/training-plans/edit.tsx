@@ -1,17 +1,16 @@
 import GroupAddIcon from "@mui/icons-material/GroupAddRounded";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
+import Card from "@mui/material/Card";
+import CardContent from "@mui/material/CardContent";
 import CircularProgress from "@mui/material/CircularProgress";
 import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
 import { useForm } from "@refinedev/react-hook-form";
-import { useMemo, useState } from "react";
+import { Layers, Plus } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { useNavigate } from "react-router-dom";
-
-import Card from "@mui/material/Card";
-import CardContent from "@mui/material/CardContent";
 import { AssignPlanToClientsDialog } from "../../components/AssignPlanToClientsDialog";
 import { PageHeader } from "../../components/layout/PageHeader";
 import { StickyActionBar } from "../../components/layout/StickyActionBar";
@@ -19,6 +18,7 @@ import {
   WorkoutItemsEditor,
   workoutLinesFromApiItems,
 } from "../../components/WorkoutItemsEditor";
+import type { WorkoutItemsEditorHandle } from "../../components/workout-builder/types";
 import { TrainingPlanOverviewCard, TrainingPlanWorkoutRichField } from "./TrainingPlanSharedFields";
 
 type Item = {
@@ -54,16 +54,17 @@ type FormValues = {
   workout_rich_html: string;
 };
 
-// Pages stretch to fill the AppShell content area. The shell itself caps
-// the visible width via its own px padding; nothing else clamps content.
 const PAGE_MAX_WIDTH = "100%";
 
 export function TrainingPlanEdit() {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const [assignOpen, setAssignOpen] = useState(false);
   const [tab, setTab] = useState<0 | 1>(0);
-  const { control, saveButtonProps, watch, refineCore } = useForm<FormValues>({
+
+  const editorRef = useRef<WorkoutItemsEditorHandle>(null);
+  const formAutoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const { control, watch, refineCore } = useForm<FormValues>({
     refineCoreProps: { resource: "training-plans" },
   });
   const query = refineCore.query;
@@ -75,6 +76,31 @@ export function TrainingPlanEdit() {
   );
 
   const venueLive = watch("venue_type") ?? record?.venue_type ?? "mixed";
+
+  /** Form auto-save: 1500ms after the last edit, push through Refine's
+   *  mutation. The lastSaved ref captures the loaded baseline on first
+   *  arrival so we don't echo the just-fetched record back to the
+   *  server, and updates after each save so identical re-typing doesn't
+   *  re-trigger the timer. */
+  const watchedValues = watch();
+  const watchedJSON = JSON.stringify(watchedValues);
+  const lastSavedJSON = useRef<string | null>(null);
+  useEffect(() => {
+    if (!record?.id) return;
+    if (lastSavedJSON.current === null) {
+      lastSavedJSON.current = watchedJSON;
+      return;
+    }
+    if (lastSavedJSON.current === watchedJSON) return;
+    if (formAutoSaveTimerRef.current) clearTimeout(formAutoSaveTimerRef.current);
+    formAutoSaveTimerRef.current = setTimeout(() => {
+      void refineCore.onFinish(watchedValues);
+      lastSavedJSON.current = watchedJSON;
+    }, 1500);
+    return () => {
+      if (formAutoSaveTimerRef.current) clearTimeout(formAutoSaveTimerRef.current);
+    };
+  }, [watchedJSON, record?.id, refineCore, watchedValues]);
 
   const headerActions = (
     <Button
@@ -89,18 +115,15 @@ export function TrainingPlanEdit() {
     </Button>
   );
 
-  const cancelLabel =
-    t("common.cancel") !== "common.cancel" ? t("common.cancel") : "Cancel";
-  const saveLabel =
-    t("trainingPlans.create.savePlan") !== "trainingPlans.create.savePlan"
-      ? t("trainingPlans.create.savePlan")
-      : "Save";
-
   return (
     <Box sx={{ maxWidth: PAGE_MAX_WIDTH, mx: "auto", width: "100%" }}>
       <PageHeader
         title={record?.name || t("trainingPlans.edit.pageTitle") || "Training plan"}
-        subtitle={t("trainingPlans.edit.pageSubtitle") !== "trainingPlans.edit.pageSubtitle" ? t("trainingPlans.edit.pageSubtitle") : undefined}
+        subtitle={
+          t("trainingPlans.edit.pageSubtitle") !== "trainingPlans.edit.pageSubtitle"
+            ? t("trainingPlans.edit.pageSubtitle")
+            : undefined
+        }
         actions={headerActions}
       />
 
@@ -140,19 +163,23 @@ export function TrainingPlanEdit() {
           </CardContent>
         </Card>
         <Card>
-          <CardContent sx={{ p: { xs: 1.5, sm: 2 }, "&:last-child": { pb: { xs: 1.5, sm: 2 } } }}>
+          <CardContent
+            sx={{ p: { xs: 1.5, sm: 2 }, "&:last-child": { pb: { xs: 1.5, sm: 2 } } }}
+          >
             {query?.isLoading ? (
               <Box sx={{ py: 6, display: "flex", justifyContent: "center" }}>
                 <CircularProgress />
               </Box>
             ) : record?.id ? (
               <WorkoutItemsEditor
+                ref={editorRef}
                 mode="training-plan"
                 planId={record.id}
                 planVenue={venueLive}
                 initialItems={initialLines}
                 showSaveButton={false}
                 hideHeader
+                hideAddButtons
               />
             ) : null}
           </CardContent>
@@ -160,21 +187,52 @@ export function TrainingPlanEdit() {
       </Box>
 
       <StickyActionBar>
-        <Button
-          variant="text"
-          color="inherit"
-          onClick={() => navigate("/training-plans")}
-          sx={{ color: "text.secondary", textTransform: "none", fontWeight: 500 }}
-        >
-          {cancelLabel}
-        </Button>
-        <Button
-          variant="contained"
-          {...saveButtonProps}
-          sx={{ borderRadius: 1.5, fontWeight: 500, textTransform: "none", px: 2.5 }}
-        >
-          {saveLabel}
-        </Button>
+        {/* Sticky bar replaces the legacy Save/Cancel: with both items and
+            form fields auto-saving, the user just adds content. The
+            auto-save status indicator inside the workout builder confirms
+            persistence. */}
+        {tab === 1 ? (
+          <>
+            <Button
+              variant="contained"
+              color="primary"
+              size="medium"
+              startIcon={<Plus size={16} strokeWidth={2.25} />}
+              onClick={() => editorRef.current?.openAddExercise()}
+              sx={{
+                borderRadius: 1.5,
+                fontWeight: 500,
+                textTransform: "none",
+                px: 2,
+                boxShadow: "none",
+                "&:hover": { boxShadow: "none" },
+              }}
+            >
+              {t("workouts.addExercise")}
+            </Button>
+            <Button
+              variant="outlined"
+              size="medium"
+              startIcon={<Layers size={16} strokeWidth={2.25} />}
+              onClick={() => editorRef.current?.openAddGroup()}
+              sx={{
+                borderRadius: 1.5,
+                fontWeight: 500,
+                textTransform: "none",
+                color: "text.secondary",
+                borderColor: "divider",
+                px: 1.75,
+                "&:hover": {
+                  color: "primary.main",
+                  borderColor: "primary.main",
+                  bgcolor: "action.hover",
+                },
+              }}
+            >
+              {t("workouts.addSuperset")}
+            </Button>
+          </>
+        ) : null}
       </StickyActionBar>
 
       <AssignPlanToClientsDialog
