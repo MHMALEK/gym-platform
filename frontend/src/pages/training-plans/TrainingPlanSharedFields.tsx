@@ -1,8 +1,5 @@
-import AddIcon from "@mui/icons-material/Add";
-import EditIcon from "@mui/icons-material/Edit";
-import Card from "@mui/material/Card";
-import CardContent from "@mui/material/CardContent";
 import MenuItem from "@mui/material/MenuItem";
+import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { type ReactNode } from "react";
@@ -18,15 +15,18 @@ type SharedForm = {
   workout_rich_html?: string;
 };
 
+/**
+ * Plan basics — flat layout, no card chrome. Sits on a page that already
+ * provides title and section context, so we keep the visual weight low.
+ */
 export function TrainingPlanOverviewCard({
   control,
-  variant,
 }: {
   control: Control<SharedForm>;
-  variant: "create" | "edit";
+  /** Kept for backwards compatibility; the icon/title is now provided by the page header. */
+  variant?: "create" | "edit";
 }) {
   const { t } = useTranslation();
-  const Icon = variant === "create" ? AddIcon : EditIcon;
   const venueOptions = [
     { value: "mixed", label: t("workouts.venue.mixed") },
     { value: "home", label: t("workouts.venue.home") },
@@ -34,74 +34,63 @@ export function TrainingPlanOverviewCard({
   ];
 
   return (
-    <Card
-      variant="outlined"
-      sx={{
-        mb: 3,
-        bgcolor: "var(--app-surface-elevated, rgba(15, 23, 42, 0.45))",
-        borderColor: "var(--app-border, rgba(148, 163, 184, 0.2))",
-      }}
-    >
-      <CardContent sx={{ pb: 1 }}>
-        <Typography variant="h6" sx={{ mt: 0, mb: 0.5, display: "flex", alignItems: "center", gap: 1 }}>
-          <Icon fontSize="small" sx={{ opacity: 0.85 }} />
-          {t("trainingPlans.form.planOverviewTitle")}
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          {t("trainingPlans.form.planOverviewHint")}
-        </Typography>
-        <Controller
-          name="name"
-          control={control}
-          rules={{ required: true }}
-          render={({ field, fieldState }) => (
-            <TextField
-              {...field}
-              value={field.value ?? ""}
-              required
-              fullWidth
-              margin="normal"
-              size="medium"
-              label={t("trainingPlans.list.name")}
-              placeholder={t("trainingPlans.form.namePlaceholder")}
-              inputProps={{ maxLength: 160 }}
-              error={!!fieldState.error}
-              helperText={fieldState.error?.message}
-            />
-          )}
-        />
-        <Controller
-          name="description"
-          control={control}
-          render={({ field }) => (
-            <TextField
-              {...field}
-              value={field.value ?? ""}
-              fullWidth
-              margin="normal"
-              multiline
-              minRows={3}
-              label={t("trainingPlans.list.description")}
-              placeholder={t("trainingPlans.form.descriptionPlaceholder")}
-              inputProps={{ maxLength: 2000 }}
-            />
-          )}
-        />
-        <Controller
-          name="venue_type"
-          control={control}
-          render={({ field }) => (
-            <TextField {...field} value={field.value ?? "mixed"} fullWidth margin="normal" select label={t("trainingPlans.form.venue")} size="medium">
-              {venueOptions.map((o) => (
-                <MenuItem key={o.value} value={o.value}>
-                  {o.label}
-                </MenuItem>
-              ))}
-            </TextField>
-          )}
-        />
-      </CardContent>
-    </Card>
+    <Stack spacing={2.25} sx={{ width: "100%" }}>
+      <Controller
+        name="name"
+        control={control}
+        rules={{ required: true }}
+        render={({ field, fieldState }) => (
+          <TextField
+            {...field}
+            value={field.value ?? ""}
+            required
+            fullWidth
+            size="medium"
+            label={t("trainingPlans.list.name")}
+            placeholder={t("trainingPlans.form.namePlaceholder")}
+            inputProps={{ maxLength: 160 }}
+            error={!!fieldState.error}
+            helperText={fieldState.error?.message}
+          />
+        )}
+      />
+      <Controller
+        name="description"
+        control={control}
+        render={({ field }) => (
+          <TextField
+            {...field}
+            value={field.value ?? ""}
+            fullWidth
+            multiline
+            minRows={2}
+            label={t("trainingPlans.list.description")}
+            placeholder={t("trainingPlans.form.descriptionPlaceholder")}
+            inputProps={{ maxLength: 2000 }}
+          />
+        )}
+      />
+      <Controller
+        name="venue_type"
+        control={control}
+        render={({ field }) => (
+          <TextField
+            {...field}
+            value={field.value ?? "mixed"}
+            fullWidth
+            select
+            label={t("trainingPlans.form.venue")}
+            sx={{ maxWidth: 320 }}
+          >
+            {venueOptions.map((o) => (
+              <MenuItem key={o.value} value={o.value}>
+                {o.label}
+              </MenuItem>
+            ))}
+          </TextField>
+        )}
+      />
+    </Stack>
   );
 }
 
@@ -113,7 +102,11 @@ export function TrainingPlanWorkoutRichField({ control }: { control: Control<Sha
       control={control}
       render={({ field }) => (
         <BoxField label={t("workouts.richSectionTitle")}>
-          <WorkoutRichEditor placeholder={t("workouts.richPlaceholder")} value={field.value ?? ""} onChange={field.onChange} />
+          <WorkoutRichEditor
+            placeholder={t("workouts.richPlaceholder")}
+            value={field.value ?? ""}
+            onChange={field.onChange}
+          />
         </BoxField>
       )}
     />

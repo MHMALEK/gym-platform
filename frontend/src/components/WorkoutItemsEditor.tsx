@@ -106,6 +106,7 @@ export function WorkoutItemsEditor({
   planVenue,
   initialItems,
   showSaveButton = true,
+  hideHeader = false,
   onChange,
 }: WorkoutItemsEditorProps) {
   const { t } = useTranslation();
@@ -518,82 +519,122 @@ export function WorkoutItemsEditor({
     }
   }, [items, message, planId, syncPlanItemsToApi, t]);
 
+  const advancedToggle = (
+    <Tooltip
+      title={
+        t("workouts.toggleAdvancedHint") !== "workouts.toggleAdvancedHint"
+          ? t("workouts.toggleAdvancedHint")
+          : "Show RPE, weight (kg) and tempo inputs on every set"
+      }
+      placement="top"
+    >
+      <span>
+        <Button
+          size="small"
+          variant={effectiveShowAdvanced ? "outlined" : "text"}
+          color="inherit"
+          onClick={() => setShowAdvancedFieldsPersisted(!showAdvancedFields)}
+          disabled={itemsHaveAdvanced && !showAdvancedFields}
+          sx={{
+            color: "text.secondary",
+            borderRadius: 2,
+            fontWeight: 500,
+            minHeight: 32,
+            px: 1.5,
+            "&.Mui-disabled": { color: "text.disabled" },
+          }}
+        >
+          {effectiveShowAdvanced
+            ? t("workouts.hideAdvanced") !== "workouts.hideAdvanced"
+              ? t("workouts.hideAdvanced")
+              : "Hide advanced"
+            : t("workouts.showAdvanced") !== "workouts.showAdvanced"
+              ? t("workouts.showAdvanced")
+              : "Show advanced"}
+        </Button>
+      </span>
+    </Tooltip>
+  );
+
+  const saveButton =
+    mode === "training-plan" && showSaveButton ? (
+      <Button
+        variant="contained"
+        color="primary"
+        size="large"
+        onClick={() => void saveTrainingPlan()}
+        disabled={saving}
+        style={{ borderRadius: 12 }}
+      >
+        {t("workouts.saveItems")}
+      </Button>
+    ) : null;
+
   return (
     <div className="workout-items-editor">
-      <div style={{ marginBottom: 22 }}>
-        <Flex justify="space-between" align="flex-start" wrap="wrap" gap={16}>
-          <div style={{ flex: "1 1 280px", minWidth: 0 }}>
-            <Typography
-              variant="h5"
-              component="h2"
-              sx={{
-                margin: "0 0 8px",
-                fontWeight: 700,
-                letterSpacing: "-0.02em",
-                color: "var(--app-text-heading)",
-              }}
-            >
-              {t("workouts.builderTitle")}
+      {hideHeader ? (
+        <Stack
+          direction="row"
+          alignItems="center"
+          justifyContent="space-between"
+          flexWrap="wrap"
+          gap={1}
+          sx={{ mb: 2 }}
+        >
+          {planVenue === "home" || planVenue === "commercial_gym" ? (
+            <Typography variant="caption" color="text.secondary">
+              {t("workouts.venueFilterHint", { venue: t(`workouts.venue.${planVenue}`) })}
             </Typography>
-            <Typography variant="body2" color="text.secondary" component="span" style={{ marginBottom: 0, maxWidth: 520, fontSize: 14, lineHeight: 1.55 }}>
-              {t("workouts.builderHint")}
-            </Typography>
-            {planVenue === "home" || planVenue === "commercial_gym" ? (
-              <Typography variant="body2" color="text.secondary" component="span" style={{ display: "block", marginTop: 10, fontSize: 13 }}>
-                {t("workouts.venueFilterHint", { venue: t(`workouts.venue.${planVenue}`) })}
-              </Typography>
-            ) : null}
-          </div>
-          <Stack direction="row" spacing={1} alignItems="center" sx={{ flexShrink: 0 }}>
-            <Tooltip
-              title={
-                t("workouts.toggleAdvancedHint") !== "workouts.toggleAdvancedHint"
-                  ? t("workouts.toggleAdvancedHint")
-                  : "Show RPE, weight (kg) and tempo inputs on every set"
-              }
-              placement="top"
-            >
-              <span>
-                <Button
-                  size="small"
-                  variant={effectiveShowAdvanced ? "outlined" : "text"}
-                  color="inherit"
-                  onClick={() => setShowAdvancedFieldsPersisted(!showAdvancedFields)}
-                  disabled={itemsHaveAdvanced && !showAdvancedFields}
-                  sx={{
-                    color: "text.secondary",
-                    borderRadius: 2,
-                    fontWeight: 500,
-                    minHeight: 32,
-                    px: 1.5,
-                    "&.Mui-disabled": { color: "text.disabled" },
-                  }}
-                >
-                  {effectiveShowAdvanced
-                    ? t("workouts.hideAdvanced") !== "workouts.hideAdvanced"
-                      ? t("workouts.hideAdvanced")
-                      : "Hide advanced"
-                    : t("workouts.showAdvanced") !== "workouts.showAdvanced"
-                      ? t("workouts.showAdvanced")
-                      : "Show advanced"}
-                </Button>
-              </span>
-            </Tooltip>
-            {mode === "training-plan" && showSaveButton ? (
-              <Button
-                variant="contained"
-                color="primary"
-                size="large"
-                onClick={() => void saveTrainingPlan()}
-                disabled={saving}
-                style={{ borderRadius: 12 }}
-              >
-                {t("workouts.saveItems")}
-              </Button>
-            ) : null}
+          ) : (
+            <span aria-hidden />
+          )}
+          <Stack direction="row" spacing={1} alignItems="center">
+            {advancedToggle}
+            {saveButton}
           </Stack>
-        </Flex>
-      </div>
+        </Stack>
+      ) : (
+        <div style={{ marginBottom: 22 }}>
+          <Flex justify="space-between" align="flex-start" wrap="wrap" gap={16}>
+            <div style={{ flex: "1 1 280px", minWidth: 0 }}>
+              <Typography
+                variant="h5"
+                component="h2"
+                sx={{
+                  margin: "0 0 8px",
+                  fontWeight: 700,
+                  letterSpacing: "-0.02em",
+                  color: "var(--app-text-heading)",
+                }}
+              >
+                {t("workouts.builderTitle")}
+              </Typography>
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                component="span"
+                style={{ marginBottom: 0, maxWidth: 520, fontSize: 14, lineHeight: 1.55 }}
+              >
+                {t("workouts.builderHint")}
+              </Typography>
+              {planVenue === "home" || planVenue === "commercial_gym" ? (
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  component="span"
+                  style={{ display: "block", marginTop: 10, fontSize: 13 }}
+                >
+                  {t("workouts.venueFilterHint", { venue: t(`workouts.venue.${planVenue}`) })}
+                </Typography>
+              ) : null}
+            </div>
+            <Stack direction="row" spacing={1} alignItems="center" sx={{ flexShrink: 0 }}>
+              {advancedToggle}
+              {saveButton}
+            </Stack>
+          </Flex>
+        </div>
+      )}
 
       {items.length === 0 ? (
         <Box sx={{ textAlign: "center", py: 4, opacity: 0.85 }}>

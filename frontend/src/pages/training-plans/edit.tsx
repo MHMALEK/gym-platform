@@ -1,17 +1,20 @@
-import AddIcon from "@mui/icons-material/Add";
-import GroupAddIcon from "@mui/icons-material/GroupAdd";
+import GroupAddIcon from "@mui/icons-material/GroupAddRounded";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
-import Stack from "@mui/material/Stack";
-import { Edit } from "@refinedev/mui";
+import Divider from "@mui/material/Divider";
+import Tab from "@mui/material/Tab";
+import Tabs from "@mui/material/Tabs";
 import { useForm } from "@refinedev/react-hook-form";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router-dom";
 
 import { AssignPlanToClientsDialog } from "../../components/AssignPlanToClientsDialog";
-import { WorkoutItemsEditor, workoutLinesFromApiItems } from "../../components/WorkoutItemsEditor";
+import { PageHeader } from "../../components/layout/PageHeader";
+import {
+  WorkoutItemsEditor,
+  workoutLinesFromApiItems,
+} from "../../components/WorkoutItemsEditor";
 import { TrainingPlanOverviewCard, TrainingPlanWorkoutRichField } from "./TrainingPlanSharedFields";
 
 type Item = {
@@ -47,9 +50,12 @@ type FormValues = {
   workout_rich_html: string;
 };
 
+const PAGE_MAX_WIDTH = 1100;
+
 export function TrainingPlanEdit() {
   const { t } = useTranslation();
   const [assignOpen, setAssignOpen] = useState(false);
+  const [tab, setTab] = useState<0 | 1>(0);
   const { control, saveButtonProps, watch, refineCore } = useForm<FormValues>({
     refineCoreProps: { resource: "training-plans" },
   });
@@ -63,50 +69,80 @@ export function TrainingPlanEdit() {
 
   const venueLive = watch("venue_type") ?? record?.venue_type ?? "mixed";
 
+  const headerActions = (
+    <>
+      <Button
+        variant="outlined"
+        size="small"
+        startIcon={<GroupAddIcon fontSize="small" />}
+        disabled={record?.id == null}
+        onClick={() => setAssignOpen(true)}
+        sx={{ borderRadius: 2 }}
+      >
+        {t("assignPlanToClients.assignToClientsButton")}
+      </Button>
+      <Button variant="contained" {...saveButtonProps}>
+        {t("trainingPlans.create.savePlan") !== "trainingPlans.create.savePlan"
+          ? t("trainingPlans.create.savePlan")
+          : "Save"}
+      </Button>
+    </>
+  );
+
   return (
-    <Edit
-      saveButtonProps={saveButtonProps}
-      headerButtons={({ defaultButtons }) => (
-        <>
-          {defaultButtons}
-          <Stack direction="row" flexWrap="wrap" gap={1}>
-            <Button
-              variant="outlined"
-              size="medium"
-              startIcon={<GroupAddIcon />}
-              disabled={record?.id == null}
-              onClick={() => setAssignOpen(true)}
-            >
-              {t("assignPlanToClients.assignToClientsButton")}
-            </Button>
-            <Button component={Link} to="/training-plans/create" variant="outlined" size="medium" startIcon={<AddIcon />}>
-              {t("common.quickLinks.newWorkout")}
-            </Button>
-            <Button component={Link} to="/exercises/create" variant="outlined" size="medium">
-              {t("common.quickLinks.newExercise")}
-            </Button>
-          </Stack>
-        </>
-      )}
-    >
-      <Box component="form" sx={{ maxWidth: 960 }}>
+    <Box sx={{ maxWidth: PAGE_MAX_WIDTH, mx: "auto", width: "100%" }}>
+      <PageHeader
+        title={record?.name || t("trainingPlans.edit.pageTitle") || "Training plan"}
+        subtitle={t("trainingPlans.edit.pageSubtitle") !== "trainingPlans.edit.pageSubtitle" ? t("trainingPlans.edit.pageSubtitle") : undefined}
+        actions={headerActions}
+      />
+
+      <Tabs
+        value={tab}
+        onChange={(_, v) => setTab(v as 0 | 1)}
+        sx={{
+          borderBottom: 1,
+          borderColor: "divider",
+          mb: 3,
+          minHeight: 40,
+          "& .MuiTab-root": {
+            minHeight: 40,
+            textTransform: "none",
+            fontWeight: 500,
+            fontSize: 14,
+            px: 1.5,
+          },
+        }}
+      >
+        <Tab label={t("trainingPlans.create.stepBasicsTitle")} />
+        <Tab label={t("trainingPlans.create.stepProgramTitle")} />
+      </Tabs>
+
+      <Box component="form" sx={{ display: tab === 0 ? "block" : "none" }}>
         <TrainingPlanOverviewCard control={control} variant="edit" />
-        <TrainingPlanWorkoutRichField control={control} />
       </Box>
 
-      {query?.isLoading ? (
-        <Box sx={{ mt: 3, display: "flex", justifyContent: "center" }}>
-          <CircularProgress />
+      <Box sx={{ display: tab === 1 ? "block" : "none" }}>
+        <Box sx={{ mb: 3 }}>
+          <TrainingPlanWorkoutRichField control={control} />
         </Box>
-      ) : record?.id ? (
-        <WorkoutItemsEditor
-          mode="training-plan"
-          planId={record.id}
-          planVenue={venueLive}
-          initialItems={initialLines}
-          showSaveButton
-        />
-      ) : null}
+        <Divider sx={{ mb: 3 }} />
+        {query?.isLoading ? (
+          <Box sx={{ py: 6, display: "flex", justifyContent: "center" }}>
+            <CircularProgress />
+          </Box>
+        ) : record?.id ? (
+          <WorkoutItemsEditor
+            mode="training-plan"
+            planId={record.id}
+            planVenue={venueLive}
+            initialItems={initialLines}
+            showSaveButton
+            hideHeader
+          />
+        ) : null}
+      </Box>
+
       <AssignPlanToClientsDialog
         open={assignOpen}
         onClose={() => setAssignOpen(false)}
@@ -114,6 +150,6 @@ export function TrainingPlanEdit() {
         resourceId={record?.id ?? 0}
         resourceName={record?.name}
       />
-    </Edit>
+    </Box>
   );
 }

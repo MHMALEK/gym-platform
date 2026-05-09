@@ -9,6 +9,12 @@ export type WorkoutItemsEditorProps = {
   planVenue?: string | null;
   initialItems: WorkoutLine[];
   showSaveButton?: boolean;
+  /**
+   * When true, the editor renders without its own title/hint block —
+   * just a compact toolbar with the advanced-fields toggle (and Save,
+   * when applicable). Use on pages that already provide a page header.
+   */
+  hideHeader?: boolean;
   onChange?: (items: WorkoutLine[]) => void;
 };
 

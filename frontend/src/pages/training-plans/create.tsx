@@ -1,17 +1,16 @@
+import ArrowBackIcon from "@mui/icons-material/ArrowBackRounded";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
-import Step from "@mui/material/Step";
-import StepLabel from "@mui/material/StepLabel";
-import Stepper from "@mui/material/Stepper";
-import Typography from "@mui/material/Typography";
-import useMediaQuery from "@mui/material/useMediaQuery";
+import Divider from "@mui/material/Divider";
+import Tab from "@mui/material/Tab";
+import Tabs from "@mui/material/Tabs";
 import { useInvalidate } from "@refinedev/core";
-import { Create } from "@refinedev/mui";
 import { useForm } from "@refinedev/react-hook-form";
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
+import { PageHeader } from "../../components/layout/PageHeader";
 import {
   WorkoutItemsEditor,
   normalizeWorkoutItemsForApi,
@@ -30,13 +29,14 @@ type FormValues = {
   workout_rich_html: string;
 };
 
+const PAGE_MAX_WIDTH = 1100;
+
 export function TrainingPlanCreate() {
   const { t } = useTranslation();
   const message = useAppMessage();
   const navigate = useNavigate();
   const invalidate = useInvalidate();
-  const isMdUp = useMediaQuery("(min-width:900px)");
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState<0 | 1>(0);
   const [workoutLines, setWorkoutLines] = useState<WorkoutLine[]>([]);
 
   const { control, saveButtonProps, trigger, watch } = useForm<FormValues>({
@@ -87,77 +87,88 @@ export function TrainingPlanCreate() {
     if (ok) setStep(1);
   }, [trigger]);
 
-  const bodyStyle = { maxWidth: 960, margin: "0 auto", width: "100%" as const };
+  const headerActions =
+    step === 0 ? (
+      <>
+        <Button
+          variant="text"
+          color="inherit"
+          size="small"
+          startIcon={<ArrowBackIcon fontSize="small" />}
+          onClick={() => navigate("/training-plans")}
+          sx={{ color: "text.secondary" }}
+        >
+          {t("common.back") !== "common.back" ? t("common.back") : "Back"}
+        </Button>
+        <Button variant="contained" onClick={() => void goNext()}>
+          {t("trainingPlans.create.continueToProgram")}
+        </Button>
+      </>
+    ) : (
+      <>
+        <Button variant="text" color="inherit" onClick={() => setStep(0)} sx={{ color: "text.secondary" }}>
+          {t("trainingPlans.create.backToDetails")}
+        </Button>
+        <Button variant="contained" {...saveButtonProps}>
+          {t("trainingPlans.create.savePlan")}
+        </Button>
+      </>
+    );
 
   return (
-    <Create
-      title={t("trainingPlans.create.pageTitle")}
-      saveButtonProps={saveButtonProps}
-      contentProps={{
-        sx: { pt: 1, px: 1.5 },
-      }}
-      footerButtons={({ saveButtonProps: sp }) => (
-        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
-          {step === 1 ? (
-            <Button variant="outlined" onClick={() => setStep(0)}>
-              {t("trainingPlans.create.backToDetails")}
-            </Button>
-          ) : null}
-          {step === 0 ? (
-            <Button variant="contained" onClick={() => void goNext()}>
-              {t("trainingPlans.create.continueToProgram")}
-            </Button>
-          ) : (
-            <Button variant="contained" {...sp}>
-              {t("trainingPlans.create.savePlan")}
-            </Button>
-          )}
-        </Box>
-      )}
-    >
-      <Box sx={bodyStyle}>
-        <Stepper activeStep={step} orientation={isMdUp ? "horizontal" : "vertical"} sx={{ mb: 2.5 }}>
-          <Step>
-            <StepLabel>
-              <Typography variant="subtitle2">{t("trainingPlans.create.stepBasicsTitle")}</Typography>
-              <Typography variant="caption" color="text.secondary" display="block">
-                {t("trainingPlans.create.stepBasicsDesc")}
-              </Typography>
-            </StepLabel>
-          </Step>
-          <Step>
-            <StepLabel>
-              <Typography variant="subtitle2">{t("trainingPlans.create.stepProgramTitle")}</Typography>
-              <Typography variant="caption" color="text.secondary" display="block">
-                {t("trainingPlans.create.stepProgramDesc")}
-              </Typography>
-            </StepLabel>
-          </Step>
-        </Stepper>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          {step === 0 ? t("trainingPlans.create.stepBasicsHint") : t("trainingPlans.create.stepProgramHint")}
-        </Typography>
+    <Box sx={{ maxWidth: PAGE_MAX_WIDTH, mx: "auto", width: "100%" }}>
+      <PageHeader
+        title={t("trainingPlans.create.pageTitle")}
+        subtitle={
+          step === 0
+            ? t("trainingPlans.create.stepBasicsHint")
+            : t("trainingPlans.create.stepProgramHint")
+        }
+        actions={headerActions}
+      />
+
+      <Tabs
+        value={step}
+        onChange={(_, v) => {
+          if (v === 0) setStep(0);
+          else void goNext();
+        }}
+        sx={{
+          borderBottom: 1,
+          borderColor: "divider",
+          mb: 3,
+          minHeight: 40,
+          "& .MuiTab-root": {
+            minHeight: 40,
+            textTransform: "none",
+            fontWeight: 500,
+            fontSize: 14,
+            px: 1.5,
+          },
+        }}
+      >
+        <Tab label={t("trainingPlans.create.stepBasicsTitle")} />
+        <Tab label={t("trainingPlans.create.stepProgramTitle")} />
+      </Tabs>
+
+      <Box component="form" sx={{ display: step === 0 ? "block" : "none" }}>
+        <TrainingPlanOverviewCard control={control} variant="create" />
       </Box>
 
-      <Box component="form" sx={bodyStyle}>
-        <Box sx={{ display: step === 0 ? "block" : "none" }}>
-          <TrainingPlanOverviewCard control={control} variant="create" />
-        </Box>
-        <Box sx={{ display: step === 1 ? "block" : "none" }}>
+      <Box sx={{ display: step === 1 ? "block" : "none" }}>
+        <Box sx={{ mb: 3 }}>
           <TrainingPlanWorkoutRichField control={control} />
         </Box>
+        <Divider sx={{ mb: 3 }} />
+        <WorkoutItemsEditor
+          mode="training-plan"
+          planVenue={venueType}
+          initialItems={workoutLines}
+          showSaveButton={false}
+          hideHeader
+          onChange={onWorkoutChange}
+        />
       </Box>
-      {step === 1 ? (
-        <Box sx={bodyStyle}>
-          <WorkoutItemsEditor
-            mode="training-plan"
-            planVenue={venueType}
-            initialItems={workoutLines}
-            showSaveButton={false}
-            onChange={onWorkoutChange}
-          />
-        </Box>
-      ) : null}
-    </Create>
+    </Box>
   );
 }
