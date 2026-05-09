@@ -1,5 +1,7 @@
 import AddIcon from "@mui/icons-material/Add";
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import LinkIcon from "@mui/icons-material/Link";
+import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
 import SearchIcon from "@mui/icons-material/Search";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
@@ -8,22 +10,18 @@ import Checkbox from "@mui/material/Checkbox";
 import Chip from "@mui/material/Chip";
 import CircularProgress from "@mui/material/CircularProgress";
 import Dialog from "@mui/material/Dialog";
-import DialogActions from "@mui/material/DialogActions";
-import DialogContent from "@mui/material/DialogContent";
-import DialogTitle from "@mui/material/DialogTitle";
-import Divider from "@mui/material/Divider";
+import IconButton from "@mui/material/IconButton";
 import InputAdornment from "@mui/material/InputAdornment";
 import MenuItem from "@mui/material/MenuItem";
 import Select from "@mui/material/Select";
 import Stack from "@mui/material/Stack";
+import Tab from "@mui/material/Tab";
+import Tabs from "@mui/material/Tabs";
 import TextField from "@mui/material/TextField";
-import ToggleButton from "@mui/material/ToggleButton";
-import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
+import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import type { TFunction } from "i18next";
-import { Link } from "react-router-dom";
 
-import { WorkoutFlex as Flex } from "../WorkoutFlex";
 import { BLOCK_OPTIONS } from "./constants";
 import type { ExerciseOpt, PickerContext, WorkoutBlockType } from "./types";
 
@@ -39,11 +37,9 @@ export type ExercisePickerModalProps = {
   setScope: (s: PickerScope) => void;
   query: string;
   setQuery: (q: string) => void;
-  /** Pre-grouped + filtered lists (`mine` first, then `catalog`). */
   lists: { mine: ExerciseOpt[]; catalog: ExerciseOpt[] };
   total: number;
   onAddExercise: (ex: ExerciseOpt) => void;
-  /** Reset picker mode to plain "append" (cancels link/grouping mode). */
   onResetMode: () => void;
   onRefresh: () => void;
   /** Multi-select state for `groupSelect` mode (creating supersets/circuits/etc.). */
@@ -55,43 +51,16 @@ export type ExercisePickerModalProps = {
   t: TFunction<"translation">;
 };
 
-export function ExercisePickerModal({
-  open,
-  onClose,
-  loading,
-  catalogOptsLoaded,
-  banner,
-  scope,
-  setScope,
-  query,
-  setQuery,
-  lists,
-  total,
-  onAddExercise,
-  onResetMode,
-  onRefresh,
-  groupSelected,
-  onToggleGroupSelected,
-  groupBlockType,
-  setGroupBlockType,
-  onCommitGroupSelection,
-  t,
-}: ExercisePickerModalProps) {
+export function ExercisePickerModal(props: ExercisePickerModalProps) {
+  const { open, onClose, banner, t } = props;
   const isGroupMode = banner.mode === "groupSelect";
-  const groupCount = groupSelected.length;
-  const isSelected = (ex: ExerciseOpt) =>
-    groupSelected.some((p) => p.id === ex.id && p.source === ex.source);
+  const isExtendMode = banner.mode === "extendBlock";
 
   const titleText = isGroupMode
-    ? t("workouts.pickerGroupTitle") !== "workouts.pickerGroupTitle"
-      ? t("workouts.pickerGroupTitle")
-      : "Build a block"
-    : t("workouts.pickExercise");
-  const subtitleText = isGroupMode
-    ? t("workouts.pickerGroupSubtitle") !== "workouts.pickerGroupSubtitle"
-      ? t("workouts.pickerGroupSubtitle")
-      : "Pick two or more exercises, choose the block type, then create."
-    : t("workouts.pickerModalSubtitle");
+    ? translate(t, "workouts.pickerGroupTitle", "Build a block")
+    : isExtendMode
+      ? t("workouts.pickerActiveExtendBlock")
+      : t("workouts.pickExercise");
 
   return (
     <Dialog
@@ -100,279 +69,335 @@ export function ExercisePickerModal({
       maxWidth="sm"
       fullWidth
       className="workout-items-editor__modal"
-      PaperProps={{ sx: { borderRadius: "16px", maxHeight: "min(80vh, 680px)" } }}
+      PaperProps={{ sx: { borderRadius: 3, maxHeight: "min(82vh, 720px)" } }}
     >
-      <DialogTitle sx={{ pb: 1 }}>
+      {/* Header: title + close */}
+      <Stack
+        direction="row"
+        alignItems="center"
+        sx={{ px: 2.5, pt: 2, pb: 1.25 }}
+      >
         <Typography
-          variant="h5"
-          component="span"
+          component="h2"
           sx={{
-            fontSize: 18,
+            fontSize: 17,
             fontWeight: 700,
-            letterSpacing: "-0.02em",
-            color: "var(--app-text-heading)",
+            letterSpacing: "-0.01em",
+            color: "text.primary",
+            flex: 1,
           }}
         >
           {titleText}
         </Typography>
+        <IconButton size="small" onClick={onClose} aria-label="Close" sx={{ color: "text.secondary" }}>
+          <CloseRoundedIcon fontSize="small" />
+        </IconButton>
+      </Stack>
+
+      {isGroupMode ? <GroupPreviewBar {...props} /> : null}
+
+      <SearchBar {...props} />
+
+      <ExerciseList {...props} />
+
+      {/* Tiny utility bar — refresh as an icon only, no big buttons */}
+      <Stack
+        direction="row"
+        alignItems="center"
+        sx={{ px: 2.5, pb: 1.5, pt: 0.5 }}
+        spacing={0.5}
+      >
+        <Tooltip title={t("workouts.exerciseBankRefresh")}>
+          <span>
+            <IconButton
+              size="small"
+              onClick={props.onRefresh}
+              disabled={props.loading}
+              sx={{ color: "text.secondary" }}
+              aria-label={t("workouts.exerciseBankRefresh")}
+            >
+              <RefreshRoundedIcon fontSize="small" />
+            </IconButton>
+          </span>
+        </Tooltip>
+      </Stack>
+    </Dialog>
+  );
+}
+
+/** Preview strip: shows selected exercises as removable chips + block-type + Create. */
+function GroupPreviewBar({
+  groupSelected,
+  onToggleGroupSelected,
+  groupBlockType,
+  setGroupBlockType,
+  onCommitGroupSelection,
+  onClose,
+  t,
+}: ExercisePickerModalProps) {
+  const count = groupSelected.length;
+  const canCreate = count >= 2;
+
+  return (
+    <Box
+      sx={{
+        mx: 2.5,
+        mb: 1.5,
+        p: 1.25,
+        borderRadius: 2,
+        border: 1,
+        borderColor: canCreate ? "primary.main" : "divider",
+        bgcolor: canCreate ? "action.selected" : "action.hover",
+      }}
+    >
+      {count === 0 ? (
         <Typography
           variant="body2"
           color="text.secondary"
-          sx={{ display: "block", mt: 0.5, fontSize: 13, lineHeight: 1.5 }}
+          sx={{ fontSize: 13, lineHeight: 1.5 }}
         >
-          {subtitleText}
+          {translate(
+            t,
+            "workouts.pickerGroupEmpty",
+            "Pick at least two exercises below to build a block.",
+          )}
         </Typography>
-      </DialogTitle>
-
-      {/* Sticky group-mode toolbar: count + block-type select + Create */}
-      {isGroupMode ? (
-        <Box
-          sx={{
-            mx: 3,
-            mb: 1.5,
-            p: 1.25,
-            borderRadius: 2,
-            border: 1,
-            borderColor: "primary.main",
-            bgcolor: "action.selected",
-            display: "flex",
-            alignItems: "center",
-            gap: 1.25,
-            flexWrap: "wrap",
-          }}
+      ) : (
+        <Stack direction="row" useFlexGap flexWrap="wrap" gap={0.75} sx={{ mb: 1 }}>
+          {groupSelected.map((ex, idx) => (
+            <Chip
+              key={`${ex.source}-${ex.id}`}
+              label={`${idx + 1}. ${ex.name}`}
+              onDelete={() => onToggleGroupSelected(ex)}
+              size="small"
+              sx={{
+                fontWeight: 500,
+                bgcolor: "background.paper",
+                borderColor: "primary.main",
+                border: 1,
+                borderRadius: 1.5,
+                "& .MuiChip-deleteIcon": { color: "text.secondary" },
+              }}
+              variant="outlined"
+            />
+          ))}
+        </Stack>
+      )}
+      <Stack direction="row" alignItems="center" gap={1}>
+        <Select
+          size="small"
+          value={groupBlockType}
+          onChange={(e) => setGroupBlockType(e.target.value as WorkoutBlockType)}
+          sx={{ minWidth: 140, bgcolor: "background.paper", borderRadius: 1.5 }}
         >
-          <Typography sx={{ fontSize: 13, fontWeight: 600, color: "text.primary" }}>
-            {t("workouts.pickerGroupSelectedCount", { count: groupCount }) !==
-            "workouts.pickerGroupSelectedCount"
-              ? t("workouts.pickerGroupSelectedCount", { count: groupCount })
-              : `${groupCount} selected`}
-          </Typography>
-          <Select
-            size="small"
-            value={groupBlockType}
-            onChange={(e) => setGroupBlockType(e.target.value as WorkoutBlockType)}
-            sx={{ minWidth: 150, bgcolor: "background.paper", borderRadius: "10px" }}
-          >
-            {BLOCK_OPTIONS.map((o) => (
-              <MenuItem key={o.value} value={o.value}>
-                {t(o.labelKey)}
-              </MenuItem>
-            ))}
-          </Select>
-          <Box sx={{ flex: 1 }} />
-          <Button
-            size="small"
-            variant="text"
-            color="inherit"
-            onClick={onResetMode}
-            sx={{ color: "text.secondary" }}
-          >
-            {t("workouts.pickerClearMode")}
-          </Button>
-          <Button
-            size="small"
-            variant="contained"
-            color="primary"
-            startIcon={<LinkIcon fontSize="small" />}
-            onClick={onCommitGroupSelection}
-            disabled={groupCount < 2}
-          >
-            {t("workouts.pickerGroupCreate") !== "workouts.pickerGroupCreate"
-              ? t("workouts.pickerGroupCreate")
-              : "Create block"}
-          </Button>
-        </Box>
-      ) : null}
+          {BLOCK_OPTIONS.map((o) => (
+            <MenuItem key={o.value} value={o.value}>
+              {t(o.labelKey)}
+            </MenuItem>
+          ))}
+        </Select>
+        <Box sx={{ flex: 1 }} />
+        <Button
+          size="small"
+          variant="text"
+          color="inherit"
+          onClick={onClose}
+          sx={{ color: "text.secondary" }}
+        >
+          {translate(t, "common.cancel", "Cancel")}
+        </Button>
+        <Button
+          size="small"
+          variant="contained"
+          color="primary"
+          startIcon={<LinkIcon fontSize="small" />}
+          onClick={onCommitGroupSelection}
+          disabled={!canCreate}
+        >
+          {translate(t, "workouts.pickerGroupCreate", "Create block")}
+        </Button>
+      </Stack>
+    </Box>
+  );
+}
 
-      <DialogContent
+function SearchBar({ scope, setScope, query, setQuery, banner, onResetMode, t }: ExercisePickerModalProps) {
+  return (
+    <Box sx={{ px: 2.5, mb: 1.25 }}>
+      {banner.mode === "extendBlock" ? (
+        <Alert
+          severity="info"
+          sx={{ mb: 1.25, py: 0.5, fontSize: 13 }}
+          action={
+            <Button size="small" onClick={onResetMode}>
+              {t("workouts.pickerClearMode")}
+            </Button>
+          }
+        >
+          {t("workouts.pickerActiveExtendBlock")}
+        </Alert>
+      ) : null}
+      <TextField
+        size="small"
+        fullWidth
+        placeholder={t("workouts.pickerFilterPh")}
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        sx={{ "& .MuiOutlinedInput-root": { borderRadius: 2 }, mb: 1 }}
+        InputProps={{
+          startAdornment: (
+            <InputAdornment position="start">
+              <SearchIcon fontSize="small" color="action" />
+            </InputAdornment>
+          ),
+        }}
+      />
+      <Tabs
+        value={scope}
+        onChange={(_, v) => setScope(v as PickerScope)}
         sx={{
-          pt: 1,
-          display: "flex",
-          flexDirection: "column",
-          overflow: "hidden",
-          minHeight: 0,
+          minHeight: 32,
+          "& .MuiTab-root": {
+            minHeight: 32,
+            textTransform: "none",
+            fontWeight: 500,
+            fontSize: 13,
+            px: 1,
+            py: 0.5,
+          },
         }}
       >
-        <div
-          id="workout-exercise-bank"
-          style={{ display: "flex", flexDirection: "column", minHeight: 0, flex: 1 }}
-        >
-          {banner.mode === "extendBlock" ? (
-            <Alert
-              severity="info"
-              className="workout-items-editor__banner"
-              sx={{ mb: 1.5 }}
-              action={
-                <Button size="small" onClick={onResetMode}>
-                  {t("workouts.pickerClearMode")}
-                </Button>
-              }
-            >
-              {t("workouts.pickerActiveExtendBlock")}
-            </Alert>
-          ) : null}
+        <Tab value="all" label={t("workouts.pickerScopeAll")} />
+        <Tab value="mine" label={t("workouts.pickerScopeMine")} />
+        <Tab value="catalog" label={t("workouts.pickerScopeCatalog")} />
+      </Tabs>
+    </Box>
+  );
+}
 
-          {loading && !catalogOptsLoaded ? (
-            <Flex align="center" justify="center" style={{ minHeight: 160 }}>
-              <CircularProgress />
-            </Flex>
-          ) : (
-            <Stack spacing={2} sx={{ width: "100%", flex: 1, minHeight: 0 }}>
-              <Flex wrap="wrap" gap={8} align="center" justify="space-between">
-                <ToggleButtonGroup
-                  exclusive
-                  size="small"
-                  value={scope}
-                  onChange={(_, v) => v != null && setScope(v as PickerScope)}
-                >
-                  <ToggleButton value="all">{t("workouts.pickerScopeAll")}</ToggleButton>
-                  <ToggleButton value="mine">{t("workouts.pickerScopeMine")}</ToggleButton>
-                  <ToggleButton value="catalog">{t("workouts.pickerScopeCatalog")}</ToggleButton>
-                </ToggleButtonGroup>
-              </Flex>
-              <TextField
-                size="small"
-                fullWidth
-                placeholder={t("workouts.pickerFilterPh")}
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                sx={{ "& .MuiOutlinedInput-root": { borderRadius: "12px" } }}
-                InputProps={{
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <SearchIcon fontSize="small" color="action" />
-                    </InputAdornment>
-                  ),
-                }}
-              />
-              {total > 0 ? (
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  component="span"
-                  style={{ fontSize: 12 }}
-                >
-                  {t("workouts.pickerShowingCount", { count: total })}
-                </Typography>
-              ) : null}
-              <div
-                style={{
-                  flex: 1,
-                  minHeight: 0,
-                  maxHeight: 380,
-                  overflowY: "auto",
-                  overscrollBehavior: "contain",
-                  WebkitOverflowScrolling: "touch",
-                  paddingInlineEnd: 4,
-                }}
-                onWheel={(e) => e.stopPropagation()}
-              >
-                {total === 0 && !loading ? (
-                  <Box sx={{ textAlign: "center", py: 3, opacity: 0.85 }}>
-                    <Typography color="text.secondary">{t("workouts.pickerNoMatches")}</Typography>
-                  </Box>
-                ) : total === 0 && loading ? (
-                  <Flex justify="center" style={{ padding: 24 }}>
-                    <CircularProgress />
-                  </Flex>
-                ) : (
-                  <Stack spacing={1.25} sx={{ width: "100%" }}>
-                    {lists.mine.length > 0 ? (
-                      <>
-                        <Typography fontWeight={600} sx={{ display: "block", fontSize: 13 }}>
-                          {t("workouts.pickerGroupMine")}
-                        </Typography>
-                        {lists.mine.map((ex) => (
-                          <PickerRow
-                            key={`mine-${ex.id}`}
-                            exercise={ex}
-                            badgeColor="success"
-                            badgeLabel={t("workouts.pickerTagMine")}
-                            actionLabel={t("workouts.pickerAddExercise")}
-                            isGroupMode={isGroupMode}
-                            selected={isSelected(ex)}
-                            onToggleSelect={() => onToggleGroupSelected(ex)}
-                            onAdd={() => onAddExercise(ex)}
-                          />
-                        ))}
-                      </>
-                    ) : null}
-                    {lists.mine.length > 0 && lists.catalog.length > 0 ? (
-                      <Divider style={{ margin: "4px 0" }} />
-                    ) : null}
-                    {lists.catalog.length > 0 ? (
-                      <>
-                        <Typography fontWeight={600} sx={{ display: "block", fontSize: 13 }}>
-                          {t("workouts.pickerGroupCatalog")}
-                        </Typography>
-                        {lists.catalog.map((ex) => (
-                          <PickerRow
-                            key={`cat-${ex.id}`}
-                            exercise={ex}
-                            badgeColor="info"
-                            badgeLabel={t("workouts.pickerBadgeCatalog")}
-                            actionLabel={t("workouts.pickerAddExercise")}
-                            isGroupMode={isGroupMode}
-                            selected={isSelected(ex)}
-                            onToggleSelect={() => onToggleGroupSelected(ex)}
-                            onAdd={() => onAddExercise(ex)}
-                          />
-                        ))}
-                      </>
-                    ) : null}
-                  </Stack>
-                )}
-              </div>
-            </Stack>
-          )}
-        </div>
-      </DialogContent>
-      <DialogActions
-        sx={{ justifyContent: "space-between", flexWrap: "wrap", gap: 1, px: 3, pb: 2 }}
+function ExerciseList({
+  lists,
+  total,
+  loading,
+  catalogOptsLoaded,
+  onAddExercise,
+  groupSelected,
+  onToggleGroupSelected,
+  banner,
+  t,
+}: ExercisePickerModalProps) {
+  const isGroupMode = banner.mode === "groupSelect";
+  const isSelected = (ex: ExerciseOpt) =>
+    groupSelected.some((p) => p.id === ex.id && p.source === ex.source);
+
+  if (loading && !catalogOptsLoaded) {
+    return (
+      <Stack
+        alignItems="center"
+        justifyContent="center"
+        sx={{ minHeight: 160, px: 2.5 }}
       >
-        <Stack direction="row" flexWrap="wrap" spacing={1} useFlexGap>
-          <Button disabled={loading} onClick={onRefresh} sx={{ borderRadius: "10px" }}>
-            {t("workouts.exerciseBankRefresh")}
-          </Button>
-          <Button component={Link} to="/exercises/create" variant="text" sx={{ px: 0.5 }}>
-            {t("workouts.quickCreateExercise")}
-          </Button>
-        </Stack>
-        <Button
-          variant={isGroupMode ? "outlined" : "contained"}
-          color={isGroupMode ? "inherit" : "primary"}
-          onClick={onClose}
-          sx={{ borderRadius: "10px" }}
-        >
-          {isGroupMode
-            ? t("common.cancel") !== "common.cancel"
-              ? t("common.cancel")
-              : "Cancel"
-            : t("workouts.pickerDone")}
-        </Button>
-      </DialogActions>
-    </Dialog>
+        <CircularProgress size={24} />
+      </Stack>
+    );
+  }
+
+  if (total === 0) {
+    return (
+      <Box sx={{ px: 2.5, py: 4, textAlign: "center" }}>
+        <Typography color="text.secondary" sx={{ fontSize: 14 }}>
+          {t("workouts.pickerNoMatches")}
+        </Typography>
+      </Box>
+    );
+  }
+
+  return (
+    <Box
+      sx={{
+        flex: 1,
+        minHeight: 0,
+        maxHeight: 360,
+        overflowY: "auto",
+        overscrollBehavior: "contain",
+        WebkitOverflowScrolling: "touch",
+        px: 2.5,
+        pb: 1,
+      }}
+      onWheel={(e) => e.stopPropagation()}
+    >
+      {lists.mine.length > 0 ? (
+        <SectionHeader>{t("workouts.pickerGroupMine")}</SectionHeader>
+      ) : null}
+      <Stack spacing={0.25}>
+        {lists.mine.map((ex) => (
+          <PickerRow
+            key={`mine-${ex.id}`}
+            exercise={ex}
+            isGroupMode={isGroupMode}
+            selected={isSelected(ex)}
+            onToggleSelect={() => onToggleGroupSelected(ex)}
+            onAdd={() => onAddExercise(ex)}
+            actionLabel={t("workouts.pickerAddExercise")}
+          />
+        ))}
+      </Stack>
+      {lists.mine.length > 0 && lists.catalog.length > 0 ? (
+        <Box sx={{ height: 12 }} />
+      ) : null}
+      {lists.catalog.length > 0 ? (
+        <SectionHeader>{t("workouts.pickerGroupCatalog")}</SectionHeader>
+      ) : null}
+      <Stack spacing={0.25}>
+        {lists.catalog.map((ex) => (
+          <PickerRow
+            key={`cat-${ex.id}`}
+            exercise={ex}
+            isGroupMode={isGroupMode}
+            selected={isSelected(ex)}
+            onToggleSelect={() => onToggleGroupSelected(ex)}
+            onAdd={() => onAddExercise(ex)}
+            actionLabel={t("workouts.pickerAddExercise")}
+          />
+        ))}
+      </Stack>
+    </Box>
+  );
+}
+
+function SectionHeader({ children }: { children: React.ReactNode }) {
+  return (
+    <Typography
+      sx={{
+        fontSize: 11,
+        fontWeight: 600,
+        letterSpacing: "0.06em",
+        textTransform: "uppercase",
+        color: "text.disabled",
+        px: 1,
+        pt: 1.25,
+        pb: 0.5,
+      }}
+    >
+      {children}
+    </Typography>
   );
 }
 
 function PickerRow({
   exercise,
-  badgeColor,
-  badgeLabel,
-  actionLabel,
   isGroupMode,
   selected,
   onToggleSelect,
   onAdd,
+  actionLabel,
 }: {
   exercise: ExerciseOpt;
-  badgeColor: "success" | "info";
-  badgeLabel: string;
-  actionLabel: string;
   isGroupMode: boolean;
   selected: boolean;
   onToggleSelect: () => void;
   onAdd: () => void;
+  actionLabel: string;
 }) {
   const handleRowClick = () => {
     if (isGroupMode) onToggleSelect();
@@ -393,18 +418,16 @@ function PickerRow({
       sx={{
         display: "flex",
         alignItems: "center",
-        gap: 1.25,
-        px: 1.25,
-        py: 0.75,
+        gap: 1,
+        px: 1,
+        py: 0.5,
         borderRadius: 1.5,
         cursor: isGroupMode ? "pointer" : "default",
         bgcolor: selected ? "action.selected" : "transparent",
-        border: 1,
-        borderColor: selected ? "primary.main" : "transparent",
-        transition: "background-color 120ms, border-color 120ms",
-        "&:hover": isGroupMode ? { bgcolor: "action.hover" } : undefined,
+        "&:hover": isGroupMode
+          ? { bgcolor: selected ? "action.selected" : "action.hover" }
+          : undefined,
       }}
-      className="workout-items-editor__picker-row"
     >
       {isGroupMode ? (
         <Checkbox
@@ -415,29 +438,44 @@ function PickerRow({
           sx={{ p: 0.5 }}
         />
       ) : null}
-      <Flex align="center" gap={10} style={{ minWidth: 0, flex: "1 1 200px" }}>
-        <Typography noWrap title={exercise.name} sx={{ m: 0 }}>
-          {exercise.name}
-        </Typography>
-        <Chip
-          size="small"
-          color={badgeColor}
-          label={badgeLabel}
-          sx={{ m: 0, fontSize: 11, height: 22, flexShrink: 0 }}
-        />
-      </Flex>
-      {isGroupMode ? null : (
+      <Typography
+        sx={{
+          flex: 1,
+          minWidth: 0,
+          fontSize: 14,
+          fontWeight: 500,
+          color: "text.primary",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+        }}
+        title={exercise.name}
+      >
+        {exercise.name}
+      </Typography>
+      {!isGroupMode ? (
         <Button
-          variant="contained"
-          color="primary"
+          variant="text"
           size="small"
-          startIcon={<AddIcon />}
+          startIcon={<AddIcon fontSize="small" />}
           onClick={onAdd}
-          sx={{ borderRadius: 2, flexShrink: 0 }}
+          sx={{
+            color: "primary.main",
+            fontWeight: 600,
+            textTransform: "none",
+            minWidth: 0,
+            px: 1.25,
+            "&:hover": { bgcolor: "action.hover" },
+          }}
         >
           {actionLabel}
         </Button>
-      )}
+      ) : null}
     </Box>
   );
+}
+
+function translate(t: TFunction<"translation">, key: string, fallback: string): string {
+  const v = t(key);
+  return v === key ? fallback : v;
 }
