@@ -2,25 +2,24 @@ import type { CSSProperties } from "react";
 
 import { WORKOUT_ROW_RAIL_WIDTH } from "./constants";
 
-/** Standalone exercise — flat bordered row, no paper chrome.
- *  The wrapping page-level Card already provides paper. */
+/** Standalone exercise — flat list section, no enclosing box.
+ *  Sets within still render their own row borders.
+ *  The wrapping page-level Card provides the paper. */
 export const exerciseGroupShellStyle: CSSProperties = {
-  marginBottom: 8,
+  marginBottom: 12,
   padding: 0,
-  borderRadius: 8,
-  border: "1px solid var(--app-border)",
+  border: "none",
   background: "transparent",
   boxShadow: "none",
 };
 
-/** Exercise inside a block — even quieter, hairline only. */
+/** Exercise inside a block — same flat treatment, with a top divider for separation. */
 // blockAccent is no longer used; kept as a parameter for call-site stability.
 export function exerciseCardShellInBlock(_blockAccent: string): CSSProperties {
   return {
-    marginBottom: 6,
+    marginBottom: 8,
     padding: 0,
-    borderRadius: 6,
-    border: "1px solid var(--app-border)",
+    border: "none",
     background: "transparent",
     boxShadow: "none",
   };

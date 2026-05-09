@@ -45,7 +45,9 @@ export function SortableExerciseGroup({
       ? "0 0 0 2px var(--app-accent), 0 8px 24px rgba(0,0,0,0.1)"
       : mergeDropEnabled
         ? "0 0 0 1px dashed color-mix(in srgb, var(--app-accent) 45%, var(--app-border))"
-        : "0 0 0 1px var(--app-border), 0 2px 8px rgba(0,0,0,0.04)";
+        // Default state: no enclosing ring/shadow — exercises render as flat
+        // list items. The wrapping page Card and per-row borders are enough.
+        : "none";
 
   return (
     <div
