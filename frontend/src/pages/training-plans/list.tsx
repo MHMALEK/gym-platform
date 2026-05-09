@@ -87,7 +87,7 @@ export function TrainingPlanList() {
             size="small"
             sx={{ textTransform: "none" }}
           >
-            Preview
+            {t("trainingPlans.shared.preview")}
           </Button>
           <Button
             variant="text"

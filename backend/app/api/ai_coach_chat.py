@@ -11,8 +11,9 @@ router = APIRouter(prefix="/ai", tags=["ai"])
 async def post_coach_chat(body: CoachChatRequest, coach: CurrentCoach, db: DbSession):
     msgs = [{"role": m.role, "content": m.content.strip()} for m in body.messages]
     ctx = body.context.strip() if body.context else None
+    loc = (body.locale or "").strip() or None
     try:
-        text = await run_coach_chat(db, coach, msgs, optional_context=ctx)
+        text = await run_coach_chat(db, coach, msgs, optional_context=ctx, locale=loc)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
     except RuntimeError as e:

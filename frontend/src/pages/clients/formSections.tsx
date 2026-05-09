@@ -74,6 +74,26 @@ export function ClientFormSections({
     [t],
   );
 
+  const billingPreferenceSelectOptions = useMemo(
+    () =>
+      (
+        [
+          "",
+          "membership_subscription",
+          "app_invoices",
+          "cash_in_person",
+          "bank_transfer",
+          "digital_wallet",
+          "card_outside_app",
+          "other",
+        ] as const
+      ).map((code) => ({
+        value: code,
+        label: t(`clients.form.billingPreferences.${code === "" ? "unspecified" : code}`),
+      })),
+    [t],
+  );
+
   const sectionCardClass = "client-section-card client-section-card--editable";
 
   const contactBlock = (
@@ -263,6 +283,37 @@ export function ClientFormSections({
     </>
   );
 
+  const billingBlock = (
+    <>
+      <SectionHead title={t("clients.form.billingTitle")} hint={t("clients.form.billingHint")} />
+      <Controller
+        name="billing_preference"
+        control={control}
+        render={({ field, fieldState }) => (
+          <FormControl fullWidth margin="normal" error={!!fieldState.error}>
+            <InputLabel id="client-billing-pref-label">{t("clients.form.billingPreference")}</InputLabel>
+            <Select
+              labelId="client-billing-pref-label"
+              label={t("clients.form.billingPreference")}
+              value={field.value == null || field.value === "" ? "" : String(field.value)}
+              onChange={(e) => {
+                const v = e.target.value as string;
+                field.onChange(v === "" ? null : v);
+              }}
+            >
+              {billingPreferenceSelectOptions.map((o) => (
+                <MenuItem key={o.value || "unset"} value={o.value}>
+                  {o.label}
+                </MenuItem>
+              ))}
+            </Select>
+            {fieldState.error ? <FormHelperText>{fieldState.error.message}</FormHelperText> : null}
+          </FormControl>
+        )}
+      />
+    </>
+  );
+
   const accountBlock = (
     <>
       <SectionHead title={t("clients.form.accountTitle")} hint={t("clients.form.accountHint")} />
@@ -358,6 +409,8 @@ export function ClientFormSections({
               <section className="client-form-section">{goalsBlock}</section>
               <Divider className="client-form-section-divider" sx={{ my: 2 }} />
               <section className="client-form-section">{membershipBlock}</section>
+              <Divider className="client-form-section-divider" sx={{ my: 2 }} />
+              <section className="client-form-section">{billingBlock}</section>
               <Divider className="client-form-section-divider" sx={{ my: 2 }} />
               <section className="client-form-section">{accountBlock}</section>
               <Divider className="client-form-section-divider" sx={{ my: 2 }} />
@@ -573,6 +626,37 @@ export function ClientFormSections({
                     error={!!fieldState.error}
                     helperText={fieldState.error?.message}
                   />
+                )}
+              />
+              <Typography variant="subtitle2" sx={{ mt: 2, mb: 0.5 }}>
+                {t("clients.form.billingTitle")}
+              </Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1 }}>
+                {t("clients.form.billingHint")}
+              </Typography>
+              <Controller
+                name="billing_preference"
+                control={control}
+                render={({ field, fieldState }) => (
+                  <FormControl fullWidth margin="dense" error={!!fieldState.error}>
+                    <InputLabel id="wiz-client-billing-pref-label">{t("clients.form.billingPreference")}</InputLabel>
+                    <Select
+                      labelId="wiz-client-billing-pref-label"
+                      label={t("clients.form.billingPreference")}
+                      value={field.value == null || field.value === "" ? "" : String(field.value)}
+                      onChange={(e) => {
+                        const v = e.target.value as string;
+                        field.onChange(v === "" ? null : v);
+                      }}
+                    >
+                      {billingPreferenceSelectOptions.map((o) => (
+                        <MenuItem key={o.value || "unset"} value={o.value}>
+                          {o.label}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                    {fieldState.error ? <FormHelperText>{fieldState.error.message}</FormHelperText> : null}
+                  </FormControl>
                 )}
               />
             </CardContent>

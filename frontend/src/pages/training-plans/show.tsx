@@ -2,10 +2,11 @@ import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
 import { useShow } from "@refinedev/core";
 import { Show } from "@refinedev/mui";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
+import { AssignPlanToClientsDialog } from "../../components/AssignPlanToClientsDialog";
 import { WorkoutItemsEditor, workoutLinesFromApiItems } from "../../components/WorkoutItemsEditor";
 import { trainingPlanPreviewPath } from "./preview";
 
@@ -38,6 +39,7 @@ type PlanRecord = {
 
 export function TrainingPlanShow() {
   const { t } = useTranslation();
+  const [assignOpen, setAssignOpen] = useState(false);
   const { query } = useShow({ resource: "training-plans" });
   const record = query?.data?.data as PlanRecord | undefined;
 
@@ -47,19 +49,25 @@ export function TrainingPlanShow() {
   );
 
   return (
-    <Show
-      isLoading={query?.isLoading}
-      headerButtons={({ defaultButtons }) => (
-        <>
-          {defaultButtons}
-          {record?.id ? (
-            <Button component={Link} to={trainingPlanPreviewPath(record.id)} variant="contained" size="small">
-              Preview workout
-            </Button>
-          ) : null}
-        </>
-      )}
-    >
+    <>
+      <Show
+        isLoading={query?.isLoading}
+        headerButtons={({ defaultButtons }) => (
+          <>
+            {defaultButtons}
+            {record?.id ? (
+              <>
+                <Button component={Link} to={trainingPlanPreviewPath(record.id)} variant="contained" size="small" sx={{ textTransform: "none" }}>
+                  {t("trainingPlans.shared.openPreviewPage")}
+                </Button>
+                <Button variant="outlined" size="small" sx={{ textTransform: "none" }} onClick={() => setAssignOpen(true)}>
+                  {t("assignPlanToClients.assignToClientsButton")}
+                </Button>
+              </>
+            ) : null}
+          </>
+        )}
+      >
       <Typography variant="h6">{record?.name}</Typography>
       <Typography variant="body1" sx={{ mt: 1 }}>
         {record?.description}
@@ -86,6 +94,16 @@ export function TrainingPlanShow() {
           showSaveButton
         />
       ) : null}
-    </Show>
+      </Show>
+      {record?.id ? (
+        <AssignPlanToClientsDialog
+          open={assignOpen}
+          onClose={() => setAssignOpen(false)}
+          mode="training"
+          resourceId={record.id}
+          resourceName={record.name}
+        />
+      ) : null}
+    </>
   );
 }

@@ -10,11 +10,12 @@ import DialogTitle from "@mui/material/DialogTitle";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { useForm } from "@refinedev/react-hook-form";
-import { Check, Eye, Layers, Loader2, Plus } from "lucide-react";
+import { Check, Eye, Layers, Loader2, Plus, UserPlus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
+import { AssignPlanToClientsDialog } from "../../components/AssignPlanToClientsDialog";
 import { CoachingPlanPreview } from "../../components/CoachingPlanPreview";
 import { PageHeader } from "../../components/layout/PageHeader";
 import { StickyActionBar } from "../../components/layout/StickyActionBar";
@@ -89,6 +90,7 @@ export function TrainingPlanEdit() {
   const [formSaveStatus, setFormSaveStatus] = useState<SaveStatus>("idle");
   const [currentLines, setCurrentLines] = useState<WorkoutLine[]>([]);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [assignClientsOpen, setAssignClientsOpen] = useState(false);
   const formSavedFlashRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onItemsSaveStatusChange = useCallback((s: SaveStatus) => {
     setItemsSaveStatus(s);
@@ -150,12 +152,8 @@ export function TrainingPlanEdit() {
   return (
     <Box sx={{ maxWidth: PAGE_MAX_WIDTH, mx: "auto", width: "100%" }}>
       <PageHeader
-        title={record?.name || t("trainingPlans.edit.pageTitle") || "Training plan"}
-        subtitle={
-          t("trainingPlans.edit.pageSubtitle") !== "trainingPlans.edit.pageSubtitle"
-            ? t("trainingPlans.edit.pageSubtitle")
-            : undefined
-        }
+        title={record?.name || t("trainingPlans.edit.pageTitle")}
+        subtitle={t("trainingPlans.edit.pageSubtitle")}
       />
 
       {/* Single scrolling page — Details + Program live together. Three
@@ -252,7 +250,7 @@ export function TrainingPlanEdit() {
             },
           }}
         >
-          Preview
+          {t("trainingPlans.shared.preview")}
         </Button>
         {record?.id ? (
           <Button
@@ -274,7 +272,29 @@ export function TrainingPlanEdit() {
               },
             }}
           >
-            Open preview page
+            {t("trainingPlans.shared.openPreviewPage")}
+          </Button>
+        ) : null}
+        {record?.id ? (
+          <Button
+            variant="outlined"
+            size="medium"
+            startIcon={<UserPlus size={16} strokeWidth={2.25} />}
+            onClick={() => setAssignClientsOpen(true)}
+            sx={{
+              borderRadius: 1.5,
+              fontWeight: 500,
+              textTransform: "none",
+              color: "primary.main",
+              borderColor: "primary.light",
+              px: 1.75,
+              "&:hover": {
+                borderColor: "primary.main",
+                bgcolor: "action.hover",
+              },
+            }}
+          >
+            {t("assignPlanToClients.assignToClientsButton")}
           </Button>
         ) : null}
         <Button
@@ -318,11 +338,11 @@ export function TrainingPlanEdit() {
       </StickyActionBar>
 
       <Dialog open={previewOpen} onClose={() => setPreviewOpen(false)} maxWidth="lg" fullWidth>
-        <DialogTitle>Workout preview</DialogTitle>
+        <DialogTitle>{t("trainingPlans.shared.workoutPreviewModalTitle")}</DialogTitle>
         <DialogContent dividers>
           <CoachingPlanPreview
-            title={watchedValues.name || record?.name || "Workout plan"}
-            eyebrow="Workout preview"
+            title={watchedValues.name || record?.name || t("trainingPlans.edit.pageTitle")}
+            eyebrow={t("trainingPlans.shared.planPreviewEyebrow")}
             programVenue={venueLive}
             workoutRichHtml={watchedValues.workout_rich_html}
             workoutNotes={watchedValues.description}
@@ -333,13 +353,35 @@ export function TrainingPlanEdit() {
         </DialogContent>
         <DialogActions>
           {record?.id ? (
-            <Button component={Link} to={trainingPlanPreviewPath(record.id)} variant="contained">
-              Open preview page
-            </Button>
+            <>
+              <Button component={Link} to={trainingPlanPreviewPath(record.id)} variant="contained">
+                {t("trainingPlans.shared.openPreviewPage")}
+              </Button>
+              <Button
+                variant="outlined"
+                startIcon={<UserPlus size={16} strokeWidth={2.25} />}
+                onClick={() => {
+                  setPreviewOpen(false);
+                  setAssignClientsOpen(true);
+                }}
+              >
+                {t("assignPlanToClients.assignToClientsButton")}
+              </Button>
+            </>
           ) : null}
-          <Button onClick={() => setPreviewOpen(false)}>Close</Button>
+          <Button onClick={() => setPreviewOpen(false)}>{t("trainingPlans.shared.closePreview")}</Button>
         </DialogActions>
       </Dialog>
+
+      {record?.id ? (
+        <AssignPlanToClientsDialog
+          open={assignClientsOpen}
+          onClose={() => setAssignClientsOpen(false)}
+          mode="training"
+          resourceId={record.id}
+          resourceName={watchedValues.name || record.name}
+        />
+      ) : null}
     </Box>
   );
 }

@@ -59,7 +59,7 @@ export function TrainingPlanAiAssistant({
   onApplyWorkoutLines,
   onApplyPlanMeta,
 }: TrainingPlanAiAssistantProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -79,6 +79,7 @@ export function TrainingPlanAiAssistant({
         body: JSON.stringify({
           messages: [{ role: "user", content: text }],
           venue_type: venueType,
+          locale: i18n.language,
         }),
       });
       const raw = await res.text();
@@ -101,7 +102,7 @@ export function TrainingPlanAiAssistant({
     } finally {
       setLoading(false);
     }
-  }, [input, t, venueType]);
+  }, [input, t, venueType, i18n.language]);
 
   const applyDraft = useCallback(() => {
     if (!draft?.lines?.length) return;

@@ -29,6 +29,8 @@ class Client(Base, TimestampMixin):
     account_status: Mapped[str] = mapped_column(
         String(32), default="good_standing", nullable=False
     )  # good_standing, payment_issue, onboarding, churned
+    # Coach-only label: how they intend to collect (no payment rails).
+    billing_preference: Mapped[str | None] = mapped_column(String(32), nullable=True)
 
     coach = relationship("Coach", back_populates="clients")
     goal_type_catalog = relationship("GoalType", back_populates="clients", foreign_keys=[goal_type_id])

@@ -209,7 +209,7 @@ export function TrainingPlanCreate() {
               onClick={() => setPreviewOpen(true)}
               sx={{ borderRadius: 1.5, fontWeight: 500, textTransform: "none", px: 2 }}
             >
-              Preview
+              {t("trainingPlans.shared.preview")}
             </Button>
             <Button
               variant="contained"
@@ -223,11 +223,11 @@ export function TrainingPlanCreate() {
       </StickyActionBar>
 
       <Dialog open={previewOpen} onClose={() => setPreviewOpen(false)} maxWidth="lg" fullWidth>
-        <DialogTitle>Workout preview</DialogTitle>
+        <DialogTitle>{t("trainingPlans.shared.workoutPreviewModalTitle")}</DialogTitle>
         <DialogContent dividers>
           <CoachingPlanPreview
-            title={watchedValues.name || "New workout plan"}
-            eyebrow="Workout preview"
+            title={watchedValues.name || t("trainingPlans.create.pageTitle")}
+            eyebrow={t("trainingPlans.shared.planPreviewEyebrow")}
             programVenue={venueType}
             workoutRichHtml={watchedValues.workout_rich_html}
             workoutNotes={watchedValues.description}
@@ -237,7 +237,7 @@ export function TrainingPlanCreate() {
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setPreviewOpen(false)}>Close</Button>
+          <Button onClick={() => setPreviewOpen(false)}>{t("trainingPlans.shared.closePreview")}</Button>
         </DialogActions>
       </Dialog>
     </Box>

@@ -13,6 +13,8 @@ export type ClientRow = {
   goal?: string | null;
   goal_type_id?: number | null;
   subscription_plan_template_id?: number | null;
+  /** Coach-only label; how they collect fees (no in-app payments). */
+  billing_preference?: string | null;
 };
 
 export type ClientDetailResponse = {
@@ -40,6 +42,7 @@ export type ClientCreateBody = {
   goal_type_id?: number | null;
   goal?: string | null;
   subscription_plan_template_id?: number | null;
+  billing_preference?: string | null;
   status?: string;
   account_status?: string;
 };

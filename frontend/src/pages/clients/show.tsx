@@ -22,7 +22,7 @@ import Typography from "@mui/material/Typography";
 import { useShow } from "@refinedev/core";
 import { Show } from "@refinedev/mui";
 import dayjs from "dayjs";
-import { type ReactNode, useCallback, useEffect, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 
@@ -176,6 +176,14 @@ export function ClientShow() {
       ? t(`clients.accountStatus.${ac}` as never)
       : ac ?? t("common.dash");
 
+  const billingPreferenceLabel = useMemo(() => {
+    const p = record?.billing_preference as string | null | undefined;
+    if (!p) return t("clients.form.billingPreferences.unspecified");
+    const key = `clients.form.billingPreferences.${p}`;
+    const translated = t(key as never);
+    return translated === key ? p : translated;
+  }, [record?.billing_preference, t]);
+
   const readonlyCard = "client-section-card client-section-card--readonly";
 
   const profileTab = (
@@ -217,6 +225,7 @@ export function ClientShow() {
             <ProfileField label={t("clients.show.subscriptionEffective")}>
               {record?.subscription_type ?? t("common.dash")}
             </ProfileField>
+            <ProfileField label={t("clients.show.billingPreference")}>{billingPreferenceLabel}</ProfileField>
             <div style={{ gridColumn: "1 / -1" }}>
               <ProfileField label={t("clients.show.goalDescription")}>
                 {record?.goal?.trim() ? (

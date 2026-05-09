@@ -5,6 +5,11 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
+    /** Avoid stale HTML/JS when switching branches or ports during local dev. */
+    strictPort: false,
+    headers: {
+      "Cache-Control": "no-store",
+    },
     proxy: {
       "/api": {
         target: "http://127.0.0.1:8000",

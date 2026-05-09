@@ -238,6 +238,7 @@ def _client_read(c: Client, *, last_invoice: Invoice | None = None) -> ClientRea
         membership_summary=_membership_list_summary(c),
         last_invoice_summary=_last_invoice_summary(last_invoice),
         account_status=c.account_status,
+        billing_preference=c.billing_preference,
         created_at=c.created_at,
         updated_at=c.updated_at,
     )
@@ -319,6 +320,7 @@ async def create_client(body: ClientCreate, coach: CurrentCoach, db: DbSession):
         goal_type_id=body.goal_type_id,
         goal=body.goal,
         subscription_plan_template_id=body.subscription_plan_template_id,
+        billing_preference=body.billing_preference,
         status=body.status or "active",
         account_status=body.account_status or "good_standing",
     )

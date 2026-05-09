@@ -2,8 +2,9 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator, model_validator
 
+from app.constants.client_billing import CLIENT_BILLING_PREFERENCE_VALUES
 from app.schemas.common import ORMBase
 from app.schemas.exercise import ExerciseRead
 from app.schemas.goal_type import GoalTypeSummary
@@ -166,8 +167,27 @@ class ClientCreate(BaseModel):
     goal_type_id: int | None = None
     goal: str | None = Field(None, description="Optional details for the selected goal")
     subscription_plan_template_id: int | None = None
+    billing_preference: str | None = Field(
+        default=None,
+        max_length=32,
+        description="Coach-only: how they collect fees (no payment processing).",
+    )
     status: str | None = "active"
     account_status: str | None = "good_standing"
+
+    @field_validator("billing_preference", mode="before")
+    @classmethod
+    def normalize_billing_preference(cls, v: object) -> str | None:
+        if v is None:
+            return None
+        if isinstance(v, str):
+            s = v.strip()
+            if not s or s == "unspecified":
+                return None
+            if s not in CLIENT_BILLING_PREFERENCE_VALUES:
+                raise ValueError("invalid billing_preference")
+            return s
+        raise ValueError("billing_preference must be a string or null")
 
 
 class ClientUpdate(BaseModel):
@@ -180,8 +200,23 @@ class ClientUpdate(BaseModel):
     goal_type_id: int | None = None
     goal: str | None = None
     subscription_plan_template_id: int | None = None
+    billing_preference: str | None = Field(default=None, max_length=32)
     status: str | None = None
     account_status: str | None = None
+
+    @field_validator("billing_preference", mode="before")
+    @classmethod
+    def normalize_billing_preference_update(cls, v: object) -> str | None:
+        if v is None:
+            return None
+        if isinstance(v, str):
+            s = v.strip()
+            if not s or s == "unspecified":
+                return None
+            if s not in CLIENT_BILLING_PREFERENCE_VALUES:
+                raise ValueError("invalid billing_preference")
+            return s
+        raise ValueError("billing_preference must be a string or null")
 
 
 class ClientRead(ORMBase):
@@ -203,6 +238,7 @@ class ClientRead(ORMBase):
     membership_summary: MembershipListSummary | None = None
     last_invoice_summary: LastInvoiceListSummary | None = None
     account_status: str
+    billing_preference: str | None = None
     created_at: datetime
     updated_at: datetime
 

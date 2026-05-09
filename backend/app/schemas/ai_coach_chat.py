@@ -15,6 +15,11 @@ class CoachChatRequest(BaseModel):
         max_length=4000,
         description="Optional session context from the client; appended to the system prompt.",
     )
+    locale: str | None = Field(
+        None,
+        max_length=32,
+        description="Optional BCP-47 tag from the client UI (e.g. en, fa); guides reply language when user text is ambiguous.",
+    )
 
 
 class CoachChatResponse(BaseModel):

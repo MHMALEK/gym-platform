@@ -55,6 +55,20 @@ def _venue_sentence(venue_type: str) -> str:
     return "The program venue is MIXED — balance home-friendly and gym options."
 
 
+def _workout_coach_language_rules(locale: str | None) -> str:
+    loc = (locale or "").strip()
+    hint = f'App UI locale (BCP-47): "{loc}". ' if loc else ""
+    return "\n".join(
+        [
+            hint
+            + "Language: plan_name, plan_description, assistant_summary, and items[].notes must follow the coach's language.",
+            "Prefer the latest user message language when clear; if unclear, use the app UI locale (tags starting with "
+            '"fa" → Persian/Farsi; otherwise prefer English).',
+            "exercise_name should stay short and aligned with catalog naming for matching (often English spellings in the DB).",
+        ]
+    )
+
+
 def _total_message_chars(messages: list[Any]) -> int:
     return sum(len(m.content) for m in messages)
 
@@ -408,6 +422,7 @@ async def generate_training_plan_draft(
             "You are an expert strength and conditioning coach helping another coach draft a training plan inside their app.",
             "The app matches each exercise_name to the shared exercise catalog (master list) AND your personal library, using the words in the name — prefer short, standard names (Bench press, Cable row, Triceps pushdown).",
             _venue_sentence(body.venue_type),
+            _workout_coach_language_rules((body.locale or "").strip() or None),
             _JSON_INSTRUCTIONS,
         ]
     )

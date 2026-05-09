@@ -1,5 +1,6 @@
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
+import Chip from "@mui/material/Chip";
 import Divider from "@mui/material/Divider";
 import Drawer from "@mui/material/Drawer";
 import IconButton from "@mui/material/IconButton";
@@ -438,6 +439,15 @@ function Topbar({ onOpenMenu, showMenuButton }: { onOpenMenu: () => void; showMe
       >
         {title}
       </Typography>
+      {import.meta.env.DEV ? (
+        <Chip
+          label="Dev"
+          size="small"
+          color="warning"
+          variant="outlined"
+          sx={{ height: 22, fontSize: 10, fontWeight: 700, flexShrink: 0 }}
+        />
+      ) : null}
     </Box>
   );
 }

@@ -84,6 +84,8 @@ const translation = {
     assignToClientsButton: "Assign to clients",
     resourceLabel: "Plan",
     hint: "Select one or more clients. Their existing workout or diet notes are preserved; only the structured workout or template meals are updated.",
+    manageClientsHint: "Add or manage people under",
+    manageClientsLink: "Clients",
     clientsLabel: "Clients",
     clientsPlaceholder: "Search clients…",
     assign: "Assign",
@@ -256,6 +258,7 @@ const translation = {
       goalDescription: "Goal description",
       membershipPlanProfile: "Membership plan (profile)",
       subscriptionEffective: "Subscription (effective)",
+      billingPreference: "Payment / collection",
       currentMembership: "Current membership",
       latestInvoice: "Latest invoice",
       account: "Account",
@@ -294,7 +297,8 @@ const translation = {
         "Last step is optional: pick saved workouts and nutrition templates to attach now, browse your libraries, or create new items on their pages. After save you’ll land on edit.",
       hintStep0: "Name and how to reach this client.",
       hintStep1: "Optional measurements and what they want to achieve.",
-      hintStep2: "Default membership product, roster status, and internal notes.",
+      hintStep2:
+        "Default membership product, how you collect payment (labels only — no card processing), roster status, and internal notes.",
       hintStep3:
         "Select up to one workout plan and/or one nutrition template to save with this client, or skip and add them later from Workout & diet.",
       stepContact: "Contact",
@@ -346,6 +350,20 @@ const translation = {
       planTemplate: "Membership plan template",
       planTemplateTooltip: "Shown as subscription on the profile when there is no active membership.",
       planTemplatePh: "Select plan template",
+      billingTitle: "How you collect payment",
+      billingHint:
+        "For your records only — this app does not process cards or payouts. Choose what matches this client (membership vs invoices vs offline).",
+      billingPreference: "Collection method",
+      billingPreferences: {
+        unspecified: "Not set",
+        membership_subscription: "Membership / subscription (tracked in app)",
+        app_invoices: "Invoices in this app (mark paid manually)",
+        cash_in_person: "Cash (in person)",
+        bank_transfer: "Bank transfer (offline)",
+        digital_wallet: "Zelle, Venmo, PayPal, etc.",
+        card_outside_app: "Card — charged outside this app",
+        other: "Other (use notes for details)",
+      },
       accountTitle: "Account status",
       accountHint: "Roster state and how you track them operationally.",
       roster: "Roster",
@@ -488,6 +506,9 @@ const translation = {
     },
     create: {
       hint: "Plans define default duration and pricing. Coaches can still set custom start and end dates when assigning a membership to a client.",
+      sectionBasics: "Plan details",
+      sectionPricing: "Duration & pricing",
+      sectionStatus: "Visibility",
       description: "Description",
       name: "Name",
       namePh: "e.g. 12-Month All Access",
@@ -652,7 +673,27 @@ const translation = {
       buildWorkout: "Build workout",
       builderIntroTitle: "Workout builder",
       builderIntroBody:
-        "Create walks you through details first, then the program builder (overview, exercises). For an existing plan, use Build workout; use View for read-only.",
+        "Create walks you through details first, then the program builder (overview, exercises). Open any plan to edit; use Preview for a client-style view. When a plan is ready, use Assign to clients from the list, from the edit bar, or from the preview page — no need to copy exercises by hand.",
+    },
+    shared: {
+      preview: "Preview",
+      openPreviewPage: "Open preview page",
+      workoutPreviewModalTitle: "Workout preview",
+      planPreviewEyebrow: "Workout preview",
+      closePreview: "Close",
+    },
+    previewPage: {
+      backToList: "Back to list",
+      editWorkout: "Edit workout",
+      exportPdf: "Print / PDF",
+      invalid: "Invalid workout plan.",
+      loadError: "Could not load workout preview.",
+      backToPlansLink: "Back to workout plans",
+    },
+    edit: {
+      pageTitle: "Training plan",
+      pageSubtitle:
+        "Edits save automatically. Use Assign to clients when this workout is ready to push to profiles.",
     },
     create: {
       pageTitle: "Create training plan",

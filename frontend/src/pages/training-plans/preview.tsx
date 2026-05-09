@@ -1,5 +1,6 @@
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
+import PersonAddAltOutlinedIcon from "@mui/icons-material/PersonAddAltOutlined";
 import PrintIcon from "@mui/icons-material/Print";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -8,8 +9,11 @@ import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { useOne } from "@refinedev/core";
+import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Link, useParams } from "react-router-dom";
 
+import { AssignPlanToClientsDialog } from "../../components/AssignPlanToClientsDialog";
 import { CoachingPlanPreview } from "../../components/CoachingPlanPreview";
 import { workoutLinesFromApiItems } from "../../lib/workoutLineModel";
 
@@ -27,6 +31,8 @@ type PlanRecord = {
 };
 
 export function TrainingPlanPreviewPage() {
+  const { t } = useTranslation();
+  const [assignOpen, setAssignOpen] = useState(false);
   const { id } = useParams<{ id: string }>();
   const planId = id ? Number(id) : Number.NaN;
   const valid = Number.isFinite(planId);
@@ -41,7 +47,8 @@ export function TrainingPlanPreviewPage() {
   if (!valid) {
     return (
       <Typography>
-        Invalid workout plan. <Link to="/training-plans">Back to workout plans</Link>
+        {t("trainingPlans.previewPage.invalid")}{" "}
+        <Link to="/training-plans">{t("trainingPlans.previewPage.backToPlansLink")}</Link>
       </Typography>
     );
   }
@@ -72,14 +79,37 @@ export function TrainingPlanPreviewPage() {
         sx={{ mb: { xs: 1.5, md: 2 } }}
       >
         <Button component={Link} to="/training-plans" startIcon={<ArrowBackIcon />} variant="text" size="small">
-          Back to list
+          {t("trainingPlans.previewPage.backToList")}
         </Button>
         <Box sx={{ flex: 1 }} />
-        <Button component={Link} to={`/training-plans/edit/${planId}`} startIcon={<EditOutlinedIcon />} variant="outlined" size="small">
-          Edit workout
+        <Button
+          variant="outlined"
+          color="primary"
+          size="small"
+          startIcon={<PersonAddAltOutlinedIcon />}
+          onClick={() => setAssignOpen(true)}
+          sx={{ textTransform: "none" }}
+        >
+          {t("assignPlanToClients.assignToClientsButton")}
         </Button>
-        <Button startIcon={<PrintIcon />} variant="contained" size="small" onClick={() => window.print()}>
-          Export PDF
+        <Button
+          component={Link}
+          to={`/training-plans/edit/${planId}`}
+          startIcon={<EditOutlinedIcon />}
+          variant="outlined"
+          size="small"
+          sx={{ textTransform: "none" }}
+        >
+          {t("trainingPlans.previewPage.editWorkout")}
+        </Button>
+        <Button
+          startIcon={<PrintIcon />}
+          variant="contained"
+          size="small"
+          onClick={() => window.print()}
+          sx={{ textTransform: "none" }}
+        >
+          {t("trainingPlans.previewPage.exportPdf")}
         </Button>
       </Stack>
 
@@ -89,12 +119,12 @@ export function TrainingPlanPreviewPage() {
         </Box>
       ) : query.error ? (
         <Paper variant="outlined" sx={{ p: 3, borderRadius: 3 }}>
-          <Typography color="error">Could not load workout preview.</Typography>
+          <Typography color="error">{t("trainingPlans.previewPage.loadError")}</Typography>
         </Paper>
       ) : (
         <CoachingPlanPreview
           title={record?.name ?? `Workout plan #${planId}`}
-          eyebrow="Workout preview"
+          eyebrow={t("trainingPlans.shared.planPreviewEyebrow")}
           programVenue={record?.venue_type}
           workoutRichHtml={record?.workout_rich_html}
           workoutNotes={record?.description}
@@ -103,6 +133,14 @@ export function TrainingPlanPreviewPage() {
           showDiet={false}
         />
       )}
+
+      <AssignPlanToClientsDialog
+        open={assignOpen}
+        onClose={() => setAssignOpen(false)}
+        mode="training"
+        resourceId={planId}
+        resourceName={record?.name}
+      />
     </Box>
   );
 }

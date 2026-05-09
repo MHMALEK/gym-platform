@@ -22,10 +22,13 @@ import { ClientFormSections, type ClientFormValues } from "./formSections";
 const WIZARD_FIELD_GROUPS = [
   ["name", "email", "phone"],
   ["weight_kg", "height_cm", "goal_type_id", "goal"],
-  ["subscription_plan_template_id", "status", "account_status", "notes"],
+  ["subscription_plan_template_id", "billing_preference", "status", "account_status", "notes"],
 ] as const;
 
 function toClientPayload(v: ClientFormValues) {
+  const bp = v.billing_preference;
+  const billing_preference =
+    bp == null || bp === "" || bp === "unspecified" ? null : String(bp);
   return {
     name: String(v.name ?? "").trim(),
     email: v.email ? String(v.email).trim() : null,
@@ -36,6 +39,7 @@ function toClientPayload(v: ClientFormValues) {
     goal_type_id: v.goal_type_id ?? null,
     goal: v.goal ? String(v.goal).trim() : null,
     subscription_plan_template_id: v.subscription_plan_template_id ?? null,
+    billing_preference,
     status: v.status ?? "active",
     account_status: v.account_status ?? "good_standing",
   };

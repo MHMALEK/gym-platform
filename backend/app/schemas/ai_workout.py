@@ -13,6 +13,11 @@ class TrainingPlanDraftRequest(BaseModel):
 
     messages: list[ChatMessageIn] = Field(..., min_length=1, max_length=16)
     venue_type: Literal["home", "commercial_gym", "mixed"] = "mixed"
+    locale: str | None = Field(
+        None,
+        max_length=32,
+        description="Optional BCP-47 tag from the client UI (e.g. en, fa); guides coach-facing strings when unclear.",
+    )
 
 
 class WorkoutDraftLineIn(BaseModel):

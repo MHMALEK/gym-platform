@@ -211,6 +211,7 @@ export function CoachAssistantPage() {
         body: JSON.stringify({
           messages: apiPayload,
           ...(ctx ? { context: ctx } : {}),
+          locale: i18n.language,
         }),
       });
       const raw = await res.text();
@@ -248,7 +249,7 @@ export function CoachAssistantPage() {
     } finally {
       setLoading(false);
     }
-  }, [input, loading, scrollToBottom, t, workspace]);
+  }, [input, loading, scrollToBottom, t, workspace, i18n.language]);
 
   const sessionList = (
     <Stack sx={{ height: "100%", minHeight: 0 }}>

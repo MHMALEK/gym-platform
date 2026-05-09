@@ -5,11 +5,13 @@ import Dialog from "@mui/material/Dialog";
 import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
+import Link from "@mui/material/Link";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { type BaseRecord, useList } from "@refinedev/core";
 import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Link as RouterLink } from "react-router-dom";
 
 import { apiPrefix, authHeaders } from "../lib/api";
 import { REFINE_LIST_FIRST_PAGE_200_SERVER } from "../lib/refineListPagination";
@@ -102,6 +104,13 @@ export function AssignPlanToClientsDialog({ open, onClose, mode, resourceId, res
         ) : null}
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
           {t("assignPlanToClients.hint")}
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          {t("assignPlanToClients.manageClientsHint")}{" "}
+          <Link component={RouterLink} to="/clients" underline="hover">
+            {t("assignPlanToClients.manageClientsLink")}
+          </Link>
+          .
         </Typography>
         {isLoading ? (
           <CircularProgress size={28} />

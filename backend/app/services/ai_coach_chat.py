@@ -196,6 +196,7 @@ async def _tool_get_client(db: AsyncSession, coach: Coach, args: dict[str, Any])
         "status": c.status,
         "goal": c.goal,
         "notes": (c.notes or "")[:500] if c.notes else None,
+        "billing_preference": c.billing_preference,
     }
 
 
@@ -296,12 +297,28 @@ def _assistant_to_dict(msg: Any) -> dict[str, Any]:
     return out
 
 
+def _language_guidance_for_chat(locale: str | None) -> str:
+    loc = (locale or "").strip()
+    hint = f'App UI locale (BCP-47): "{loc}". ' if loc else ""
+    return "\n".join(
+        [
+            hint
+            + "Language: write assistant replies in the same natural language as the user's messages when that language is clear.",
+            "If a message mixes languages or is too short to infer, use the app UI locale tag (tags starting with "
+            '"fa" → Persian/Farsi; otherwise prefer English).',
+            "Refusals, apologies, and bullet lists must follow the same language choice.",
+            "Proper nouns, numeric IDs, and tool JSON strings may stay as returned by tools.",
+        ]
+    )
+
+
 async def run_coach_chat(
     db: AsyncSession,
     coach: Coach,
     messages: list[dict[str, str]],
     *,
     optional_context: str | None = None,
+    locale: str | None = None,
 ) -> str:
     if not settings.openai_api_key or not settings.openai_api_key.strip():
         raise RuntimeError("AI is not configured (missing OPENAI_API_KEY).")
@@ -333,15 +350,13 @@ async def run_coach_chat(
             "nothing useful, say so. Never invent client names, invoice amounts, exercise ids, or tool results.",
             "Be concise. Use bullet lists when comparing multiple rows.",
             "Exercises may be coach-owned or from the shared catalog (coach_owned false).",
-            "The user may write in any language; always write your replies in Persian (Farsi) only — formal but friendly "
-            "«شما» style is fine; do not use English or other languages in assistant messages (proper nouns, IDs, and "
-            "quoted tool fields may stay as-is).",
+            _language_guidance_for_chat(locale),
         ]
     )
     if optional_context:
         system = (
-            f"{system}\n\n---\nSession context from the coach (use to interpret questions; "
-            f"still use tools for factual data about clients, invoices, plans, and exercises):\n{optional_context}"
+            f"{system}\n\n---\nSession context from the coach (any language; use only to interpret questions; "
+            f"still use tools for factual data). Reply language rules above still apply.\n{optional_context}"
         )
     oai_messages: list[Any] = [{"role": "system", "content": system}, *messages]
 
@@ -391,6 +406,7 @@ async def run_coach_chat(
 
     if not last_text:
         last_text = (
-            "پاسخی تولید نشد. دربارهٔ مراجعین، صورت‌حساب‌ها، برنامه‌های تمرین یا حرکات در Gym Coach بپرسید."
+            "I could not produce a reply. Ask something about your clients, invoices, training plans, "
+            "or exercises in Gym Coach."
         )
     return last_text
