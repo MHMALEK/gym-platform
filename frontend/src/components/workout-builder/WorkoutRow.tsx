@@ -116,44 +116,28 @@ export function WorkoutRow({
   const compactSetExerciseUi = packInExerciseGroup && isSetUnder;
   const showCompactExerciseColumn = compactSetExerciseUi || isLegacyExtra;
 
-  // Single, simple row style. Heads are slightly emphasized; sets are
-  // indented under their head with a left rail showing the connection.
-  // Adjacent rows in the same exercise are separated by a 1px hairline.
-  const style: CSSProperties = isHeadRow
-    ? {
-        // Head reads as a section title bar. Slightly elevated tone +
-        // bottom hairline separating it from the sets below.
-        background: "var(--app-surface-elevated)",
-        paddingLeft: 12,
-        paddingRight: 8,
-        paddingTop: 10,
-        paddingBottom: 10,
-        borderTop: "none",
-        borderBottom: setCountInGroup(items, index) > 0 ? "1px solid var(--app-border)" : "none",
-        borderLeft: "none",
-        borderRight: "none",
-        borderRadius: 0,
-        marginBottom: 0,
-        boxShadow: "none",
-      }
-    : {
-        // Sets sit in a flat list, indented under the head with a left
-        // rail showing they belong to it. 1px hairline between adjacent
-        // sets (none above the first one — the head's bottom border serves).
-        background: "transparent",
-        paddingLeft: 16,
-        paddingRight: 8,
-        paddingTop: 10,
-        paddingBottom: 10,
-        borderTop: setRunSegment === "runFirst" ? "none" : "1px solid var(--app-border)",
-        borderBottom: "none",
-        borderLeft: isUnderHead ? "2px solid var(--app-border-strong)" : "none",
-        borderRight: "none",
-        borderRadius: 0,
-        marginLeft: isUnderHead ? 18 : 0,
-        marginBottom: 0,
-        boxShadow: "none",
-      };
+  // Single horizontal row. Adjacent rows in the same exercise are
+  // separated only by a 1px hairline. No rail, no nested boxes.
+  const style: CSSProperties = {
+    background: "transparent",
+    paddingLeft: 12,
+    paddingRight: 8,
+    paddingTop: 8,
+    paddingBottom: 8,
+    borderTop:
+      isHeadRow || setRunSegment === "runFirst"
+        ? "none"
+        : "1px solid var(--app-border)",
+    borderBottom:
+      isHeadRow && setCountInGroup(items, index) > 0
+        ? "1px solid var(--app-border)"
+        : "none",
+    borderLeft: "none",
+    borderRight: "none",
+    borderRadius: 0,
+    marginBottom: 0,
+    boxShadow: "none",
+  };
 
   const labelTiny: CSSProperties = {
     fontSize: 11,
@@ -280,9 +264,14 @@ export function WorkoutRow({
               {t("workouts.setsGroupedSubtitle")}
             </Typography>
           ) : null}
-          <Flex vertical gap={6} style={{ width: "100%" }}>
+          <Flex
+            wrap="wrap"
+            gap={8}
+            align="center"
+            style={{ width: "100%", rowGap: 6 }}
+          >
             {presentation === "exercise_head" ? (
-              <Flex align="center" gap={8} style={{ width: "100%" }}>
+              <>
                 {showExerciseCollapse ? (
                   <Tooltip
                     title={
@@ -298,6 +287,7 @@ export function WorkoutRow({
                       sx={{
                         p: 0.5,
                         color: "text.secondary",
+                        flexShrink: 0,
                         "&:hover": { color: "text.primary", bgcolor: "action.hover" },
                       }}
                     >
@@ -329,12 +319,12 @@ export function WorkoutRow({
                 <Typography
                   fontWeight={600}
                   sx={{
-                    fontSize: 15,
+                    fontSize: 14,
                     lineHeight: 1.35,
                     letterSpacing: "-0.01em",
                     color: "text.primary",
-                    flex: 1,
-                    minWidth: 0,
+                    minWidth: 100,
+                    flex: "0 1 auto",
                     overflow: "hidden",
                     textOverflow: "ellipsis",
                     whiteSpace: "nowrap",
@@ -343,10 +333,9 @@ export function WorkoutRow({
                 >
                   {row.exercise_name ?? `ID ${row.exercise_id}`}
                 </Typography>
-                {actionCluster}
-              </Flex>
+              </>
             ) : (
-              <Flex align="center" gap={8} style={{ width: "100%" }}>
+              <>
                 <Chip
                   size="small"
                   color={hasSetOverride ? "warning" : "default"}
@@ -358,11 +347,12 @@ export function WorkoutRow({
                     minWidth: 28,
                     fontSize: 11,
                     fontWeight: 600,
-                    height: 20,
+                    height: 22,
                     borderRadius: 999,
                     bgcolor: hasSetOverride ? undefined : "transparent",
                     borderColor: "var(--app-border)",
                     color: hasSetOverride ? undefined : "text.secondary",
+                    ml: 1.5,
                   }}
                   variant={hasSetOverride ? "filled" : "outlined"}
                 />
@@ -372,27 +362,25 @@ export function WorkoutRow({
                     sx={{
                       fontSize: 13,
                       color: "text.secondary",
-                      minWidth: 0,
+                      flex: "0 1 auto",
+                      minWidth: 80,
                       overflow: "hidden",
                       textOverflow: "ellipsis",
                       whiteSpace: "nowrap",
-                      flex: 1,
                     }}
                     title={row.exercise_name ?? `ID ${row.exercise_id}`}
                   >
                     {row.exercise_name ?? `ID ${row.exercise_id}`}
                   </Typography>
-                ) : (
-                  <Box sx={{ flex: 1 }} />
-                )}
-                {actionCluster}
-              </Flex>
+                ) : null}
+              </>
             )}
+            {/* Inputs cluster — sits inline with the identity above. */}
             <Flex
               wrap="wrap"
               gap={6}
               align="center"
-              style={{ width: "100%", rowGap: 6, paddingTop: 0 }}
+              style={{ rowGap: 6, flex: "1 1 auto", minWidth: 0 }}
             >
               <TextField
                 type="number"
@@ -613,6 +601,8 @@ export function WorkoutRow({
                 }
               />
             </Flex>
+            {/* Actions live at the END of the same inline row. */}
+            {actionCluster}
           </Flex>
         </div>
       </Flex>

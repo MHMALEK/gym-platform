@@ -7,9 +7,7 @@ export function AddSetBelowFooter({ onClick, label }: { onClick: () => void; lab
     <div
       style={{
         marginTop: 0,
-        marginLeft: 18,
-        padding: "4px 0 8px 16px",
-        borderLeft: "2px solid var(--app-border-strong)",
+        padding: "4px 8px 8px 12px",
         borderTop: "1px solid var(--app-border)",
         display: "flex",
         justifyContent: "flex-start",
