@@ -85,18 +85,9 @@ export function WorkoutRow({
     (presentation === "set_under" &&
       (setRunSegment === "runMiddle" || setRunSegment === "runLast")) ||
     isLegacyExtra;
-  const rowStripe =
-    insideBlock || !row.block_id
-      ? "2px solid transparent"
-      : `2px solid color-mix(in srgb, ${blockAccent(row.block_id)} 65%, var(--app-border))`;
-
-  const setRail = "2px solid color-mix(in srgb, var(--app-accent) 30%, var(--app-border))";
-  const headSurface = "var(--app-surface-elevated)";
-  const setSurface = "var(--app-surface)";
-  const headBorder = "1px solid var(--app-border)";
-  const setBorder = "1px solid var(--app-border)";
-  const setDividerTop = "1px solid var(--app-border)";
-  const nestedBorder = "1px solid var(--app-border)";
+  const isHeadRow = presentation === "exercise_head";
+  /** Set rows + legacy lines after the first one are visually "under" the head. */
+  const isUnderHead = isSetUnder || isLegacyExtra;
 
   const displayReps = isSetUnder ? effectiveNumeric(items, index, "reps") : row.reps;
   const displayDur = isSetUnder ? effectiveNumeric(items, index, "duration_sec") : row.duration_sec;
@@ -120,112 +111,49 @@ export function WorkoutRow({
       (row.tempo != null && row.tempo !== "") ||
       (row.notes != null && row.notes !== ""));
 
-  const hideBlockColumnOnRow = packInExerciseGroup && (isSetUnder || isLegacyExtra);
   /** Drag handle only on bundle heads (exercise row or first legacy line) */
   const showRowDragHandle = isBundleHeadRow(items, index);
   const compactSetExerciseUi = packInExerciseGroup && isSetUnder;
   const showCompactExerciseColumn = compactSetExerciseUi || isLegacyExtra;
 
-  let borderRadius: string | number = 10;
-  let marginTop = 0;
-  let marginBottom = insideBlock ? 0 : 8;
-  let paddingTop = 10;
-  let paddingBottom = 10;
-  let background = headSurface;
-  let border = headBorder;
-  let borderTop: string | undefined;
-  let borderBottom: string | undefined;
-  let extraPaddingLeft = 0;
-
-  if (presentation === "exercise_head") {
-    if (packInExerciseGroup && setCountInGroup(items, index) >= 1) {
-      borderRadius = "12px 12px 0 0";
-      marginBottom = 0;
-      paddingBottom = 8;
-      border = headBorder;
-      borderBottom = "none";
-      background = headSurface;
-    } else {
-      borderRadius = 12;
-      marginBottom = insideBlock ? 6 : 6;
-      paddingBottom = 10;
-      background = headSurface;
-      border = headBorder;
-    }
-  } else if (setRunSegment === "runFirst") {
-    marginTop = packInExerciseGroup ? 0 : insideBlock ? 6 : 8;
-    marginBottom = packInExerciseGroup ? 0 : 4;
-    paddingTop = 8;
-    paddingBottom = 8;
-    borderRadius = packInExerciseGroup ? 0 : 10;
-    background = setSurface;
-    border = packInExerciseGroup ? setBorder : nestedBorder;
-    borderTop = packInExerciseGroup ? setDividerTop : undefined;
-    extraPaddingLeft = packInExerciseGroup ? 12 : 10;
-  } else if (setRunSegment === "runMiddle") {
-    marginTop = packInExerciseGroup ? 0 : insideBlock ? 6 : 8;
-    marginBottom = packInExerciseGroup ? 0 : 4;
-    paddingTop = 8;
-    paddingBottom = 8;
-    borderRadius = packInExerciseGroup ? 0 : 10;
-    background = setSurface;
-    border = packInExerciseGroup ? setBorder : nestedBorder;
-    if (packInExerciseGroup) borderTop = "none";
-    extraPaddingLeft = packInExerciseGroup ? 12 : 10;
-  } else if (setRunSegment === "runLast") {
-    marginTop = packInExerciseGroup ? 0 : insideBlock ? 6 : 8;
-    marginBottom = insideBlock ? 0 : packInExerciseGroup ? 0 : 10;
-    paddingTop = 8;
-    paddingBottom = 10;
-    borderRadius = packInExerciseGroup ? "0 0 12px 12px" : "10px 10px 12px 12px";
-    background = setSurface;
-    border = packInExerciseGroup ? setBorder : nestedBorder;
-    if (packInExerciseGroup) borderTop = "none";
-    extraPaddingLeft = packInExerciseGroup ? 12 : 10;
-  } else if (
-    presentation === "set_under" &&
-    packInExerciseGroup &&
-    setRunSegment === "single"
-  ) {
-    marginTop = 0;
-    marginBottom = insideBlock ? 0 : 0;
-    paddingTop = 8;
-    paddingBottom = 10;
-    borderRadius = "0 0 12px 12px";
-    background = setSurface;
-    border = setBorder;
-    borderTop = setDividerTop;
-    extraPaddingLeft = 12;
-  }
-
-  if (
-    packInExerciseGroup &&
-    presentation === "exercise_head" &&
-    setCountInGroup(items, index) < 1
-  ) {
-    marginBottom = insideBlock ? 8 : 8;
-  }
-
-  if (isExtraSetRow) {
-    paddingTop = Math.min(paddingTop, 12);
-    paddingBottom = Math.min(paddingBottom, 12);
-  }
-
-  const style: CSSProperties = {
-    borderLeft: isExtraSetRow || isLegacyExtra ? setRail : rowStripe,
-    paddingLeft: 0,
-    paddingRight: 0,
-    paddingTop,
-    paddingBottom,
-    marginTop,
-    marginBottom,
-    background,
-    border,
-    ...(borderTop !== undefined ? { borderTop } : {}),
-    ...(borderBottom !== undefined ? { borderBottom } : {}),
-    borderRadius,
-    boxShadow: undefined,
-  };
+  // Single, simple row style. Heads are slightly emphasized; sets are
+  // indented under their head with a left rail showing the connection.
+  // Adjacent rows in the same exercise are separated by a 1px hairline.
+  const style: CSSProperties = isHeadRow
+    ? {
+        // Head reads as a section title bar. Slightly elevated tone +
+        // bottom hairline separating it from the sets below.
+        background: "var(--app-surface-elevated)",
+        paddingLeft: 12,
+        paddingRight: 8,
+        paddingTop: 10,
+        paddingBottom: 10,
+        borderTop: "none",
+        borderBottom: setCountInGroup(items, index) > 0 ? "1px solid var(--app-border)" : "none",
+        borderLeft: "none",
+        borderRight: "none",
+        borderRadius: 0,
+        marginBottom: 0,
+        boxShadow: "none",
+      }
+    : {
+        // Sets sit in a flat list, indented under the head with a left
+        // rail showing they belong to it. 1px hairline between adjacent
+        // sets (none above the first one — the head's bottom border serves).
+        background: "transparent",
+        paddingLeft: 16,
+        paddingRight: 8,
+        paddingTop: 10,
+        paddingBottom: 10,
+        borderTop: setRunSegment === "runFirst" ? "none" : "1px solid var(--app-border)",
+        borderBottom: "none",
+        borderLeft: isUnderHead ? "2px solid var(--app-border-strong)" : "none",
+        borderRight: "none",
+        borderRadius: 0,
+        marginLeft: isUnderHead ? 18 : 0,
+        marginBottom: 0,
+        boxShadow: "none",
+      };
 
   const labelTiny: CSSProperties = {
     fontSize: 11,
@@ -236,7 +164,6 @@ export function WorkoutRow({
     color: "var(--app-text-muted)",
   };
 
-  const contentPadLeft = 14 + extraPaddingLeft;
   const showLinkInRail =
     (presentation === "exercise_head" ||
       (presentation === "legacy_combined" && !isExtraSetRow)) &&
@@ -333,10 +260,8 @@ export function WorkoutRow({
           style={{
             flex: 1,
             minWidth: 0,
-            paddingLeft: 14,
-            paddingRight: 10,
-            paddingTop: 4,
-            paddingBottom: 4,
+            paddingTop: 2,
+            paddingBottom: 2,
           }}
         >
           {presentation === "legacy_combined" && setRunSegment === "runFirst" ? (
