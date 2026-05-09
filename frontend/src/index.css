@@ -219,6 +219,14 @@ html[data-theme="light"] .client-profile-editor-surface.MuiCard-root {
   width: 100%;
 }
 
+@keyframes ws-status-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.ws-status-spin {
+  animation: ws-status-spin 1s linear infinite;
+}
+
 .workout-items-editor__dnd-tip.MuiAlert-root {
   border-radius: 14px;
   border: 1px solid var(--app-border);

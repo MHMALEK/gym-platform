@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronRight, Layers, Plus, Unlink } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, Layers, Loader2, Plus, Unlink } from "lucide-react";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -215,6 +215,7 @@ export function WorkoutItemsEditor({
     async (normalized: WorkoutLine[], opts?: { silent?: boolean }) => {
       if (!planId || mode !== "training-plan") return false;
       if (validateWorkoutLinesSequence(normalized) !== null) return false;
+      setSaveStatus("saving");
       try {
         const res = await fetch(`${apiPrefix}/training-plans/${planId}/items`, {
           method: "PUT",
@@ -222,6 +223,7 @@ export function WorkoutItemsEditor({
           body: JSON.stringify(normalizeWorkoutLinesForApi(normalized)),
         });
         if (!res.ok) {
+          setSaveStatus("idle");
           message.error(await res.text());
           return false;
         }
@@ -231,8 +233,13 @@ export function WorkoutItemsEditor({
           // race with in-progress edits and clobber unsaved local changes.
           await invalidate({ resource: "training-plans", invalidates: ["detail"], id: String(planId) });
         }
+        // Flash "saved", then return to "idle" after a beat.
+        setSaveStatus("saved");
+        if (savedFlashTimerRef.current) clearTimeout(savedFlashTimerRef.current);
+        savedFlashTimerRef.current = setTimeout(() => setSaveStatus("idle"), 1800);
         return true;
       } catch {
+        setSaveStatus("idle");
         message.error(t("workouts.itemsSaveError"));
         return false;
       }
@@ -258,10 +265,11 @@ export function WorkoutItemsEditor({
     [mode, onChange, planId, syncPlanItemsToApi],
   );
 
-  // Clear pending auto-save on unmount so a stale timer doesn't fire.
+  // Clear pending timers on unmount so stale ones don't fire on a different page.
   useEffect(
     () => () => {
       if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+      if (savedFlashTimerRef.current) clearTimeout(savedFlashTimerRef.current);
     },
     [],
   );
@@ -341,6 +349,25 @@ export function WorkoutItemsEditor({
       return next;
     });
   }, []);
+
+  /** Same disclosure pattern for exercise head rows — by default, only the
+   *  exercise name + actions show; click the Pencil to reveal the default
+   *  reps / rest / notes inputs that all sets inherit from. */
+  const [expandedHeads, setExpandedHeads] = useState<Set<string>>(new Set());
+  const toggleHeadExpanded = useCallback((rowLocalId: string) => {
+    setExpandedHeads((prev) => {
+      const next = new Set(prev);
+      if (next.has(rowLocalId)) next.delete(rowLocalId);
+      else next.add(rowLocalId);
+      return next;
+    });
+  }, []);
+
+  /** Visible auto-save status. "saving" while a sync is in flight; "saved"
+   *  briefly after success so the user gets a confirmation flash; "idle"
+   *  otherwise (no recent activity). */
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
+  const savedFlashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const closeExercisePickerModal = useCallback(() => {
     setExercisePickerModalOpen(false);
@@ -614,13 +641,16 @@ export function WorkoutItemsEditor({
           gap={1}
           sx={{ mb: 2 }}
         >
-          {planVenue === "home" || planVenue === "commercial_gym" ? (
-            <Typography variant="caption" color="text.secondary">
-              {t("workouts.venueFilterHint", { venue: t(`workouts.venue.${planVenue}`) })}
-            </Typography>
-          ) : (
-            <span aria-hidden />
-          )}
+          <Stack direction="row" spacing={1.5} alignItems="center">
+            {planVenue === "home" || planVenue === "commercial_gym" ? (
+              <Typography variant="caption" color="text.secondary">
+                {t("workouts.venueFilterHint", {
+                  venue: t(`workouts.venue.${planVenue}`),
+                })}
+              </Typography>
+            ) : null}
+            <SaveStatusIndicator status={saveStatus} t={t} />
+          </Stack>
           <Stack direction="row" spacing={1} alignItems="center">
             {advancedToggle}
             {saveButton}
@@ -761,12 +791,16 @@ export function WorkoutItemsEditor({
                                   expanded={
                                     presentation === "set_under"
                                       ? expandedSets.has(r.localId)
-                                      : undefined
+                                      : presentation === "exercise_head"
+                                        ? expandedHeads.has(r.localId)
+                                        : undefined
                                   }
                                   onToggleExpanded={
                                     presentation === "set_under"
                                       ? () => toggleSetExpanded(r.localId)
-                                      : undefined
+                                      : presentation === "exercise_head"
+                                        ? () => toggleHeadExpanded(r.localId)
+                                        : undefined
                                   }
                                   t={t}
                                   updateAt={updateAt}
@@ -1191,5 +1225,54 @@ export function WorkoutItemsEditor({
       />
 
     </div>
+  );
+}
+
+/** Compact "Saving... / Saved" pill shown in the workout-builder toolbar so
+ *  the coach gets visible confirmation that auto-save is doing its job. */
+function SaveStatusIndicator({
+  status,
+  t,
+}: {
+  status: "idle" | "saving" | "saved";
+  t: ReturnType<typeof useTranslation>["t"];
+}) {
+  if (status === "idle") {
+    return (
+      <Typography
+        variant="caption"
+        color="text.disabled"
+        sx={{ fontSize: 12, fontStyle: "italic" }}
+      >
+        {t("workouts.autoSaveIdle") !== "workouts.autoSaveIdle"
+          ? t("workouts.autoSaveIdle")
+          : "Auto-saves as you edit"}
+      </Typography>
+    );
+  }
+  return (
+    <Stack direction="row" alignItems="center" spacing={0.75}>
+      {status === "saving" ? (
+        <Loader2 size={13} strokeWidth={2.25} className="ws-status-spin" />
+      ) : (
+        <Check size={13} strokeWidth={2.5} />
+      )}
+      <Typography
+        variant="caption"
+        sx={{
+          fontSize: 12,
+          fontWeight: 500,
+          color: status === "saving" ? "text.secondary" : "success.main",
+        }}
+      >
+        {status === "saving"
+          ? t("workouts.autoSaving") !== "workouts.autoSaving"
+            ? t("workouts.autoSaving")
+            : "Saving…"
+          : t("workouts.autoSaved") !== "workouts.autoSaved"
+            ? t("workouts.autoSaved")
+            : "Saved"}
+      </Typography>
+    </Stack>
   );
 }
