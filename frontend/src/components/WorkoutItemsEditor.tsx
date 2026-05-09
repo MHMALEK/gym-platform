@@ -210,14 +210,6 @@ export function WorkoutItemsEditor({
     setItems(next);
   }, [initialItems]);
 
-  const pushItems = useCallback(
-    (next: WorkoutLine[]) => {
-      setItems(next);
-      onChange?.(next);
-    },
-    [onChange],
-  );
-
   /** PUT plan items (block_id / order / row types). Used by Save and after DnD merge/reorder. */
   const syncPlanItemsToApi = useCallback(
     async (normalized: WorkoutLine[], opts?: { silent?: boolean }) => {
@@ -233,8 +225,12 @@ export function WorkoutItemsEditor({
           message.error(await res.text());
           return false;
         }
-        if (!opts?.silent) message.success(t("workouts.itemsSaved"));
-        await invalidate({ resource: "training-plans", invalidates: ["detail"], id: String(planId) });
+        if (!opts?.silent) {
+          message.success(t("workouts.itemsSaved"));
+          // Only invalidate on explicit saves — auto-save invalidation would
+          // race with in-progress edits and clobber unsaved local changes.
+          await invalidate({ resource: "training-plans", invalidates: ["detail"], id: String(planId) });
+        }
         return true;
       } catch {
         message.error(t("workouts.itemsSaveError"));
@@ -242,6 +238,32 @@ export function WorkoutItemsEditor({
       }
     },
     [invalidate, message, mode, planId, t],
+  );
+
+  /** Debounced auto-save: persists every local edit (input changes, add/remove
+   *  exercise, add set, etc.) ~800ms after the last change. Without this,
+   *  pushItems would only update React state and edits would vanish on reload. */
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pushItems = useCallback(
+    (next: WorkoutLine[]) => {
+      setItems(next);
+      onChange?.(next);
+      if (planId && mode === "training-plan") {
+        if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+        autoSaveTimerRef.current = setTimeout(() => {
+          void syncPlanItemsToApi(next, { silent: true });
+        }, 800);
+      }
+    },
+    [mode, onChange, planId, syncPlanItemsToApi],
+  );
+
+  // Clear pending auto-save on unmount so a stale timer doesn't fire.
+  useEffect(
+    () => () => {
+      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    },
+    [],
   );
 
   /**
