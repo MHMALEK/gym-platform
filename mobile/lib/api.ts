@@ -1,5 +1,27 @@
-import { apiPrefix } from "./config";
+import { apiBaseUrl, apiPrefix } from "./config";
 import { getAccessToken } from "./token";
+
+async function apiFetch(url: string, init?: RequestInit): Promise<Response> {
+  try {
+    return await fetch(url, init);
+  } catch (e) {
+    const raw = e instanceof Error ? e.message : String(e);
+    const isNetwork =
+      raw.includes("Network request failed") ||
+      raw.includes("Failed to connect") ||
+      raw.includes("ECONNREFUSED");
+    if (isNetwork) {
+      const base = apiBaseUrl() || "(missing EXPO_PUBLIC_API_URL)";
+      throw new Error(
+        `Cannot reach API at ${base}. Start the backend with uvicorn --host 0.0.0.0 --port 8000. ` +
+          `Android emulator: use http://10.0.2.2:8000 in EXPO_PUBLIC_API_URL (not 127.0.0.1). ` +
+          `Physical device: use your computer's LAN IP (same Wi‑Fi). ` +
+          `After changing .env, restart Expo with cache clear: npx expo start -c. (${raw})`,
+      );
+    }
+    throw e;
+  }
+}
 
 export class ApiError extends Error {
   constructor(
@@ -31,7 +53,7 @@ export async function authBearerHeaders(): Promise<HeadersInit> {
 }
 
 export async function apiBootstrap(): Promise<void> {
-  const res = await fetch(`${apiPrefix()}/auth/bootstrap`, {
+  const res = await apiFetch(`${apiPrefix()}/auth/bootstrap`, {
     method: "POST",
     headers: await authHeadersJson(),
   });
@@ -39,7 +61,7 @@ export async function apiBootstrap(): Promise<void> {
 }
 
 export async function apiGetMe(): Promise<{ id: number; name?: string; email?: string | null }> {
-  const res = await fetch(`${apiPrefix()}/me`, { headers: await authHeadersJson() });
+  const res = await apiFetch(`${apiPrefix()}/me`, { headers: await authHeadersJson() });
   if (!res.ok) await parseErr(res);
   return res.json();
 }
@@ -59,7 +81,7 @@ export async function apiGetList<T>(
       if (v !== undefined && v !== "") sp.set(k, String(v));
     }
   }
-  const res = await fetch(`${apiPrefix()}/${path}?${sp}`, {
+  const res = await apiFetch(`${apiPrefix()}/${path}?${sp}`, {
     headers: await authHeadersJson(),
   });
   if (!res.ok) await parseErr(res);
@@ -67,13 +89,19 @@ export async function apiGetList<T>(
 }
 
 export async function apiGetOne<T>(path: string, id: string | number): Promise<T> {
-  const res = await fetch(`${apiPrefix()}/${path}/${id}`, { headers: await authHeadersJson() });
+  const res = await apiFetch(`${apiPrefix()}/${path}/${id}`, { headers: await authHeadersJson() });
+  if (!res.ok) await parseErr(res);
+  return res.json();
+}
+
+export async function apiGetPath<T>(path: string): Promise<T> {
+  const res = await apiFetch(`${apiPrefix()}/${path}`, { headers: await authHeadersJson() });
   if (!res.ok) await parseErr(res);
   return res.json();
 }
 
 export async function apiPost<T>(path: string, body: unknown): Promise<T> {
-  const res = await fetch(`${apiPrefix()}/${path}`, {
+  const res = await apiFetch(`${apiPrefix()}/${path}`, {
     method: "POST",
     headers: await authHeadersJson(),
     body: JSON.stringify(body),
@@ -83,7 +111,7 @@ export async function apiPost<T>(path: string, body: unknown): Promise<T> {
 }
 
 export async function apiPatch<T>(path: string, id: string | number, body: unknown): Promise<T> {
-  const res = await fetch(`${apiPrefix()}/${path}/${id}`, {
+  const res = await apiFetch(`${apiPrefix()}/${path}/${id}`, {
     method: "PATCH",
     headers: await authHeadersJson(),
     body: JSON.stringify(body),
@@ -92,8 +120,18 @@ export async function apiPatch<T>(path: string, id: string | number, body: unkno
   return res.json();
 }
 
+export async function apiPutPath<T>(path: string, body: unknown): Promise<T> {
+  const res = await apiFetch(`${apiPrefix()}/${path}`, {
+    method: "PUT",
+    headers: await authHeadersJson(),
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) await parseErr(res);
+  return res.json();
+}
+
 export async function apiDelete(path: string, id: string | number): Promise<void> {
-  const res = await fetch(`${apiPrefix()}/${path}/${id}`, {
+  const res = await apiFetch(`${apiPrefix()}/${path}/${id}`, {
     method: "DELETE",
     headers: await authHeadersJson(),
   });
