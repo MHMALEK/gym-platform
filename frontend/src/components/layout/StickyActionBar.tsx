@@ -29,7 +29,6 @@ export function StickyActionBar({ children }: { children: ReactNode }) {
         backdropFilter: "saturate(180%) blur(8px)",
         display: "flex",
         alignItems: "center",
-        justifyContent: "flex-end",
         gap: 1,
         flexWrap: "wrap",
       }}

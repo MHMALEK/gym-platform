@@ -3,6 +3,8 @@ import type { WorkoutBlockType, WorkoutLine } from "../../lib/workoutLineModel";
 
 export type ExerciseOpt = { id: number; name: string; source: "catalog" | "mine" };
 
+export type SaveStatus = "idle" | "saving" | "saved";
+
 export type WorkoutItemsEditorProps = {
   mode: "training-plan" | "client";
   planId?: number;
@@ -21,6 +23,14 @@ export type WorkoutItemsEditorProps = {
    * page renders these in a sticky bar instead.
    */
   hideAddButtons?: boolean;
+  /**
+   * When true, the in-toolbar "Saving… / Saved" indicator is hidden.
+   * Use when the parent page is rendering a combined status display
+   * elsewhere (e.g. a sticky action bar covering items + form fields).
+   */
+  hideSaveIndicator?: boolean;
+  /** Notifies the parent of items-side save activity. */
+  onSaveStatusChange?: (status: SaveStatus) => void;
   onChange?: (items: WorkoutLine[]) => void;
 };
 

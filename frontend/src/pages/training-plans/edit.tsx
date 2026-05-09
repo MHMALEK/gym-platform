@@ -6,8 +6,8 @@ import CardContent from "@mui/material/CardContent";
 import CircularProgress from "@mui/material/CircularProgress";
 import Typography from "@mui/material/Typography";
 import { useForm } from "@refinedev/react-hook-form";
-import { Layers, Plus } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Check, Layers, Loader2, Plus } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { AssignPlanToClientsDialog } from "../../components/AssignPlanToClientsDialog";
@@ -17,7 +17,10 @@ import {
   WorkoutItemsEditor,
   workoutLinesFromApiItems,
 } from "../../components/WorkoutItemsEditor";
-import type { WorkoutItemsEditorHandle } from "../../components/workout-builder/types";
+import type {
+  SaveStatus,
+  WorkoutItemsEditorHandle,
+} from "../../components/workout-builder/types";
 import { TrainingPlanOverviewCard, TrainingPlanWorkoutRichField } from "./TrainingPlanSharedFields";
 
 type Item = {
@@ -68,8 +71,25 @@ export function TrainingPlanEdit() {
       // Stay on the edit page after a save — auto-save would otherwise
       // bounce the user back to the list every debounce.
       redirect: false,
+      // Suppress Refine's success toast on every PATCH; the sticky-bar
+      // status indicator gives quieter, persistent feedback instead.
+      successNotification: false,
     },
   });
+
+  /** Combined items + form auto-save state, surfaced in the sticky bar. */
+  const [itemsSaveStatus, setItemsSaveStatus] = useState<SaveStatus>("idle");
+  const [formSaveStatus, setFormSaveStatus] = useState<SaveStatus>("idle");
+  const formSavedFlashRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const onItemsSaveStatusChange = useCallback((s: SaveStatus) => {
+    setItemsSaveStatus(s);
+  }, []);
+  const combinedSaveStatus: SaveStatus =
+    itemsSaveStatus === "saving" || formSaveStatus === "saving"
+      ? "saving"
+      : itemsSaveStatus === "saved" || formSaveStatus === "saved"
+        ? "saved"
+        : "idle";
   const query = refineCore.query;
   const record = query?.data?.data as PlanRecord | undefined;
 
@@ -97,15 +117,16 @@ export function TrainingPlanEdit() {
     if (lastSavedJSON.current === watchedJSON) return;
     if (formAutoSaveTimerRef.current) clearTimeout(formAutoSaveTimerRef.current);
     formAutoSaveTimerRef.current = setTimeout(async () => {
+      setFormSaveStatus("saving");
       try {
         await refineCore.onFinish(watchedValues);
         lastSavedJSON.current = watchedJSON;
-        // Mark the freshly-saved values as the new "clean" baseline so
-        // UnsavedChangesNotifier doesn't pop a dialog when the user
-        // navigates away.
         reset(watchedValues, { keepValues: true, keepDirty: false });
+        setFormSaveStatus("saved");
+        if (formSavedFlashRef.current) clearTimeout(formSavedFlashRef.current);
+        formSavedFlashRef.current = setTimeout(() => setFormSaveStatus("idle"), 1800);
       } catch {
-        /* refine surfaces its own error toast */
+        setFormSaveStatus("idle");
       }
     }, 1500);
     return () => {
@@ -185,6 +206,8 @@ export function TrainingPlanEdit() {
                 showSaveButton={false}
                 hideHeader
                 hideAddButtons
+                hideSaveIndicator
+                onSaveStatusChange={onItemsSaveStatusChange}
               />
             ) : null}
           </CardContent>
@@ -192,8 +215,10 @@ export function TrainingPlanEdit() {
       </Box>
 
       <StickyActionBar>
-        {/* With both items and form fields auto-saving, Save/Cancel are gone;
-            the bar carries the primary "add" affordances. */}
+        {/* Quiet auto-save status: lives on the left of the bar, replaces
+            the Refine success toast that used to fire on every save. */}
+        <StickyAutoSaveStatus status={combinedSaveStatus} t={t} />
+        <Box sx={{ flex: 1 }} />
         <Button
           variant="contained"
           color="primary"
@@ -241,6 +266,55 @@ export function TrainingPlanEdit() {
         resourceId={record?.id ?? 0}
         resourceName={record?.name}
       />
+    </Box>
+  );
+}
+
+/** Sticky-bar auto-save status. Quiet by default; flashes "Saving…" /
+ *  "Saved" while activity is in flight, idle hint while at rest. */
+function StickyAutoSaveStatus({
+  status,
+  t,
+}: {
+  status: SaveStatus;
+  t: ReturnType<typeof useTranslation>["t"];
+}) {
+  if (status === "idle") {
+    return (
+      <Typography
+        variant="caption"
+        color="text.disabled"
+        sx={{ fontSize: 12, fontStyle: "italic" }}
+      >
+        {t("workouts.autoSaveIdle") !== "workouts.autoSaveIdle"
+          ? t("workouts.autoSaveIdle")
+          : "Auto-saves as you edit"}
+      </Typography>
+    );
+  }
+  return (
+    <Box sx={{ display: "inline-flex", alignItems: "center", gap: 0.75 }}>
+      {status === "saving" ? (
+        <Loader2 size={14} strokeWidth={2.25} className="ws-status-spin" />
+      ) : (
+        <Check size={14} strokeWidth={2.5} />
+      )}
+      <Typography
+        variant="caption"
+        sx={{
+          fontSize: 12,
+          fontWeight: 500,
+          color: status === "saving" ? "text.secondary" : "success.main",
+        }}
+      >
+        {status === "saving"
+          ? t("workouts.autoSaving") !== "workouts.autoSaving"
+            ? t("workouts.autoSaving")
+            : "Saving…"
+          : t("workouts.autoSaved") !== "workouts.autoSaved"
+            ? t("workouts.autoSaved")
+            : "Saved"}
+      </Typography>
     </Box>
   );
 }

@@ -111,6 +111,8 @@ export const WorkoutItemsEditor = forwardRef<
     showSaveButton = true,
     hideHeader = false,
     hideAddButtons = false,
+    hideSaveIndicator = false,
+    onSaveStatusChange,
     onChange,
   },
   forwardedRef,
@@ -378,6 +380,12 @@ export const WorkoutItemsEditor = forwardRef<
    *  otherwise (no recent activity). */
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
   const savedFlashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Surface the same status to the parent page (used by the sticky bar to
+  // show a combined items + form auto-save indicator).
+  useEffect(() => {
+    onSaveStatusChange?.(saveStatus);
+  }, [saveStatus, onSaveStatusChange]);
 
   const closeExercisePickerModal = useCallback(() => {
     setExercisePickerModalOpen(false);
@@ -670,7 +678,9 @@ export const WorkoutItemsEditor = forwardRef<
                 })}
               </Typography>
             ) : null}
-            <SaveStatusIndicator status={saveStatus} t={t} />
+            {hideSaveIndicator ? null : (
+              <SaveStatusIndicator status={saveStatus} t={t} />
+            )}
           </Stack>
           <Stack direction="row" spacing={1} alignItems="center">
             {advancedToggle}
