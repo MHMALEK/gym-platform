@@ -347,132 +347,83 @@ export function WorkoutRow({
               {t("workouts.setsGroupedSubtitle")}
             </Typography>
           ) : null}
-          <Flex vertical gap={8} style={{ width: "100%" }}>
-            <Flex
-              wrap="wrap"
-              gap={8}
-              align="center"
-              style={{ rowGap: 8, columnGap: 10 }}
-            >
-              {!hideBlockColumnOnRow ? (
-                <div style={{ minWidth: 100, maxWidth: 140 }}>
+          <Flex vertical gap={6} style={{ width: "100%" }}>
+            {presentation === "exercise_head" ? (
+              <Flex align="center" gap={8} style={{ width: "100%" }}>
+                {blockStepLabel ? (
                   <Typography
-                    variant="body2"
+                    variant="caption"
                     color="text.secondary"
-                    component="span"
-                    style={labelTiny}
-                  >
-                    {t("workouts.colBlock")}
-                  </Typography>
-                  {blockStepLabel ? (
-                    <span
-                      style={{
-                        display: "inline-block",
-                        marginTop: 2,
-                        padding: "4px 10px",
-                        borderRadius: 999,
-                        fontSize: 11,
-                        fontWeight: 600,
-                        lineHeight: 1.35,
-                        color: "var(--app-text-heading)",
-                        background:
-                          "color-mix(in srgb, var(--app-accent) 12%, var(--app-surface-elevated))",
-                        border: "1px solid var(--app-border)",
-                      }}
-                    >
-                      {blockStepLabel}
-                    </span>
-                  ) : (
-                    <Typography
-                      variant="body2"
-                      color="text.secondary"
-                      component="span"
-                      style={{ fontSize: 12 }}
-                    >
-                      {t("workouts.block.single")}
-                    </Typography>
-                  )}
-                </div>
-              ) : null}
-              {presentation === "exercise_head" ? (
-                <div
-                  style={{
-                    position: "relative",
-                    flex: "1 1 240px",
-                    minWidth: 168,
-                  }}
-                >
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    component="span"
-                    style={labelTiny}
-                  >
-                    {t("workouts.colExerciseBlock")}
-                  </Typography>
-                  <Typography
-                    variant="body1"
-                    fontWeight={600}
                     sx={{
-                      fontSize: 17,
-                      lineHeight: 1.35,
-                      display: "block",
-                      letterSpacing: "-0.02em",
-                      color: "var(--app-text-heading)",
+                      flexShrink: 0,
+                      fontSize: 11,
+                      fontWeight: 500,
+                      px: 0.75,
+                      py: 0.25,
+                      borderRadius: 999,
+                      bgcolor: "action.hover",
                     }}
-                    noWrap
+                  >
+                    {blockStepLabel}
+                  </Typography>
+                ) : null}
+                <Typography
+                  fontWeight={600}
+                  sx={{
+                    fontSize: 15,
+                    lineHeight: 1.35,
+                    letterSpacing: "-0.01em",
+                    color: "text.primary",
+                    flex: 1,
+                    minWidth: 0,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                  title={row.exercise_name ?? `ID ${row.exercise_id}`}
+                >
+                  {row.exercise_name ?? `ID ${row.exercise_id}`}
+                </Typography>
+              </Flex>
+            ) : (
+              <Flex align="center" gap={8} style={{ width: "100%" }}>
+                <Chip
+                  size="small"
+                  color={hasSetOverride ? "warning" : "default"}
+                  label={t("workouts.setNumber", {
+                    n: setLabel.replace(/^\D+/, "") || setLabel,
+                  })}
+                  sx={{
+                    flexShrink: 0,
+                    minWidth: 28,
+                    fontSize: 11,
+                    fontWeight: 600,
+                    height: 20,
+                    borderRadius: 999,
+                    bgcolor: hasSetOverride ? undefined : "transparent",
+                    borderColor: "var(--app-border)",
+                    color: hasSetOverride ? undefined : "text.secondary",
+                  }}
+                  variant={hasSetOverride ? "filled" : "outlined"}
+                />
+                {!showCompactExerciseColumn ? (
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      fontSize: 13,
+                      color: "text.secondary",
+                      minWidth: 0,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
                     title={row.exercise_name ?? `ID ${row.exercise_id}`}
                   >
                     {row.exercise_name ?? `ID ${row.exercise_id}`}
                   </Typography>
-                </div>
-              ) : (
-                <Flex
-                  align="center"
-                  gap={10}
-                  style={{
-                    flex: "1 1 240px",
-                    minWidth: compactSetExerciseUi ? 96 : 188,
-                  }}
-                >
-                  <Chip
-                    size="small"
-                    color={hasSetOverride ? "warning" : "default"}
-                    label={t("workouts.setNumber", {
-                      n: setLabel.replace(/^\D+/, "") || setLabel,
-                    })}
-                    sx={{
-                      flexShrink: 0,
-                      minWidth: 36,
-                      fontSize: 11,
-                      fontWeight: 600,
-                      height: 22,
-                      borderRadius: 999,
-                      bgcolor: hasSetOverride ? undefined : "transparent",
-                      borderColor: "var(--app-border)",
-                      color: hasSetOverride ? undefined : "text.secondary",
-                    }}
-                    variant={hasSetOverride ? "filled" : "outlined"}
-                  />
-                  {!showCompactExerciseColumn ? (
-                    <Typography
-                      variant="body1"
-                      fontWeight={600}
-                      sx={{
-                        fontSize: 15,
-                        lineHeight: 1.35,
-                        display: "block",
-                        minWidth: 0,
-                      }}
-                      noWrap
-                      title={row.exercise_name ?? `ID ${row.exercise_id}`}
-                    >
-                      {row.exercise_name ?? `ID ${row.exercise_id}`}
-                    </Typography>
-                  ) : null}
-                </Flex>
-              )}
-            </Flex>
+                ) : null}
+              </Flex>
+            )}
             <Flex
               wrap="wrap"
               gap={6}

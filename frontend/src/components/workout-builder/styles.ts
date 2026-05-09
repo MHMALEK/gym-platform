@@ -2,25 +2,28 @@ import type { CSSProperties } from "react";
 
 import { WORKOUT_ROW_RAIL_WIDTH } from "./constants";
 
-/** Standalone exercise card — flat surface + subtle ring (theme-aware) */
+/** Standalone exercise card — flat surface + hairline ring */
 export const exerciseGroupShellStyle: CSSProperties = {
-  marginBottom: 14,
+  marginBottom: 10,
   padding: 0,
-  borderRadius: 16,
+  borderRadius: 12,
   border: "1px solid var(--app-border)",
   background: "var(--app-surface-elevated)",
-  boxShadow: "0 1px 2px rgba(0, 0, 0, 0.04), 0 12px 40px rgba(0, 0, 0, 0.08)",
+  boxShadow: "none",
 };
 
-/** Nested card inside a block — accent rail only */
-export function exerciseCardShellInBlock(blockAccent: string): CSSProperties {
+/**
+ * Nested card inside a block — visually quieter than a standalone card
+ * (no border at all; the parent block card already provides containment).
+ */
+// blockAccent is no longer used; kept as a parameter for call-site stability.
+export function exerciseCardShellInBlock(_blockAccent: string): CSSProperties {
   return {
-    marginBottom: 10,
+    marginBottom: 6,
     padding: 0,
-    borderRadius: 12,
+    borderRadius: 10,
     border: "1px solid var(--app-border)",
-    borderLeft: `3px solid ${blockAccent}`,
-    background: "var(--app-surface-elevated)",
+    background: "var(--app-surface)",
     boxShadow: "none",
   };
 }

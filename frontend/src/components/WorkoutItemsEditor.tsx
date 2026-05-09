@@ -707,97 +707,87 @@ export function WorkoutItemsEditor({
                   <div
                     key={bid}
                     style={{
-                      marginBottom: 16,
-                      borderRadius: 16,
+                      marginBottom: 12,
+                      borderRadius: 12,
                       overflow: "hidden",
                       border: "1px solid var(--app-border)",
-                      borderLeft: `4px solid ${accent}`,
-                      background: "color-mix(in srgb, var(--app-surface-elevated) 92%, transparent)",
-                      boxShadow: "0 1px 2px rgba(0,0,0,0.04), 0 10px 36px rgba(0,0,0,0.08)",
+                      background: "var(--app-surface-elevated)",
+                      boxShadow: "none",
                     }}
                   >
-                    <div style={{ padding: "16px 18px 14px" }}>
-                      <Flex justify="space-between" align="flex-start" wrap="wrap" gap={12} style={{ marginBottom: 14 }}>
-                        <Flex vertical gap={10} style={{ minWidth: 0, flex: "1 1 240px" }}>
-                          <Typography style={{ fontSize: 12, fontWeight: 600, color: "var(--app-text-muted)" }}>
-                            {t("workouts.blockGroupLabel")}
-                          </Typography>
-                          <Flex align="center" gap={10} wrap="wrap">
-                            <Select
-                              size="small"
-                              value={bt}
-                              onChange={(e) => updateBlockType(bid, e.target.value as WorkoutBlockType)}
-                              sx={{
-                                minWidth: 200,
-                                maxWidth: 300,
-                                borderRadius: "12px",
-                              }}
-                            >
-                              {BLOCK_OPTIONS.map((o) => (
-                                <MenuItem key={o.value} value={o.value}>
-                                  {t(o.labelKey)}
-                                </MenuItem>
-                              ))}
-                            </Select>
-                            <Chip
-                              size="small"
-                              label={t("workouts.blockMemberCount", { count: exercisesInBlock })}
-                              sx={{
-                                margin: 0,
-                                borderRadius: 999,
-                                fontWeight: 600,
-                                px: 1,
-                                height: "auto",
-                                py: 0.5,
-                                background: `color-mix(in srgb, ${accent} 16%, var(--app-surface-elevated))`,
-                                color: "var(--app-text-heading)",
-                              }}
-                            />
-                            <Tooltip
-                              title={
-                                t("workouts.ungroupBlockHint") !== "workouts.ungroupBlockHint"
-                                  ? t("workouts.ungroupBlockHint")
-                                  : "Detach all exercises from this block"
-                              }
-                            >
-                              <Button
-                                size="small"
-                                variant="text"
-                                color="inherit"
-                                startIcon={<LinkOffIcon fontSize="small" />}
-                                onClick={() => ungroupBlockById(bid)}
-                                sx={{
-                                  color: "text.secondary",
-                                  fontWeight: 500,
-                                  textTransform: "none",
-                                  minHeight: 30,
-                                  px: 1.25,
-                                  borderRadius: 1.5,
-                                  "&:hover": {
-                                    color: "error.main",
-                                    bgcolor: "action.hover",
-                                  },
-                                }}
-                              >
-                                {t("workouts.ungroupBlock") !== "workouts.ungroupBlock"
-                                  ? t("workouts.ungroupBlock")
-                                  : "Ungroup"}
-                              </Button>
-                            </Tooltip>
-                          </Flex>
-                        </Flex>
-                        <Tooltip title={t("workouts.blockDragBundleHint")}>
-                          <IconButton size="small" sx={{ color: "var(--app-text-muted)" }} aria-label={t("workouts.blockDragBundleHint")}>
-                            <HelpOutlineIcon fontSize="small" />
-                          </IconButton>
+                    <div style={{ padding: "10px 12px" }}>
+                      <Flex align="center" wrap="wrap" gap={8} style={{ marginBottom: 8 }}>
+                        <span
+                          aria-hidden
+                          style={{
+                            width: 8,
+                            height: 8,
+                            borderRadius: 999,
+                            background: accent,
+                            flexShrink: 0,
+                          }}
+                        />
+                        <Select
+                          size="small"
+                          value={bt}
+                          onChange={(e) => updateBlockType(bid, e.target.value as WorkoutBlockType)}
+                          sx={{
+                            minWidth: 140,
+                            borderRadius: "10px",
+                            "& .MuiSelect-select": { py: 0.75 },
+                          }}
+                        >
+                          {BLOCK_OPTIONS.map((o) => (
+                            <MenuItem key={o.value} value={o.value}>
+                              {t(o.labelKey)}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                          sx={{ fontSize: 12 }}
+                        >
+                          {t("workouts.blockMemberCount", { count: exercisesInBlock })}
+                        </Typography>
+                        <Box sx={{ flex: 1 }} />
+                        <Tooltip
+                          title={
+                            t("workouts.ungroupBlockHint") !== "workouts.ungroupBlockHint"
+                              ? t("workouts.ungroupBlockHint")
+                              : "Detach all exercises from this block"
+                          }
+                        >
+                          <Button
+                            size="small"
+                            variant="text"
+                            color="inherit"
+                            startIcon={<LinkOffIcon fontSize="small" />}
+                            onClick={() => ungroupBlockById(bid)}
+                            sx={{
+                              color: "text.secondary",
+                              fontWeight: 500,
+                              textTransform: "none",
+                              minHeight: 28,
+                              px: 1,
+                              borderRadius: 1.5,
+                              "&:hover": {
+                                color: "error.main",
+                                bgcolor: "action.hover",
+                              },
+                            }}
+                          >
+                            {t("workouts.ungroupBlock") !== "workouts.ungroupBlock"
+                              ? t("workouts.ungroupBlock")
+                              : "Ungroup"}
+                          </Button>
                         </Tooltip>
                       </Flex>
                       {(() => {
                       const dividerStyle: CSSProperties = {
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 10,
-                        margin: "14px 0 12px",
+                        height: 1,
+                        background: "var(--app-border)",
+                        margin: "6px 0",
                       };
                       let k = 0;
                       let bundleOrdinal = 0;
@@ -811,15 +801,7 @@ export function WorkoutItemsEditor({
                         const totalStepsForBlock = exercisesInBlock;
                         blockChildren.push(
                           <Fragment key={`ex-in-block-${items[lo].localId}`}>
-                            {lo > start ? (
-                              <div style={dividerStyle}>
-                                <div style={{ flex: 1, height: 1, background: "var(--app-border)" }} />
-                                <span aria-hidden style={{ color: accent, fontSize: 12, opacity: 0.85, padding: "0 4px" }}>
-                                  ↓
-                                </span>
-                                <div style={{ flex: 1, height: 1, background: "var(--app-border)" }} />
-                              </div>
-                            ) : null}
+                            {lo > start ? <div aria-hidden style={dividerStyle} /> : null}
                             <SortableExerciseGroup
                               headLocalId={items[lo].localId}
                               shellStyle={exerciseCardShellInBlock(accent)}
@@ -978,23 +960,30 @@ export function WorkoutItemsEditor({
         </Alert>
       ) : null}
 
-      <Stack direction="row" spacing={1.5} sx={{ width: "100%", mt: 2.5, flexWrap: "wrap" }} useFlexGap>
+      <Stack direction="row" spacing={1} sx={{ width: "100%", mt: 1.5 }} useFlexGap flexWrap="wrap">
         <Button
           variant="contained"
           color="primary"
-          size="large"
-          startIcon={<AddIcon />}
+          size="small"
+          startIcon={<AddIcon fontSize="small" />}
           onClick={() => armPickerContext({ mode: "append" })}
-          sx={{ borderRadius: 2, fontWeight: 600, flex: "2 1 240px" }}
+          sx={{ borderRadius: 1.5, fontWeight: 500, textTransform: "none", px: 1.75 }}
         >
           {t("workouts.addExercise")}
         </Button>
         <Button
-          variant="outlined"
-          size="large"
-          startIcon={<LinkIcon />}
+          variant="text"
+          size="small"
+          startIcon={<LinkIcon fontSize="small" />}
           onClick={() => armPickerContext({ mode: "groupSelect" })}
-          sx={{ borderRadius: 2, fontWeight: 600, flex: "1 1 200px" }}
+          sx={{
+            borderRadius: 1.5,
+            fontWeight: 500,
+            textTransform: "none",
+            color: "text.secondary",
+            px: 1.5,
+            "&:hover": { color: "primary.main", bgcolor: "action.hover" },
+          }}
         >
           {t("workouts.addSuperset")}
         </Button>
