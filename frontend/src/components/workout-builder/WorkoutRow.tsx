@@ -475,7 +475,14 @@ export function WorkoutRow({
                 inputProps={{ min: 0 }}
                 sx={{
                   width: 84,
-                  "& .MuiOutlinedInput-root": { borderRadius: "10px" },
+                  "& .MuiOutlinedInput-root": {
+                    borderRadius: "8px",
+                    fontSize: 13,
+                    height: 32,
+                    paddingLeft: "8px",
+                    paddingRight: "8px",
+                  },
+                  "& .MuiOutlinedInput-input": { padding: "6px 4px" },
                 }}
                 placeholder={t("workouts.colReps")}
                 value={displayReps ?? ""}
@@ -495,7 +502,14 @@ export function WorkoutRow({
                     inputProps={{ min: 0 }}
                     sx={{
                       width: 100,
-                      "& .MuiOutlinedInput-root": { borderRadius: "10px" },
+                      "& .MuiOutlinedInput-root": {
+                    borderRadius: "8px",
+                    fontSize: 13,
+                    height: 32,
+                    paddingLeft: "8px",
+                    paddingRight: "8px",
+                  },
+                  "& .MuiOutlinedInput-input": { padding: "6px 4px" },
                     }}
                     placeholder={translate(t, "workouts.colHold", "Hold")}
                     aria-label="Hold time (seconds)"
@@ -528,7 +542,14 @@ export function WorkoutRow({
                   inputProps={{ min: 0 }}
                   sx={{
                     width: 100,
-                    "& .MuiOutlinedInput-root": { borderRadius: "10px" },
+                    "& .MuiOutlinedInput-root": {
+                    borderRadius: "8px",
+                    fontSize: 13,
+                    height: 32,
+                    paddingLeft: "8px",
+                    paddingRight: "8px",
+                  },
+                  "& .MuiOutlinedInput-input": { padding: "6px 4px" },
                   }}
                   placeholder={translate(t, "workouts.colRest", "Rest")}
                   aria-label="Rest (seconds)"
@@ -561,7 +582,14 @@ export function WorkoutRow({
                     inputProps={{ min: 0, step: 0.5 }}
                     sx={{
                       width: 84,
-                      "& .MuiOutlinedInput-root": { borderRadius: "10px" },
+                      "& .MuiOutlinedInput-root": {
+                    borderRadius: "8px",
+                    fontSize: 13,
+                    height: 32,
+                    paddingLeft: "8px",
+                    paddingRight: "8px",
+                  },
+                  "& .MuiOutlinedInput-input": { padding: "6px 4px" },
                     }}
                     placeholder={
                       t("workouts.colWeightKg") !== "workouts.colWeightKg"
@@ -583,7 +611,14 @@ export function WorkoutRow({
                     inputProps={{ min: 0, max: 10, step: 0.5 }}
                     sx={{
                       width: 72,
-                      "& .MuiOutlinedInput-root": { borderRadius: "10px" },
+                      "& .MuiOutlinedInput-root": {
+                    borderRadius: "8px",
+                    fontSize: 13,
+                    height: 32,
+                    paddingLeft: "8px",
+                    paddingRight: "8px",
+                  },
+                  "& .MuiOutlinedInput-input": { padding: "6px 4px" },
                     }}
                     placeholder={
                       t("workouts.colRpe") !== "workouts.colRpe"
@@ -608,7 +643,14 @@ export function WorkoutRow({
                     size="small"
                     sx={{
                       width: 104,
-                      "& .MuiOutlinedInput-root": { borderRadius: "10px" },
+                      "& .MuiOutlinedInput-root": {
+                    borderRadius: "8px",
+                    fontSize: 13,
+                    height: 32,
+                    paddingLeft: "8px",
+                    paddingRight: "8px",
+                  },
+                  "& .MuiOutlinedInput-input": { padding: "6px 4px" },
                     }}
                     placeholder={
                       t("workouts.colTempo") !== "workouts.colTempo"
@@ -630,7 +672,14 @@ export function WorkoutRow({
                   flex: "1 1 220px",
                   minWidth: 168,
                   maxWidth: 520,
-                  "& .MuiOutlinedInput-root": { borderRadius: "10px" },
+                  "& .MuiOutlinedInput-root": {
+                    borderRadius: "8px",
+                    fontSize: 13,
+                    height: 32,
+                    paddingLeft: "8px",
+                    paddingRight: "8px",
+                  },
+                  "& .MuiOutlinedInput-input": { padding: "6px 4px" },
                 }}
                 placeholder={t("workouts.colTipsNotes")}
                 value={displayNotes}

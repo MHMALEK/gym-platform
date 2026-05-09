@@ -1,5 +1,3 @@
-import LogoutIcon from "@mui/icons-material/Logout";
-import MenuIcon from "@mui/icons-material/Menu";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Divider from "@mui/material/Divider";
@@ -11,6 +9,7 @@ import Typography from "@mui/material/Typography";
 import { useTheme } from "@mui/material/styles";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import { useLogout, useMenu } from "@refinedev/core";
+import { LogOut, Menu as MenuIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -374,7 +373,7 @@ function SidebarFooter() {
         <Button
           size="small"
           onClick={() => logout()}
-          startIcon={<LogoutIcon fontSize="small" />}
+          startIcon={<LogOut size={15} strokeWidth={2} />}
           sx={{
             color: "text.secondary",
             fontWeight: 500,
@@ -425,7 +424,7 @@ function Topbar({ onOpenMenu, showMenuButton }: { onOpenMenu: () => void; showMe
     >
       {showMenuButton ? (
         <IconButton edge="start" onClick={onOpenMenu} size="small" aria-label="Open menu">
-          <MenuIcon />
+          <MenuIcon size={18} strokeWidth={2} />
         </IconButton>
       ) : null}
       <Typography

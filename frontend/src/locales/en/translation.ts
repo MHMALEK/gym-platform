@@ -634,9 +634,9 @@ const translation = {
       stepBasicsHint: "Give the plan a clear name and choose a venue — this filters exercise suggestions in the next step.",
       stepProgramHint:
         "Add an overview, then build the exercise list. You can leave exercises empty and fill them in the editor after save.",
-      continueToProgram: "Continue to program",
-      backToDetails: "Back to details",
-      savePlan: "Save & open editor",
+      continueToProgram: "Continue",
+      backToDetails: "Back",
+      savePlan: "Save plan",
     },
     form: {
       venue: "Program venue",

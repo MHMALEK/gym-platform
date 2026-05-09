@@ -1,14 +1,16 @@
-import AppleIcon from "@mui/icons-material/Apple";
-import MenuBookIcon from "@mui/icons-material/MenuBook";
-import PaletteIcon from "@mui/icons-material/Palette";
-import DashboardIcon from "@mui/icons-material/Dashboard";
-import DescriptionIcon from "@mui/icons-material/Description";
-import LocalFireDepartmentIcon from "@mui/icons-material/LocalFireDepartment";
-import HomeIcon from "@mui/icons-material/Home";
-import LibraryBooksIcon from "@mui/icons-material/LibraryBooks";
-import GroupsIcon from "@mui/icons-material/Groups";
-import ViewListIcon from "@mui/icons-material/ViewList";
 import CssBaseline from "@mui/material/CssBaseline";
+import {
+  Apple,
+  BookOpen,
+  Dumbbell,
+  FileText,
+  Flame,
+  Home,
+  LayoutDashboard,
+  Library,
+  Palette,
+  Users,
+} from "lucide-react";
 import { ThemeProvider } from "@mui/material/styles";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
@@ -107,12 +109,12 @@ function RefineShell() {
       {
         name: "coach-desk",
         list: "/",
-        meta: { label: t("nav.coachDesk"), icon: <HomeIcon /> },
+        meta: { label: t("nav.coachDesk"), icon: <Home size={18} strokeWidth={2} /> },
       },
       {
         name: "dashboard",
         list: "/dashboard",
-        meta: { label: t("nav.dashboard"), icon: <DashboardIcon /> },
+        meta: { label: t("nav.dashboard"), icon: <LayoutDashboard size={18} strokeWidth={2} /> },
       },
       {
         name: "clients",
@@ -120,28 +122,28 @@ function RefineShell() {
         create: "/clients/create",
         edit: "/clients/edit/:id",
         show: "/clients/show/:id",
-        meta: { label: t("nav.clients"), icon: <GroupsIcon /> },
+        meta: { label: t("nav.clients"), icon: <Users size={18} strokeWidth={2} /> },
       },
       {
         name: "invoices",
         list: "/invoices",
         create: "/invoices/create",
         edit: "/invoices/edit/:id",
-        meta: { label: t("nav.invoices"), icon: <DescriptionIcon /> },
+        meta: { label: t("nav.invoices"), icon: <FileText size={18} strokeWidth={2} /> },
       },
       {
         name: "plan-templates",
         list: "/plan-templates",
         create: "/plan-templates/create",
         edit: "/plan-templates/edit/:id",
-        meta: { label: t("nav.planTemplates"), icon: <MenuBookIcon /> },
+        meta: { label: t("nav.planTemplates"), icon: <BookOpen size={18} strokeWidth={2} /> },
       },
       {
         name: "exercises",
         list: "/exercises",
         create: "/exercises/create",
         edit: "/exercises/edit/:id",
-        meta: { label: t("nav.exercises"), icon: <LocalFireDepartmentIcon /> },
+        meta: { label: t("nav.exercises"), icon: <Flame size={18} strokeWidth={2} /> },
       },
       {
         name: "training-plans",
@@ -149,34 +151,34 @@ function RefineShell() {
         create: "/training-plans/create",
         edit: "/training-plans/edit/:id",
         show: "/training-plans/show/:id",
-        meta: { label: t("nav.trainingPlans"), icon: <ViewListIcon /> },
+        meta: { label: t("nav.trainingPlans"), icon: <Dumbbell size={18} strokeWidth={2} /> },
       },
       {
         name: "nutrition-templates",
         list: "/nutrition-templates",
         create: "/nutrition-templates/create",
         edit: "/nutrition-templates/edit/:id",
-        meta: { label: t("nav.nutritionTemplates"), icon: <AppleIcon /> },
+        meta: { label: t("nav.nutritionTemplates"), icon: <Apple size={18} strokeWidth={2} /> },
       },
       {
         name: "directory-exercises",
         list: "/library/exercises",
-        meta: { label: t("nav.libraryExercises"), icon: <LibraryBooksIcon /> },
+        meta: { label: t("nav.libraryExercises"), icon: <Library size={18} strokeWidth={2} /> },
       },
       {
         name: "directory-training-plans",
         list: "/library/training-plans",
-        meta: { label: t("nav.libraryPlans"), icon: <LibraryBooksIcon /> },
+        meta: { label: t("nav.libraryPlans"), icon: <Library size={18} strokeWidth={2} /> },
       },
       {
         name: "directory-nutrition-templates",
         list: "/library/nutrition-templates",
-        meta: { label: t("nav.libraryNutritionTemplates"), icon: <LibraryBooksIcon /> },
+        meta: { label: t("nav.libraryNutritionTemplates"), icon: <Library size={18} strokeWidth={2} /> },
       },
       {
         name: "branding",
         list: "/settings/branding",
-        meta: { label: t("nav.branding"), icon: <PaletteIcon /> },
+        meta: { label: t("nav.branding"), icon: <Palette size={18} strokeWidth={2} /> },
       },
     ],
     [t, i18n.language],

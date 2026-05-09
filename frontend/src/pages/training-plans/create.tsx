@@ -29,7 +29,7 @@ type FormValues = {
   workout_rich_html: string;
 };
 
-const PAGE_MAX_WIDTH = 1100;
+const PAGE_MAX_WIDTH = 1440;
 
 export function TrainingPlanCreate() {
   const { t } = useTranslation();

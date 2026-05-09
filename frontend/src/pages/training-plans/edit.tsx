@@ -53,7 +53,7 @@ type FormValues = {
   workout_rich_html: string;
 };
 
-const PAGE_MAX_WIDTH = 1100;
+const PAGE_MAX_WIDTH = 1440;
 
 export function TrainingPlanEdit() {
   const { t } = useTranslation();
@@ -141,7 +141,7 @@ export function TrainingPlanEdit() {
             planId={record.id}
             planVenue={venueLive}
             initialItems={initialLines}
-            showSaveButton
+            showSaveButton={false}
             hideHeader
           />
         ) : null}

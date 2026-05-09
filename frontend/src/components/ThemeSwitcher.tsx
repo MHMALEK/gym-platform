@@ -1,7 +1,6 @@
-import DarkModeIcon from "@mui/icons-material/DarkMode";
-import LightModeIcon from "@mui/icons-material/LightMode";
 import IconButton from "@mui/material/IconButton";
 import Tooltip from "@mui/material/Tooltip";
+import { Moon, Sun } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { useThemeMode } from "../theme/ThemeModeContext";
@@ -18,9 +17,13 @@ export function ThemeSwitcher() {
         size="small"
         onClick={toggleMode}
         aria-label={isDark ? t("theme.switchToLight") : t("theme.switchToDark")}
-        color="inherit"
+        sx={{ color: "text.secondary", "&:hover": { color: "text.primary", bgcolor: "action.hover" } }}
       >
-        {isDark ? <LightModeIcon fontSize="small" /> : <DarkModeIcon fontSize="small" />}
+        {isDark ? (
+          <Sun size={16} strokeWidth={2} />
+        ) : (
+          <Moon size={16} strokeWidth={2} />
+        )}
       </IconButton>
     </Tooltip>
   );

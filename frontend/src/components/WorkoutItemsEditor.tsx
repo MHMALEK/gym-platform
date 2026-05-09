@@ -756,10 +756,10 @@ export function WorkoutItemsEditor({
                   <div
                     key={bid}
                     style={{
-                      marginBottom: 12,
-                      borderRadius: 12,
+                      marginBottom: 10,
+                      borderRadius: 10,
                       overflow: "hidden",
-                      border: "1px solid var(--app-border)",
+                      border: "1px solid var(--app-border-strong)",
                       background: "var(--app-surface-elevated)",
                       boxShadow: "none",
                     }}
