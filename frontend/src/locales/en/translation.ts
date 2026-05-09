@@ -877,8 +877,10 @@ const translation = {
     pairWithNext: "Pair w/ next",
     joinPrevious: "Join prev group",
     leaveGroup: "Unlink",
-    richSectionTitle: "Workout overview (rich text)",
-    richPlaceholder: "Warm-up, RPE, weekly focus, links…",
+    richSectionTitle: "Workout notes",
+    richSectionDesc:
+      "Free-form notes that apply to the whole plan — warm-up routine, weekly focus, technique cues, video links. Use the program below for sets and reps.",
+    richPlaceholder: "Warm-up, weekly focus, technique cues, video links…",
     block: {
       single: "Single",
       superset: "Superset",

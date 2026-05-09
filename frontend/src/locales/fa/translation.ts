@@ -885,8 +885,10 @@ const translation = {
     pairWithNext: "جفت با بعدی",
     joinPrevious: "پیوستن به گروه قبل",
     leaveGroup: "جدا کردن",
-    richSectionTitle: "نمای کلی تمرین (متن غنی)",
-    richPlaceholder: "گرم‌کردن، RPE، تمرکز هفته، لینک…",
+    richSectionTitle: "یادداشت‌های تمرین",
+    richSectionDesc:
+      "یادداشت‌های آزاد که برای کل برنامه اعمال می‌شود — روال گرم‌کردن، تمرکز هفته، نکات فنی، لینک ویدیو. ست‌ها و تکرارها را از قسمت برنامه‌ی پایین تنظیم کنید.",
+    richPlaceholder: "گرم‌کردن، تمرکز هفته، نکات فنی، لینک ویدیو…",
     block: {
       single: "تکی",
       superset: "سوپرست",

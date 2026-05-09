@@ -1,4 +1,3 @@
-import GroupAddIcon from "@mui/icons-material/GroupAddRounded";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
@@ -10,7 +9,6 @@ import { Check, Layers, Loader2, Plus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { AssignPlanToClientsDialog } from "../../components/AssignPlanToClientsDialog";
 import { PageHeader } from "../../components/layout/PageHeader";
 import { StickyActionBar } from "../../components/layout/StickyActionBar";
 import {
@@ -60,7 +58,6 @@ const PAGE_MAX_WIDTH = "100%";
 
 export function TrainingPlanEdit() {
   const { t } = useTranslation();
-  const [assignOpen, setAssignOpen] = useState(false);
 
   const editorRef = useRef<WorkoutItemsEditorHandle>(null);
   const formAutoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -134,19 +131,6 @@ export function TrainingPlanEdit() {
     };
   }, [watchedJSON, record?.id, refineCore, watchedValues, reset]);
 
-  const headerActions = (
-    <Button
-      variant="outlined"
-      size="small"
-      startIcon={<GroupAddIcon fontSize="small" />}
-      disabled={record?.id == null}
-      onClick={() => setAssignOpen(true)}
-      sx={{ borderRadius: 2 }}
-    >
-      {t("assignPlanToClients.assignToClientsButton")}
-    </Button>
-  );
-
   return (
     <Box sx={{ maxWidth: PAGE_MAX_WIDTH, mx: "auto", width: "100%" }}>
       <PageHeader
@@ -156,7 +140,6 @@ export function TrainingPlanEdit() {
             ? t("trainingPlans.edit.pageSubtitle")
             : undefined
         }
-        actions={headerActions}
       />
 
       {/* Single scrolling page — Details + Program live together. Three
@@ -176,7 +159,7 @@ export function TrainingPlanEdit() {
           <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
             <SectionHeading
               title={t("workouts.richSectionTitle")}
-              subtitle={t("workouts.richPlaceholder")}
+              subtitle={t("workouts.richSectionDesc")}
             />
             <TrainingPlanWorkoutRichField control={control} />
           </CardContent>
@@ -258,14 +241,6 @@ export function TrainingPlanEdit() {
           {t("workouts.addSuperset")}
         </Button>
       </StickyActionBar>
-
-      <AssignPlanToClientsDialog
-        open={assignOpen}
-        onClose={() => setAssignOpen(false)}
-        mode="training"
-        resourceId={record?.id ?? 0}
-        resourceName={record?.name}
-      />
     </Box>
   );
 }
