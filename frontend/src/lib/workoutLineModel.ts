@@ -10,6 +10,12 @@ export type WorkoutLine = {
   reps: number | null;
   duration_sec: number | null;
   rest_sec: number | null;
+  /** Load in kilograms. Null = unspecified. */
+  weight_kg: number | null;
+  /** Rate of Perceived Exertion (0–10, typically 0.5 increments). Null = unspecified. */
+  rpe: number | null;
+  /** Freeform tempo string, e.g. "3-1-1-0". Null = unspecified. */
+  tempo: string | null;
   notes: string | null;
   exercise_name?: string;
   block_id: string | null;
@@ -124,7 +130,7 @@ export function setCountInGroup(items: WorkoutLine[], index: number): number {
 export function effectiveNumeric(
   items: WorkoutLine[],
   index: number,
-  field: "reps" | "duration_sec" | "rest_sec",
+  field: "reps" | "duration_sec" | "rest_sec" | "weight_kg" | "rpe",
 ): number | null {
   const row = items[index];
   if (!row) return null;
@@ -135,13 +141,22 @@ export function effectiveNumeric(
   return head?.[field] ?? null;
 }
 
-export function effectiveNotes(items: WorkoutLine[], index: number): string | null {
+export function effectiveText(
+  items: WorkoutLine[],
+  index: number,
+  field: "notes" | "tempo",
+): string | null {
   const row = items[index];
   if (!row) return null;
-  if (row.row_type !== "set") return row.notes;
-  if (row.notes != null && row.notes !== "") return row.notes;
+  if (row.row_type !== "set") return row[field];
+  if (row[field] != null && row[field] !== "") return row[field];
   const head = items[exerciseHeadIndex(items, index)];
-  return head?.notes ?? null;
+  return head?.[field] ?? null;
+}
+
+/** @deprecated use effectiveText(items, index, "notes") */
+export function effectiveNotes(items: WorkoutLine[], index: number): string | null {
+  return effectiveText(items, index, "notes");
 }
 
 export function isMergeDragRoot(items: WorkoutLine[], index: number): boolean {
@@ -201,6 +216,14 @@ export function consolidateLegacyPlanRows(lines: WorkoutLine[]): WorkoutLine[] {
         reps: k === 0 ? null : eq(src.reps, head.reps) ? null : src.reps,
         duration_sec: k === 0 ? null : eq(src.duration_sec, head.duration_sec) ? null : src.duration_sec,
         rest_sec: k === 0 ? null : eq(src.rest_sec, head.rest_sec) ? null : src.rest_sec,
+        weight_kg: k === 0 ? null : eq(src.weight_kg, head.weight_kg) ? null : src.weight_kg,
+        rpe: k === 0 ? null : eq(src.rpe, head.rpe) ? null : src.rpe,
+        tempo:
+          k === 0
+            ? null
+            : (src.tempo ?? null) === (head.tempo ?? null)
+              ? null
+              : src.tempo ?? null,
         notes:
           k === 0
             ? null
@@ -231,6 +254,9 @@ export function newExerciseWithOneSetInBlock(
     reps: 10,
     duration_sec: null,
     rest_sec: 60,
+    weight_kg: null,
+    rpe: null,
+    tempo: null,
     notes: null,
     block_id: blockId,
     block_type: blockType,
@@ -246,6 +272,9 @@ export function newExerciseWithOneSetInBlock(
     reps: null,
     duration_sec: null,
     rest_sec: null,
+    weight_kg: null,
+    rpe: null,
+    tempo: null,
     notes: null,
     block_id: blockId,
     block_type: blockType,
@@ -262,13 +291,24 @@ function effectiveTemplateFromRow(items: WorkoutLine[], index: number) {
   const head = items[headI];
   const row = items[index];
   if (!head || !row) {
-    return { reps: 10 as number | null, duration_sec: null as number | null, rest_sec: 60 as number | null, notes: null as string | null };
+    return {
+      reps: 10 as number | null,
+      duration_sec: null as number | null,
+      rest_sec: 60 as number | null,
+      weight_kg: null as number | null,
+      rpe: null as number | null,
+      tempo: null as string | null,
+      notes: null as string | null,
+    };
   }
   if (row.row_type === "set") {
     return {
       reps: row.reps ?? head.reps,
       duration_sec: row.duration_sec ?? head.duration_sec,
       rest_sec: row.rest_sec ?? head.rest_sec,
+      weight_kg: row.weight_kg ?? head.weight_kg,
+      rpe: row.rpe ?? head.rpe,
+      tempo: row.tempo ?? head.tempo,
       notes: row.notes ?? head.notes,
     };
   }
@@ -276,6 +316,9 @@ function effectiveTemplateFromRow(items: WorkoutLine[], index: number) {
     reps: head.reps,
     duration_sec: head.duration_sec,
     rest_sec: head.rest_sec,
+    weight_kg: head.weight_kg,
+    rpe: head.rpe,
+    tempo: head.tempo,
     notes: head.notes,
   };
 }
@@ -308,6 +351,9 @@ export function insertLinkedExerciseAfter(
     reps: tmpl.reps,
     duration_sec: tmpl.duration_sec,
     rest_sec: tmpl.rest_sec,
+    weight_kg: tmpl.weight_kg,
+    rpe: tmpl.rpe,
+    tempo: tmpl.tempo,
     notes: tmpl.notes,
     block_id: bid,
     block_type: bt,
@@ -323,6 +369,9 @@ export function insertLinkedExerciseAfter(
     reps: null,
     duration_sec: null,
     rest_sec: null,
+    weight_kg: null,
+    rpe: null,
+    tempo: null,
     notes: null,
     block_id: bid,
     block_type: bt,
@@ -357,6 +406,9 @@ export function insertSetBelowGroupEnd(items: WorkoutLine[], groupEndIndex: numb
     reps: null,
     duration_sec: null,
     rest_sec: null,
+    weight_kg: null,
+    rpe: null,
+    tempo: null,
     notes: null,
     block_id: head.block_id,
     block_type: head.block_type,
@@ -566,6 +618,9 @@ export function normalizeWorkoutLinesForApi(items: WorkoutLine[]) {
     reps: it.reps ?? null,
     duration_sec: it.duration_sec ?? null,
     rest_sec: it.rest_sec ?? null,
+    weight_kg: it.weight_kg ?? null,
+    rpe: it.rpe ?? null,
+    tempo: it.tempo?.trim() ? it.tempo.trim() : null,
     notes: it.notes?.trim() ? it.notes.trim() : null,
     block_id: it.block_id?.trim() ? it.block_id.trim() : null,
     block_type: it.block_id?.trim() ? it.block_type ?? "superset" : null,
@@ -582,6 +637,9 @@ export function workoutLinesFromApiItems(
     reps?: number | null;
     duration_sec?: number | null;
     rest_sec?: number | null;
+    weight_kg?: number | null;
+    rpe?: number | null;
+    tempo?: string | null;
     notes?: string | null;
     block_id?: string | null;
     block_type?: string | null;
@@ -607,6 +665,9 @@ export function workoutLinesFromApiItems(
         reps: row.reps ?? null,
         duration_sec: row.duration_sec ?? null,
         rest_sec: row.rest_sec ?? null,
+        weight_kg: row.weight_kg ?? null,
+        rpe: row.rpe ?? null,
+        tempo: row.tempo ?? null,
         notes: row.notes ?? null,
         exercise_name: row.exercise?.name ?? row.exercise_name ?? undefined,
         block_id: row.block_id?.trim() ? row.block_id.trim() : null,

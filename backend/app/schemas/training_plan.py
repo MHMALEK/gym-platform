@@ -34,11 +34,42 @@ class TrainingPlanItemWrite(BaseModel):
     reps: int | None = None
     duration_sec: int | None = None
     rest_sec: int | None = None
+    # Coaching primitives. weight_kg is the load in kilograms; rpe is 0–10
+    # (typically 0.5 increments); tempo is freeform like "3-1-1-0".
+    weight_kg: float | None = None
+    rpe: float | None = None
+    tempo: str | None = None
     notes: str | None = None
     block_id: str | None = None
     block_type: WorkoutBlockType | None = None
     row_type: WorkoutRowType = "legacy_line"
     exercise_instance_id: str | None = None
+
+    @field_validator("rpe")
+    @classmethod
+    def _clamp_rpe(cls, v: float | None) -> float | None:
+        if v is None:
+            return None
+        if v < 0 or v > 10:
+            raise ValueError("rpe must be between 0 and 10")
+        return v
+
+    @field_validator("weight_kg")
+    @classmethod
+    def _non_negative_weight(cls, v: float | None) -> float | None:
+        if v is None:
+            return None
+        if v < 0:
+            raise ValueError("weight_kg must be >= 0")
+        return v
+
+    @field_validator("tempo")
+    @classmethod
+    def _trim_tempo(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        s = v.strip()
+        return s if s else None
 
     @model_validator(mode="after")
     def block_consistency(self):
@@ -76,6 +107,9 @@ class TrainingPlanItemRead(ORMBase):
     reps: int | None
     duration_sec: int | None
     rest_sec: int | None
+    weight_kg: float | None = None
+    rpe: float | None = None
+    tempo: str | None = None
     notes: str | None
     block_id: str | None = None
     block_type: str | None = None

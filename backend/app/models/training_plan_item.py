@@ -1,4 +1,4 @@
-from sqlalchemy import ForeignKey, Integer, String, Text
+from sqlalchemy import Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin
@@ -17,6 +17,11 @@ class TrainingPlanItem(Base, TimestampMixin):
     reps: Mapped[int | None] = mapped_column(Integer, nullable=True)
     duration_sec: Mapped[int | None] = mapped_column(Integer, nullable=True)
     rest_sec: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Coaching primitives. Weight stored in kg (UI may display kg or lb in the future).
+    # RPE on the 0–10 scale (typically 0.5 increments). Tempo is freeform (e.g. "3-1-1-0").
+    weight_kg: Mapped[float | None] = mapped_column(Float, nullable=True)
+    rpe: Mapped[float | None] = mapped_column(Float, nullable=True)
+    tempo: Mapped[str | None] = mapped_column(String(16), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     # Same block_id on adjacent (or reordered) rows = one structured block, e.g. superset.
     block_id: Mapped[str | None] = mapped_column(String(40), nullable=True)

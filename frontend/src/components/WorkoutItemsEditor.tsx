@@ -70,8 +70,8 @@ import {
   type WorkoutBlockType,
   type WorkoutLine,
   contiguousLegacyExerciseRun,
-  effectiveNotes,
   effectiveNumeric,
+  effectiveText,
   exerciseGroupRange,
   insertLinkedExerciseAfter,
   insertSetBelowGroupEnd,
@@ -419,13 +419,19 @@ function WorkoutRow({
   const displayReps = isSetUnder ? effectiveNumeric(items, index, "reps") : row.reps;
   const displayDur = isSetUnder ? effectiveNumeric(items, index, "duration_sec") : row.duration_sec;
   const displayRest = isSetUnder ? effectiveNumeric(items, index, "rest_sec") : row.rest_sec;
-  const displayNotes = isSetUnder ? effectiveNotes(items, index) ?? "" : row.notes ?? "";
+  const displayWeight = isSetUnder ? effectiveNumeric(items, index, "weight_kg") : row.weight_kg;
+  const displayRpe = isSetUnder ? effectiveNumeric(items, index, "rpe") : row.rpe;
+  const displayTempo = isSetUnder ? effectiveText(items, index, "tempo") ?? "" : row.tempo ?? "";
+  const displayNotes = isSetUnder ? effectiveText(items, index, "notes") ?? "" : row.notes ?? "";
 
   const hasSetOverride =
     isSetUnder &&
     (row.reps != null ||
       row.duration_sec != null ||
       row.rest_sec != null ||
+      row.weight_kg != null ||
+      row.rpe != null ||
+      (row.tempo != null && row.tempo !== "") ||
       (row.notes != null && row.notes !== ""));
 
   const hideBlockColumnOnRow = packInExerciseGroup && (isSetUnder || isLegacyExtra);
@@ -601,7 +607,15 @@ function WorkoutRow({
                 size="small"
                 aria-label={t("workouts.clearSetOverrides")}
                 onClick={() =>
-                  updateAt(index, { reps: null, duration_sec: null, rest_sec: null, notes: null })
+                  updateAt(index, {
+                    reps: null,
+                    duration_sec: null,
+                    rest_sec: null,
+                    weight_kg: null,
+                    rpe: null,
+                    tempo: null,
+                    notes: null,
+                  })
                 }
               >
                 <UndoIcon fontSize="small" />
@@ -834,6 +848,72 @@ function WorkoutRow({
                     rest_sec: e.target.value === "" ? null : Number(e.target.value),
                   })
                 }
+              />
+              <TextField
+                type="number"
+                size="small"
+                inputProps={{ min: 0, step: 0.5 }}
+                sx={{ width: 92, "& .MuiOutlinedInput-root": { borderRadius: "10px" } }}
+                placeholder={
+                  t("workouts.colWeightKg") !== "workouts.colWeightKg"
+                    ? t("workouts.colWeightKg")
+                    : "kg"
+                }
+                aria-label={
+                  t("workouts.colWeightKg") !== "workouts.colWeightKg"
+                    ? t("workouts.colWeightKg")
+                    : "Weight (kg)"
+                }
+                value={displayWeight ?? ""}
+                onChange={(e) =>
+                  updateAt(index, {
+                    weight_kg: e.target.value === "" ? null : Number(e.target.value),
+                  })
+                }
+              />
+              <TextField
+                type="number"
+                size="small"
+                inputProps={{ min: 0, max: 10, step: 0.5 }}
+                sx={{ width: 80, "& .MuiOutlinedInput-root": { borderRadius: "10px" } }}
+                placeholder={
+                  t("workouts.colRpe") !== "workouts.colRpe" ? t("workouts.colRpe") : "RPE"
+                }
+                aria-label={
+                  t("workouts.colRpe") !== "workouts.colRpe"
+                    ? t("workouts.colRpe")
+                    : "RPE (0–10)"
+                }
+                value={displayRpe ?? ""}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  if (raw === "") {
+                    updateAt(index, { rpe: null });
+                    return;
+                  }
+                  const n = Number(raw);
+                  if (Number.isNaN(n)) return;
+                  // Clamp to RPE range; backend also validates 0–10.
+                  const clamped = Math.min(10, Math.max(0, n));
+                  updateAt(index, { rpe: clamped });
+                }}
+              />
+              <TextField
+                size="small"
+                sx={{ width: 116, "& .MuiOutlinedInput-root": { borderRadius: "10px" } }}
+                placeholder={
+                  t("workouts.colTempo") !== "workouts.colTempo"
+                    ? t("workouts.colTempo")
+                    : "Tempo"
+                }
+                aria-label={
+                  t("workouts.colTempo") !== "workouts.colTempo"
+                    ? t("workouts.colTempo")
+                    : "Tempo (e.g. 3-1-1-0)"
+                }
+                value={displayTempo}
+                onChange={(e) => updateAt(index, { tempo: e.target.value || null })}
+                inputProps={{ maxLength: 16 }}
               />
               <TextField
                 size="small"

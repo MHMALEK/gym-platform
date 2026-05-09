@@ -52,6 +52,9 @@ export type CoachingPayload = {
     reps: number | null;
     duration_sec: number | null;
     rest_sec: number | null;
+    weight_kg?: number | null;
+    rpe?: number | null;
+    tempo?: string | null;
     notes: string | null;
     block_id?: string | null;
     block_type?: string | null;
