@@ -387,18 +387,26 @@ export function WorkoutRow({
             {/* Inputs cluster.
              *  Head rows: always show inputs (those are the defaults for the
              *  exercise that all sets inherit from).
-             *  Set rows: render compact "Uses exercise targets" + Pencil by
-             *  default; click to reveal inputs and override that specific set.
+             *  Set rows: render a read-only preview of the inherited values
+             *  + Pencil by default; click to reveal inputs and override.
              *  Sets that already have an override auto-expand so existing
              *  values are never silently hidden. */}
             {isSetUnder && !expanded && !hasSetOverride ? (
               <Flex align="center" gap={8} style={{ flex: "1 1 auto", minWidth: 0 }}>
                 <Typography
-                  variant="caption"
+                  variant="body2"
                   color="text.secondary"
-                  sx={{ fontSize: 12, fontStyle: "italic" }}
+                  sx={{
+                    fontSize: 13,
+                    fontVariantNumeric: "tabular-nums",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                  title={describeSetPreview(displayReps, displayDur, displayRest, displayWeight, displayRpe, displayTempo, displayNotes)}
                 >
-                  {translate(t, "workouts.setInheritsHint", "Uses exercise targets")}
+                  {describeSetPreview(displayReps, displayDur, displayRest, displayWeight, displayRpe, displayTempo, displayNotes) ||
+                    translate(t, "workouts.setInheritsHint", "Uses exercise targets")}
                 </Typography>
                 <Box sx={{ flex: 1 }} />
                 <Tooltip
@@ -656,4 +664,30 @@ export function WorkoutRow({
 function translate(t: TFunction<"translation">, key: string, fallback: string): string {
   const v = t(key);
   return v === key ? fallback : v;
+}
+
+/** Compact preview of the inherited/own values for a collapsed set row. */
+function describeSetPreview(
+  reps: number | null,
+  durationSec: number | null,
+  restSec: number | null,
+  weightKg: number | null,
+  rpe: number | null,
+  tempo: string,
+  notes: string,
+): string {
+  const parts: string[] = [];
+  if (reps != null) parts.push(`${reps} reps`);
+  if (weightKg != null) parts.push(`${weightKg}kg`);
+  if (durationSec != null) parts.push(`${durationSec}s hold`);
+  if (restSec != null) parts.push(`${restSec}s rest`);
+  if (rpe != null) parts.push(`RPE ${rpe}`);
+  if (tempo) parts.push(`tempo ${tempo}`);
+  let line = parts.join(" · ");
+  if (notes && notes.trim()) {
+    const trimmed = notes.trim();
+    const short = trimmed.length > 60 ? trimmed.slice(0, 57) + "…" : trimmed;
+    line = line ? `${line} · ${short}` : short;
+  }
+  return line;
 }

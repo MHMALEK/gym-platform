@@ -1237,19 +1237,9 @@ function SaveStatusIndicator({
   status: "idle" | "saving" | "saved";
   t: ReturnType<typeof useTranslation>["t"];
 }) {
-  if (status === "idle") {
-    return (
-      <Typography
-        variant="caption"
-        color="text.disabled"
-        sx={{ fontSize: 12, fontStyle: "italic" }}
-      >
-        {t("workouts.autoSaveIdle") !== "workouts.autoSaveIdle"
-          ? t("workouts.autoSaveIdle")
-          : "Auto-saves as you edit"}
-      </Typography>
-    );
-  }
+  // Idle state hides itself — only render during an actual save flight or
+  // for a brief "Saved" flash afterward.
+  if (status === "idle") return null;
   return (
     <Stack direction="row" alignItems="center" spacing={0.75}>
       {status === "saving" ? (

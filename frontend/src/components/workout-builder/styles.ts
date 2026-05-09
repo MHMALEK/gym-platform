@@ -2,26 +2,30 @@ import type { CSSProperties } from "react";
 
 import { WORKOUT_ROW_RAIL_WIDTH } from "./constants";
 
-/** Standalone exercise — flat list section, no enclosing box.
- *  Sets within still render their own row borders.
- *  The wrapping page-level Card provides the paper. */
+/** Standalone exercise — bordered card so each exercise reads as one unit.
+ *  Block containers stay rail-only (no enclosing border) so grouped
+ *  exercises don't end up double-bordered. */
 export const exerciseGroupShellStyle: CSSProperties = {
   marginBottom: 12,
   padding: 0,
-  border: "none",
+  borderRadius: 8,
+  border: "1px solid var(--app-border)",
   background: "transparent",
   boxShadow: "none",
+  overflow: "hidden",
 };
 
-/** Exercise inside a block — same flat treatment, with a top divider for separation. */
+/** Exercise inside a block — same single border, just a touch tighter. */
 // blockAccent is no longer used; kept as a parameter for call-site stability.
 export function exerciseCardShellInBlock(_blockAccent: string): CSSProperties {
   return {
     marginBottom: 8,
     padding: 0,
-    border: "none",
+    borderRadius: 6,
+    border: "1px solid var(--app-border)",
     background: "transparent",
     boxShadow: "none",
+    overflow: "hidden",
   };
 }
 
