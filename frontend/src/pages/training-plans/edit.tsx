@@ -62,8 +62,13 @@ export function TrainingPlanEdit() {
   const editorRef = useRef<WorkoutItemsEditorHandle>(null);
   const formAutoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const { control, watch, refineCore } = useForm<FormValues>({
-    refineCoreProps: { resource: "training-plans" },
+  const { control, watch, refineCore, reset } = useForm<FormValues>({
+    refineCoreProps: {
+      resource: "training-plans",
+      // Stay on the edit page after a save — auto-save would otherwise
+      // bounce the user back to the list every debounce.
+      redirect: false,
+    },
   });
   const query = refineCore.query;
   const record = query?.data?.data as PlanRecord | undefined;
@@ -91,14 +96,22 @@ export function TrainingPlanEdit() {
     }
     if (lastSavedJSON.current === watchedJSON) return;
     if (formAutoSaveTimerRef.current) clearTimeout(formAutoSaveTimerRef.current);
-    formAutoSaveTimerRef.current = setTimeout(() => {
-      void refineCore.onFinish(watchedValues);
-      lastSavedJSON.current = watchedJSON;
+    formAutoSaveTimerRef.current = setTimeout(async () => {
+      try {
+        await refineCore.onFinish(watchedValues);
+        lastSavedJSON.current = watchedJSON;
+        // Mark the freshly-saved values as the new "clean" baseline so
+        // UnsavedChangesNotifier doesn't pop a dialog when the user
+        // navigates away.
+        reset(watchedValues, { keepValues: true, keepDirty: false });
+      } catch {
+        /* refine surfaces its own error toast */
+      }
     }, 1500);
     return () => {
       if (formAutoSaveTimerRef.current) clearTimeout(formAutoSaveTimerRef.current);
     };
-  }, [watchedJSON, record?.id, refineCore, watchedValues]);
+  }, [watchedJSON, record?.id, refineCore, watchedValues, reset]);
 
   const headerActions = (
     <Button
