@@ -855,6 +855,8 @@ const translation = {
     showAdvanced: "نمایش پیشرفته",
     hideAdvanced: "پنهان کردن پیشرفته",
     toggleAdvancedHint: "نمایش ورودی‌های RPE، وزن (کیلوگرم) و تمپو روی هر ست.",
+    ungroupBlock: "جدا کردن گروه",
+    ungroupBlockHint: "همه‌ی حرکات این بلوک را جدا می‌کند. ست‌ها حفظ می‌شوند.",
     colNotes: "یادداشت",
     colTipsNotes: "نکات / یادداشت",
     colBlock: "بلوک",

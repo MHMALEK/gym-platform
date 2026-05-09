@@ -1,6 +1,7 @@
 import AddIcon from "@mui/icons-material/Add";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import LinkIcon from "@mui/icons-material/Link";
+import LinkOffIcon from "@mui/icons-material/LinkOff";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -91,6 +92,7 @@ import {
   setOrdinalInGroup,
   setRowUISegment,
   stripBlocksWithFewerThanTwoExercises,
+  ungroupBlock,
   validateWorkoutLinesSequence,
 } from "../lib/workoutLineModel";
 
@@ -487,6 +489,13 @@ export function WorkoutItemsEditor({
     [items, pushItems],
   );
 
+  const ungroupBlockById = useCallback(
+    (blockId: string) => {
+      pushItems(ungroupBlock(items, blockId));
+    },
+    [items, pushItems],
+  );
+
   const addSetBelow = useCallback(
     (index: number) => {
       pushItems(insertSetBelowGroupEnd(items, index));
@@ -724,6 +733,37 @@ export function WorkoutItemsEditor({
                                 color: "var(--app-text-heading)",
                               }}
                             />
+                            <Tooltip
+                              title={
+                                t("workouts.ungroupBlockHint") !== "workouts.ungroupBlockHint"
+                                  ? t("workouts.ungroupBlockHint")
+                                  : "Detach all exercises from this block"
+                              }
+                            >
+                              <Button
+                                size="small"
+                                variant="text"
+                                color="inherit"
+                                startIcon={<LinkOffIcon fontSize="small" />}
+                                onClick={() => ungroupBlockById(bid)}
+                                sx={{
+                                  color: "text.secondary",
+                                  fontWeight: 500,
+                                  textTransform: "none",
+                                  minHeight: 30,
+                                  px: 1.25,
+                                  borderRadius: 1.5,
+                                  "&:hover": {
+                                    color: "error.main",
+                                    bgcolor: "action.hover",
+                                  },
+                                }}
+                              >
+                                {t("workouts.ungroupBlock") !== "workouts.ungroupBlock"
+                                  ? t("workouts.ungroupBlock")
+                                  : "Ungroup"}
+                              </Button>
+                            </Tooltip>
                           </Flex>
                         </Flex>
                         <Tooltip title={t("workouts.blockDragBundleHint")}>

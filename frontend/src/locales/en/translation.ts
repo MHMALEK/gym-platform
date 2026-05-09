@@ -847,6 +847,8 @@ const translation = {
     showAdvanced: "Show advanced",
     hideAdvanced: "Hide advanced",
     toggleAdvancedHint: "Show RPE, weight (kg) and tempo inputs on every set.",
+    ungroupBlock: "Ungroup",
+    ungroupBlockHint: "Detach all exercises from this block. Sets are kept.",
     colNotes: "Notes",
     colTipsNotes: "Tips / notes",
     colBlock: "Block",

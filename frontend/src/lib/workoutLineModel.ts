@@ -498,7 +498,21 @@ export function stripOrphanWorkoutBlocks(items: WorkoutLine[]): WorkoutLine[] {
   });
 }
 
-/** Remove block_id when fewer than two exercise bundles share that block (e.g. abandoned “add superset” after first pick). */
+/**
+ * Ungroup an entire block: every row sharing `blockId` is detached so the
+ * exercises become standalone (block_id and block_type are cleared, sets
+ * stay intact). Order and sets are preserved.
+ */
+export function ungroupBlock(items: WorkoutLine[], blockId: string): WorkoutLine[] {
+  const target = blockId?.trim();
+  if (!target) return items;
+  const out = items.map((r) =>
+    r.block_id === target ? { ...r, block_id: null, block_type: null } : r,
+  );
+  return out.map((r, i) => ({ ...r, sort_order: i }));
+}
+
+/** Remove block_id when fewer than two exercise bundles share that block (e.g. abandoned "add superset" after first pick). */
 export function stripBlocksWithFewerThanTwoExercises(items: WorkoutLine[]): WorkoutLine[] {
   const bundlesPerBlock = new Map<string, number>();
   let i = 0;
