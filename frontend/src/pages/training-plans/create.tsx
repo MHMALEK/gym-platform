@@ -1,6 +1,7 @@
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
-import Divider from "@mui/material/Divider";
+import Card from "@mui/material/Card";
+import CardContent from "@mui/material/CardContent";
 import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
 import { useInvalidate } from "@refinedev/core";
@@ -125,22 +126,31 @@ export function TrainingPlanCreate() {
       </Tabs>
 
       <Box component="form" sx={{ display: step === 0 ? "block" : "none" }}>
-        <TrainingPlanOverviewCard control={control} variant="create" />
+        <Card>
+          <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+            <TrainingPlanOverviewCard control={control} variant="create" />
+          </CardContent>
+        </Card>
       </Box>
 
       <Box sx={{ display: step === 1 ? "block" : "none" }}>
-        <Box sx={{ mb: 3 }}>
-          <TrainingPlanWorkoutRichField control={control} />
-        </Box>
-        <Divider sx={{ mb: 3 }} />
-        <WorkoutItemsEditor
-          mode="training-plan"
-          planVenue={venueType}
-          initialItems={workoutLines}
-          showSaveButton={false}
-          hideHeader
-          onChange={onWorkoutChange}
-        />
+        <Card sx={{ mb: 2 }}>
+          <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+            <TrainingPlanWorkoutRichField control={control} />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
+            <WorkoutItemsEditor
+              mode="training-plan"
+              planVenue={venueType}
+              initialItems={workoutLines}
+              showSaveButton={false}
+              hideHeader
+              onChange={onWorkoutChange}
+            />
+          </CardContent>
+        </Card>
       </Box>
 
       <StickyActionBar>

@@ -2,7 +2,6 @@ import GroupAddIcon from "@mui/icons-material/GroupAddRounded";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
-import Divider from "@mui/material/Divider";
 import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
 import { useForm } from "@refinedev/react-hook-form";
@@ -11,6 +10,8 @@ import { useTranslation } from "react-i18next";
 
 import { useNavigate } from "react-router-dom";
 
+import Card from "@mui/material/Card";
+import CardContent from "@mui/material/CardContent";
 import { AssignPlanToClientsDialog } from "../../components/AssignPlanToClientsDialog";
 import { PageHeader } from "../../components/layout/PageHeader";
 import { StickyActionBar } from "../../components/layout/StickyActionBar";
@@ -125,28 +126,37 @@ export function TrainingPlanEdit() {
       </Tabs>
 
       <Box component="form" sx={{ display: tab === 0 ? "block" : "none" }}>
-        <TrainingPlanOverviewCard control={control} variant="edit" />
+        <Card>
+          <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+            <TrainingPlanOverviewCard control={control} variant="edit" />
+          </CardContent>
+        </Card>
       </Box>
 
       <Box sx={{ display: tab === 1 ? "block" : "none" }}>
-        <Box sx={{ mb: 3 }}>
-          <TrainingPlanWorkoutRichField control={control} />
-        </Box>
-        <Divider sx={{ mb: 3 }} />
-        {query?.isLoading ? (
-          <Box sx={{ py: 6, display: "flex", justifyContent: "center" }}>
-            <CircularProgress />
-          </Box>
-        ) : record?.id ? (
-          <WorkoutItemsEditor
-            mode="training-plan"
-            planId={record.id}
-            planVenue={venueLive}
-            initialItems={initialLines}
-            showSaveButton={false}
-            hideHeader
-          />
-        ) : null}
+        <Card sx={{ mb: 2 }}>
+          <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+            <TrainingPlanWorkoutRichField control={control} />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
+            {query?.isLoading ? (
+              <Box sx={{ py: 6, display: "flex", justifyContent: "center" }}>
+                <CircularProgress />
+              </Box>
+            ) : record?.id ? (
+              <WorkoutItemsEditor
+                mode="training-plan"
+                planId={record.id}
+                planVenue={venueLive}
+                initialItems={initialLines}
+                showSaveButton={false}
+                hideHeader
+              />
+            ) : null}
+          </CardContent>
+        </Card>
       </Box>
 
       <StickyActionBar>
