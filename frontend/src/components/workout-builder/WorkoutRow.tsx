@@ -384,7 +384,40 @@ export function WorkoutRow({
                 ) : null}
               </>
             )}
-            {/* Inputs cluster — always visible on both head and set rows. */}
+            {/* Inputs cluster.
+             *  Head rows: always show inputs (those are the defaults for the
+             *  exercise that all sets inherit from).
+             *  Set rows: render compact "Uses exercise targets" + Pencil by
+             *  default; click to reveal inputs and override that specific set.
+             *  Sets that already have an override auto-expand so existing
+             *  values are never silently hidden. */}
+            {isSetUnder && !expanded && !hasSetOverride ? (
+              <Flex align="center" gap={8} style={{ flex: "1 1 auto", minWidth: 0 }}>
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{ fontSize: 12, fontStyle: "italic" }}
+                >
+                  {translate(t, "workouts.setInheritsHint", "Uses exercise targets")}
+                </Typography>
+                <Box sx={{ flex: 1 }} />
+                <Tooltip
+                  title={translate(t, "workouts.customizeSet", "Customize this set")}
+                >
+                  <IconButton
+                    size="small"
+                    onClick={onToggleExpanded}
+                    aria-label="Customize this set"
+                    sx={{
+                      color: "text.secondary",
+                      "&:hover": { color: "primary.main", bgcolor: "action.hover" },
+                    }}
+                  >
+                    <Pencil size={14} strokeWidth={2} />
+                  </IconButton>
+                </Tooltip>
+              </Flex>
+            ) : (
             <Flex
               wrap="wrap"
               gap={6}
@@ -610,6 +643,7 @@ export function WorkoutRow({
                 }
               />
             </Flex>
+            )}
             {/* Actions live at the END of the same inline row. */}
             {actionCluster}
           </Flex>
