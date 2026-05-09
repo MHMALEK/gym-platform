@@ -198,11 +198,26 @@ function AddSetBelowFooter({ onClick, label }: { onClick: () => void; label: str
     <div
       style={{
         marginTop: 0,
-        padding: "10px 12px 12px",
+        padding: "4px 8px 8px",
         borderTop: "1px solid var(--app-border)",
+        display: "flex",
+        justifyContent: "flex-start",
       }}
     >
-      <Button variant="outlined" fullWidth size="small" startIcon={<AddIcon />} onClick={onClick} style={{ borderRadius: 10 }}>
+      <Button
+        variant="text"
+        size="small"
+        startIcon={<AddIcon fontSize="small" />}
+        onClick={onClick}
+        sx={{
+          color: "text.secondary",
+          fontWeight: 500,
+          textTransform: "none",
+          minHeight: 30,
+          px: 1.25,
+          "&:hover": { color: "primary.main", bgcolor: "action.hover" },
+        }}
+      >
         {label}
       </Button>
     </div>
@@ -377,6 +392,7 @@ function WorkoutRow({
   canExtendLink,
   onPickExtendBlock,
   dragHandleProps,
+  showAdvanced,
   t,
   updateAt,
   removeAt,
@@ -393,6 +409,8 @@ function WorkoutRow({
   canExtendLink: boolean;
   onPickExtendBlock: () => void;
   dragHandleProps?: DragHandleBag;
+  /** When true, render weight/RPE/tempo inputs alongside reps/duration/rest. */
+  showAdvanced: boolean;
   t: TFunction<"translation">;
   updateAt: (i: number, patch: Partial<WorkoutLine>) => void;
   removeAt: (i: number) => void;
@@ -405,10 +423,10 @@ function WorkoutRow({
     isLegacyExtra;
   const rowStripe =
     insideBlock || !row.block_id
-      ? "4px solid transparent"
-      : `4px solid ${blockAccent(row.block_id)}`;
+      ? "2px solid transparent"
+      : `2px solid color-mix(in srgb, ${blockAccent(row.block_id)} 65%, var(--app-border))`;
 
-  const setRail = "3px solid color-mix(in srgb, var(--app-accent) 50%, var(--app-border))";
+  const setRail = "2px solid color-mix(in srgb, var(--app-accent) 30%, var(--app-border))";
   const headSurface = "var(--app-surface-elevated)";
   const setSurface = "var(--app-surface)";
   const headBorder = "1px solid var(--app-border)";
@@ -442,9 +460,9 @@ function WorkoutRow({
 
   let borderRadius: string | number = 10;
   let marginTop = 0;
-  let marginBottom = insideBlock ? 0 : 10;
-  let paddingTop = 14;
-  let paddingBottom = 14;
+  let marginBottom = insideBlock ? 0 : 8;
+  let paddingTop = 10;
+  let paddingBottom = 10;
   let background = headSurface;
   let border = headBorder;
   let borderTop: string | undefined;
@@ -453,59 +471,59 @@ function WorkoutRow({
 
   if (presentation === "exercise_head") {
     if (packInExerciseGroup && setCountInGroup(items, index) >= 1) {
-      borderRadius = "14px 14px 0 0";
+      borderRadius = "12px 12px 0 0";
       marginBottom = 0;
-      paddingBottom = 12;
+      paddingBottom = 8;
       border = headBorder;
       borderBottom = "none";
       background = headSurface;
     } else {
-      borderRadius = 14;
-      marginBottom = insideBlock ? 8 : 8;
-      paddingBottom = 12;
+      borderRadius = 12;
+      marginBottom = insideBlock ? 6 : 6;
+      paddingBottom = 10;
       background = headSurface;
       border = headBorder;
     }
   } else if (setRunSegment === "runFirst") {
-    marginTop = packInExerciseGroup ? 0 : insideBlock ? 8 : 10;
-    marginBottom = packInExerciseGroup ? 0 : 6;
-    paddingTop = 12;
-    paddingBottom = 12;
+    marginTop = packInExerciseGroup ? 0 : insideBlock ? 6 : 8;
+    marginBottom = packInExerciseGroup ? 0 : 4;
+    paddingTop = 8;
+    paddingBottom = 8;
     borderRadius = packInExerciseGroup ? 0 : 10;
     background = setSurface;
     border = packInExerciseGroup ? setBorder : nestedBorder;
     borderTop = packInExerciseGroup ? setDividerTop : undefined;
-    extraPaddingLeft = packInExerciseGroup ? 14 : 10;
+    extraPaddingLeft = packInExerciseGroup ? 12 : 10;
   } else if (setRunSegment === "runMiddle") {
-    marginTop = packInExerciseGroup ? 0 : insideBlock ? 8 : 10;
-    marginBottom = packInExerciseGroup ? 0 : 6;
-    paddingTop = 12;
-    paddingBottom = 12;
+    marginTop = packInExerciseGroup ? 0 : insideBlock ? 6 : 8;
+    marginBottom = packInExerciseGroup ? 0 : 4;
+    paddingTop = 8;
+    paddingBottom = 8;
     borderRadius = packInExerciseGroup ? 0 : 10;
     background = setSurface;
     border = packInExerciseGroup ? setBorder : nestedBorder;
     if (packInExerciseGroup) borderTop = "none";
-    extraPaddingLeft = packInExerciseGroup ? 14 : 10;
+    extraPaddingLeft = packInExerciseGroup ? 12 : 10;
   } else if (setRunSegment === "runLast") {
-    marginTop = packInExerciseGroup ? 0 : insideBlock ? 8 : 10;
-    marginBottom = insideBlock ? 0 : packInExerciseGroup ? 0 : 14;
-    paddingTop = 12;
-    paddingBottom = 14;
-    borderRadius = packInExerciseGroup ? "0 0 14px 14px" : "10px 10px 14px 14px";
+    marginTop = packInExerciseGroup ? 0 : insideBlock ? 6 : 8;
+    marginBottom = insideBlock ? 0 : packInExerciseGroup ? 0 : 10;
+    paddingTop = 8;
+    paddingBottom = 10;
+    borderRadius = packInExerciseGroup ? "0 0 12px 12px" : "10px 10px 12px 12px";
     background = setSurface;
     border = packInExerciseGroup ? setBorder : nestedBorder;
     if (packInExerciseGroup) borderTop = "none";
-    extraPaddingLeft = packInExerciseGroup ? 14 : 10;
+    extraPaddingLeft = packInExerciseGroup ? 12 : 10;
   } else if (presentation === "set_under" && packInExerciseGroup && setRunSegment === "single") {
     marginTop = 0;
     marginBottom = insideBlock ? 0 : 0;
-    paddingTop = 12;
-    paddingBottom = 14;
-    borderRadius = "0 0 14px 14px";
+    paddingTop = 8;
+    paddingBottom = 10;
+    borderRadius = "0 0 12px 12px";
     background = setSurface;
     border = setBorder;
     borderTop = setDividerTop;
-    extraPaddingLeft = 14;
+    extraPaddingLeft = 12;
   }
 
   if (packInExerciseGroup && presentation === "exercise_head" && setCountInGroup(items, index) < 1) {
@@ -587,9 +605,12 @@ function WorkoutRow({
           <Tooltip title={t("common.delete")} placement="right">
             <IconButton
               size="small"
-              color="error"
               aria-label={t("common.delete")}
               onClick={() => removeAt(index)}
+              sx={{
+                color: "text.disabled",
+                "&:hover": { color: "error.main", bgcolor: "action.hover" },
+              }}
             >
               <DeleteOutlineIcon fontSize="small" />
             </IconButton>
@@ -649,13 +670,8 @@ function WorkoutRow({
               {t("workouts.setsGroupedSubtitle")}
             </Typography>
           ) : null}
-          {showHeadHint ? (
-            <Typography variant="body2" color="text.secondary" component="span" style={{ display: "block", fontSize: 11, marginBottom: 8, opacity: 0.88 }}>
-              {t("workouts.exerciseHeadAppliesToSets")}
-            </Typography>
-          ) : null}
-          <Flex vertical gap={12} style={{ width: "100%" }}>
-            <Flex wrap="wrap" gap={8} align="flex-start" style={{ rowGap: 14, columnGap: 10 }}>
+          <Flex vertical gap={8} style={{ width: "100%" }}>
+            <Flex wrap="wrap" gap={8} align="center" style={{ rowGap: 8, columnGap: 10 }}>
               {!hideBlockColumnOnRow ? (
                 <div style={{ minWidth: 100, maxWidth: 140 }}>
                   <Typography variant="body2" color="text.secondary" component="span" style={labelTiny}>
@@ -714,100 +730,52 @@ function WorkoutRow({
                 </div>
               ) : (
                 <Flex
-                  align="flex-start"
-                  gap={compactSetExerciseUi ? 10 : 14}
+                  align="center"
+                  gap={10}
                   style={{
                     flex: "1 1 240px",
-                    minWidth: compactSetExerciseUi ? 148 : 188,
-                    borderLeft:
-                      showCompactExerciseColumn && !compactSetExerciseUi
-                        ? "1px solid color-mix(in srgb, var(--app-accent) 18%, var(--app-border, rgba(148,163,184,0.2)))"
-                        : undefined,
-                    paddingLeft: showCompactExerciseColumn && !compactSetExerciseUi ? 14 : 0,
-                    marginLeft: showCompactExerciseColumn && !compactSetExerciseUi ? 4 : 0,
+                    minWidth: compactSetExerciseUi ? 96 : 188,
                   }}
                 >
-                  <div style={{ flexShrink: 0, textAlign: "center", minWidth: 38 }}>
-                    <Typography variant="body2" color="text.secondary" component="span" style={{ ...labelTiny, marginBottom: 5, fontSize: 9 }}>
-                      {t("workouts.colSet")}
-                    </Typography>
-                    <Chip
-                      size="small"
-                      color={hasSetOverride ? "warning" : "default"}
-                      label={setLabel}
-                      sx={{
-                        margin: 0,
-                        minWidth: 36,
-                        fontSize: 11,
-                        fontWeight: 600,
-                        height: 24,
-                        borderRadius: 999,
-                        bgcolor: hasSetOverride
-                          ? undefined
-                          : "color-mix(in srgb, var(--app-accent) 10%, var(--app-surface-elevated))",
-                        color: "var(--app-text-heading)",
-                      }}
-                      variant={hasSetOverride ? "filled" : "outlined"}
-                    />
-                  </div>
-                  <div
-                    style={{
-                      flex: 1,
-                      minWidth: 0,
-                      position: "relative",
+                  <Chip
+                    size="small"
+                    color={hasSetOverride ? "warning" : "default"}
+                    label={t("workouts.setNumber", { n: setLabel.replace(/^\D+/, "") || setLabel })}
+                    sx={{
+                      flexShrink: 0,
+                      minWidth: 36,
+                      fontSize: 11,
+                      fontWeight: 600,
+                      height: 22,
+                      borderRadius: 999,
+                      bgcolor: hasSetOverride ? undefined : "transparent",
+                      borderColor: "var(--app-border)",
+                      color: hasSetOverride ? undefined : "text.secondary",
                     }}
-                  >
-                    {!showCompactExerciseColumn ? (
-                      <>
-                        <Typography variant="body2" color="text.secondary" component="span" style={labelTiny}>
-                          {t("workouts.colExercise")}
-                        </Typography>
-                        <Typography
-                          variant="body1"
-                          fontWeight={600}
-                          sx={{ fontSize: 16, lineHeight: 1.35, display: "block" }}
-                          noWrap
-                          title={row.exercise_name ?? `ID ${row.exercise_id}`}
-                        >
-                          {row.exercise_name ?? `ID ${row.exercise_id}`}
-                        </Typography>
-                      </>
-                    ) : (
-                      <>
-                        <Typography variant="body2" color="text.secondary" component="span" style={{ ...labelTiny, marginBottom: 4, fontSize: 9 }}>
-                          {isSetUnder ? t("workouts.setInheritsHint") : t("workouts.extraSetExerciseLabel")}
-                        </Typography>
-                        <Typography
-                          variant="body2"
-                          color="text.secondary"
-                          component="span"
-                          sx={{
-                            fontSize: 13,
-                            lineHeight: 1.45,
-                            display: "block",
-                            opacity: 0.92,
-                            fontWeight: 500,
-                          }}
-                          noWrap
-                          title={row.exercise_name ?? `ID ${row.exercise_id}`}
-                        >
-                          {row.exercise_name ?? `ID ${row.exercise_id}`}
-                        </Typography>
-                      </>
-                    )}
-                  </div>
+                    variant={hasSetOverride ? "filled" : "outlined"}
+                  />
+                  {!showCompactExerciseColumn ? (
+                    <Typography
+                      variant="body1"
+                      fontWeight={600}
+                      sx={{ fontSize: 15, lineHeight: 1.35, display: "block", minWidth: 0 }}
+                      noWrap
+                      title={row.exercise_name ?? `ID ${row.exercise_id}`}
+                    >
+                      {row.exercise_name ?? `ID ${row.exercise_id}`}
+                    </Typography>
+                  ) : null}
                 </Flex>
               )}
             </Flex>
             <Flex
               wrap="wrap"
-              gap={8}
+              gap={6}
               align="center"
               style={{
                 width: "100%",
-                rowGap: 10,
-                paddingTop: 2,
-                borderTop: "1px solid var(--app-border)",
+                rowGap: 6,
+                paddingTop: 0,
               }}
             >
               <TextField
@@ -849,72 +817,63 @@ function WorkoutRow({
                   })
                 }
               />
-              <TextField
-                type="number"
-                size="small"
-                inputProps={{ min: 0, step: 0.5 }}
-                sx={{ width: 92, "& .MuiOutlinedInput-root": { borderRadius: "10px" } }}
-                placeholder={
-                  t("workouts.colWeightKg") !== "workouts.colWeightKg"
-                    ? t("workouts.colWeightKg")
-                    : "kg"
-                }
-                aria-label={
-                  t("workouts.colWeightKg") !== "workouts.colWeightKg"
-                    ? t("workouts.colWeightKg")
-                    : "Weight (kg)"
-                }
-                value={displayWeight ?? ""}
-                onChange={(e) =>
-                  updateAt(index, {
-                    weight_kg: e.target.value === "" ? null : Number(e.target.value),
-                  })
-                }
-              />
-              <TextField
-                type="number"
-                size="small"
-                inputProps={{ min: 0, max: 10, step: 0.5 }}
-                sx={{ width: 80, "& .MuiOutlinedInput-root": { borderRadius: "10px" } }}
-                placeholder={
-                  t("workouts.colRpe") !== "workouts.colRpe" ? t("workouts.colRpe") : "RPE"
-                }
-                aria-label={
-                  t("workouts.colRpe") !== "workouts.colRpe"
-                    ? t("workouts.colRpe")
-                    : "RPE (0–10)"
-                }
-                value={displayRpe ?? ""}
-                onChange={(e) => {
-                  const raw = e.target.value;
-                  if (raw === "") {
-                    updateAt(index, { rpe: null });
-                    return;
-                  }
-                  const n = Number(raw);
-                  if (Number.isNaN(n)) return;
-                  // Clamp to RPE range; backend also validates 0–10.
-                  const clamped = Math.min(10, Math.max(0, n));
-                  updateAt(index, { rpe: clamped });
-                }}
-              />
-              <TextField
-                size="small"
-                sx={{ width: 116, "& .MuiOutlinedInput-root": { borderRadius: "10px" } }}
-                placeholder={
-                  t("workouts.colTempo") !== "workouts.colTempo"
-                    ? t("workouts.colTempo")
-                    : "Tempo"
-                }
-                aria-label={
-                  t("workouts.colTempo") !== "workouts.colTempo"
-                    ? t("workouts.colTempo")
-                    : "Tempo (e.g. 3-1-1-0)"
-                }
-                value={displayTempo}
-                onChange={(e) => updateAt(index, { tempo: e.target.value || null })}
-                inputProps={{ maxLength: 16 }}
-              />
+              {showAdvanced ? (
+                <>
+                  <TextField
+                    type="number"
+                    size="small"
+                    inputProps={{ min: 0, step: 0.5 }}
+                    sx={{ width: 84, "& .MuiOutlinedInput-root": { borderRadius: "10px" } }}
+                    placeholder={
+                      t("workouts.colWeightKg") !== "workouts.colWeightKg"
+                        ? t("workouts.colWeightKg")
+                        : "kg"
+                    }
+                    aria-label="Weight (kg)"
+                    value={displayWeight ?? ""}
+                    onChange={(e) =>
+                      updateAt(index, {
+                        weight_kg: e.target.value === "" ? null : Number(e.target.value),
+                      })
+                    }
+                  />
+                  <TextField
+                    type="number"
+                    size="small"
+                    inputProps={{ min: 0, max: 10, step: 0.5 }}
+                    sx={{ width: 72, "& .MuiOutlinedInput-root": { borderRadius: "10px" } }}
+                    placeholder={
+                      t("workouts.colRpe") !== "workouts.colRpe" ? t("workouts.colRpe") : "RPE"
+                    }
+                    aria-label="RPE (0–10)"
+                    value={displayRpe ?? ""}
+                    onChange={(e) => {
+                      const raw = e.target.value;
+                      if (raw === "") {
+                        updateAt(index, { rpe: null });
+                        return;
+                      }
+                      const n = Number(raw);
+                      if (Number.isNaN(n)) return;
+                      const clamped = Math.min(10, Math.max(0, n));
+                      updateAt(index, { rpe: clamped });
+                    }}
+                  />
+                  <TextField
+                    size="small"
+                    sx={{ width: 104, "& .MuiOutlinedInput-root": { borderRadius: "10px" } }}
+                    placeholder={
+                      t("workouts.colTempo") !== "workouts.colTempo"
+                        ? t("workouts.colTempo")
+                        : "Tempo"
+                    }
+                    aria-label="Tempo (e.g. 3-1-1-0)"
+                    value={displayTempo}
+                    onChange={(e) => updateAt(index, { tempo: e.target.value || null })}
+                    inputProps={{ maxLength: 16 }}
+                  />
+                </>
+              ) : null}
               <TextField
                 size="small"
                 sx={{ flex: "1 1 220px", minWidth: 168, maxWidth: 520, "& .MuiOutlinedInput-root": { borderRadius: "10px" } }}
@@ -948,6 +907,22 @@ export function WorkoutItemsEditor({
   const [pickerQuery, setPickerQuery] = useState("");
   const [pickerScope, setPickerScope] = useState<"all" | "mine" | "catalog">("all");
   const [saving, setSaving] = useState(false);
+  /** Show RPE / weight / tempo inputs. Persisted across sessions; auto-on if any line uses these fields. */
+  const [showAdvancedFields, setShowAdvancedFields] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem("workouts.showAdvancedFields") === "1";
+    } catch {
+      return false;
+    }
+  });
+  const setShowAdvancedFieldsPersisted = useCallback((next: boolean) => {
+    setShowAdvancedFields(next);
+    try {
+      localStorage.setItem("workouts.showAdvancedFields", next ? "1" : "0");
+    } catch {
+      /* ignore storage errors */
+    }
+  }, []);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [mergeModal, setMergeModal] = useState<{ activeLocalId: string; targetLocalId: string } | null>(
     null,
@@ -963,6 +938,19 @@ export function WorkoutItemsEditor({
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
+
+  /** Auto-enable advanced columns when any line already uses them — never hide existing data. */
+  const itemsHaveAdvanced = useMemo(
+    () =>
+      items.some(
+        (it) =>
+          it.weight_kg != null ||
+          it.rpe != null ||
+          (it.tempo != null && it.tempo !== ""),
+      ),
+    [items],
+  );
+  const effectiveShowAdvanced = showAdvancedFields || itemsHaveAdvanced;
 
   const venueCompat = useMemo(() => {
     if (planVenue === "home" || planVenue === "commercial_gym") return planVenue;
@@ -1338,18 +1326,54 @@ export function WorkoutItemsEditor({
               </Typography>
             ) : null}
           </div>
-          {mode === "training-plan" && showSaveButton ? (
-            <Button
-              variant="contained"
-              color="primary"
-              size="large"
-              onClick={() => void saveTrainingPlan()}
-              disabled={saving}
-              style={{ borderRadius: 12 }}
+          <Stack direction="row" spacing={1} alignItems="center" sx={{ flexShrink: 0 }}>
+            <Tooltip
+              title={
+                t("workouts.toggleAdvancedHint") !== "workouts.toggleAdvancedHint"
+                  ? t("workouts.toggleAdvancedHint")
+                  : "Show RPE, weight (kg) and tempo inputs on every set"
+              }
+              placement="top"
             >
-              {t("workouts.saveItems")}
-            </Button>
-          ) : null}
+              <span>
+                <Button
+                  size="small"
+                  variant={effectiveShowAdvanced ? "outlined" : "text"}
+                  color="inherit"
+                  onClick={() => setShowAdvancedFieldsPersisted(!showAdvancedFields)}
+                  disabled={itemsHaveAdvanced && !showAdvancedFields}
+                  sx={{
+                    color: "text.secondary",
+                    borderRadius: 2,
+                    fontWeight: 500,
+                    minHeight: 32,
+                    px: 1.5,
+                    "&.Mui-disabled": { color: "text.disabled" },
+                  }}
+                >
+                  {effectiveShowAdvanced
+                    ? t("workouts.hideAdvanced") !== "workouts.hideAdvanced"
+                      ? t("workouts.hideAdvanced")
+                      : "Hide advanced"
+                    : t("workouts.showAdvanced") !== "workouts.showAdvanced"
+                      ? t("workouts.showAdvanced")
+                      : "Show advanced"}
+                </Button>
+              </span>
+            </Tooltip>
+            {mode === "training-plan" && showSaveButton ? (
+              <Button
+                variant="contained"
+                color="primary"
+                size="large"
+                onClick={() => void saveTrainingPlan()}
+                disabled={saving}
+                style={{ borderRadius: 12 }}
+              >
+                {t("workouts.saveItems")}
+              </Button>
+            ) : null}
+          </Stack>
         </Flex>
       </div>
 
@@ -1365,12 +1389,6 @@ export function WorkoutItemsEditor({
           onDragEnd={onDragEnd}
           onDragCancel={onDragCancel}
         >
-          <Alert severity="info" className="workout-items-editor__dnd-tip" sx={{ mb: 2 }}>
-            <AlertTitle>{t("workouts.dndGuideTitle")}</AlertTitle>
-            <Typography variant="body2" color="text.secondary" sx={{ fontSize: 13, lineHeight: 1.55 }}>
-              {t("workouts.dndGuideBody")}
-            </Typography>
-          </Alert>
           <SortableContext items={sortableHeadIds} strategy={verticalListSortingStrategy}>
             {(() => {
               const nodes: ReactNode[] = [];
@@ -1422,6 +1440,7 @@ export function WorkoutItemsEditor({
                                   canExtendLink={false}
                                   onPickExtendBlock={() => armPickerContext({ mode: "extendBlock", afterIndex: idx })}
                                   dragHandleProps={idx === lo ? drag : undefined}
+                                  showAdvanced={effectiveShowAdvanced}
                                   t={t}
                                   updateAt={updateAt}
                                   removeAt={removeAt}
@@ -1579,6 +1598,7 @@ export function WorkoutItemsEditor({
                                             armPickerContext({ mode: "extendBlock", afterIndex: idx })
                                           }
                                           dragHandleProps={idx === lo ? drag : undefined}
+                                          showAdvanced={effectiveShowAdvanced}
                                           t={t}
                                           updateAt={updateAt}
                                           removeAt={removeAt}
@@ -1756,9 +1776,6 @@ export function WorkoutItemsEditor({
           id="workout-exercise-bank"
           style={{ display: "flex", flexDirection: "column", minHeight: 0, flex: 1 }}
         >
-          <Typography variant="body2" color="text.secondary" component="span" style={{ marginBottom: 12 }}>
-            {t("workouts.exerciseBankIntro")}
-          </Typography>
           {pickerBanner.mode === "extendBlock" ? (
             <Alert
               severity="info"
@@ -1800,11 +1817,6 @@ export function WorkoutItemsEditor({
             >
               {t("workouts.pickerActiveSupersetSecond")}
             </Alert>
-          ) : null}
-          {pickerBanner.mode === "append" ? (
-            <Typography variant="body2" color="text.secondary" component="span" style={{ display: "block", marginBottom: 12, fontSize: 13 }}>
-              {t("workouts.pickerActiveAppend")}
-            </Typography>
           ) : null}
           {pickerLoading && catalogOpts.length === 0 && mineOpts.length === 0 ? (
             <Flex align="center" justify="center" style={{ minHeight: 160 }}>
