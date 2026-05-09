@@ -49,44 +49,39 @@ export function TrainingPlanPreviewPage() {
   return (
     <Box
       sx={{
-        maxWidth: 980,
-        mx: "auto",
-        px: { xs: 1, md: 1.5 },
-        pb: 4,
+        width: "100%",
+        maxWidth: "none",
+        mx: 0,
+        px: 0,
+        pt: { xs: 0.5, md: 0.75 },
+        pb: { xs: 2, md: 3 },
         "@media print": {
-          maxWidth: "none",
-          px: 0,
+          pt: 0,
           pb: 0,
           ".training-preview-actions": { display: "none" },
           ".MuiPaper-root": { boxShadow: "none !important" },
         },
       }}
     >
-      <Paper
+      <Stack
         className="training-preview-actions"
-        elevation={0}
-        sx={{
-          p: 1,
-          mb: 1.5,
-          borderRadius: 2.5,
-          border: "1px solid",
-          borderColor: "divider",
-          bgcolor: "background.paper",
-        }}
+        direction="row"
+        alignItems="center"
+        gap={1}
+        flexWrap="wrap"
+        sx={{ mb: { xs: 1.5, md: 2 } }}
       >
-        <Stack direction="row" alignItems="center" gap={1} flexWrap="wrap">
-          <Button component={Link} to="/training-plans" startIcon={<ArrowBackIcon />} variant="text" size="small">
-            Back to list
-          </Button>
-          <Box sx={{ flex: 1 }} />
-          <Button component={Link} to={`/training-plans/edit/${planId}`} startIcon={<EditOutlinedIcon />} variant="outlined" size="small">
-            Edit workout
-          </Button>
-          <Button startIcon={<PrintIcon />} variant="contained" size="small" onClick={() => window.print()}>
-            Export PDF
-          </Button>
-        </Stack>
-      </Paper>
+        <Button component={Link} to="/training-plans" startIcon={<ArrowBackIcon />} variant="text" size="small">
+          Back to list
+        </Button>
+        <Box sx={{ flex: 1 }} />
+        <Button component={Link} to={`/training-plans/edit/${planId}`} startIcon={<EditOutlinedIcon />} variant="outlined" size="small">
+          Edit workout
+        </Button>
+        <Button startIcon={<PrintIcon />} variant="contained" size="small" onClick={() => window.print()}>
+          Export PDF
+        </Button>
+      </Stack>
 
       {query.isLoading ? (
         <Box sx={{ py: 8, display: "flex", justifyContent: "center" }}>

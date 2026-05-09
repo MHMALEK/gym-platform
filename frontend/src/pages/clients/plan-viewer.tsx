@@ -84,75 +84,70 @@ export function ClientPlanViewerPage() {
   return (
     <Box
       sx={{
-        maxWidth: 980,
-        mx: "auto",
-        px: { xs: 1, md: 1.5 },
-        pb: 4,
+        width: "100%",
+        maxWidth: "none",
+        mx: 0,
+        px: 0,
+        pt: { xs: 0.5, md: 0.75 },
+        pb: { xs: 2, md: 3 },
         "@media print": {
-          maxWidth: "none",
-          px: 0,
+          pt: 0,
           pb: 0,
           ".viewer-actions": { display: "none" },
           ".MuiPaper-root": { boxShadow: "none !important" },
         },
       }}
     >
-      <Paper
+      <Stack
         className="viewer-actions"
-        elevation={0}
-        sx={{
-          p: 1,
-          mb: 1.5,
-          borderRadius: 2.5,
-          border: "1px solid",
-          borderColor: "divider",
-          bgcolor: "background.paper",
-        }}
+        direction="row"
+        alignItems="center"
+        gap={1}
+        flexWrap="wrap"
+        sx={{ mb: { xs: 1.5, md: 2 } }}
       >
-        <Stack direction="row" alignItems="center" gap={1} flexWrap="wrap">
-          <Button component={Link} to={`/clients/show/${clientId}/workout-diet-plans`} startIcon={<ArrowBackIcon />} variant="text" size="small">
-            Back to editor
-          </Button>
-          <Box sx={{ flex: 1 }} />
-          <Button startIcon={<PrintIcon />} variant="contained" size="small" onClick={() => window.print()}>
-            Export PDF
-          </Button>
-          <Button startIcon={<ShareIcon />} variant="outlined" size="small" onClick={() => void nativeShare()}>
-            Share
-          </Button>
-          <Button
-            startIcon={<WhatsAppIcon />}
-            variant="outlined"
-            size="small"
-            component="a"
-            href={`https://wa.me/?text=${encodeURIComponent(share.text)}`}
-            target="_blank"
-            rel="noreferrer"
-          >
-            WhatsApp
-          </Button>
-          <Button
-            startIcon={<SendIcon />}
-            variant="outlined"
-            size="small"
-            component="a"
-            href={`https://t.me/share/url?url=${encodeURIComponent(share.url)}&text=${encodeURIComponent(share.title)}`}
-            target="_blank"
-            rel="noreferrer"
-          >
-            Telegram
-          </Button>
-          <Button
-            startIcon={<EmailIcon />}
-            variant="outlined"
-            size="small"
-            component="a"
-            href={`mailto:${client?.email ?? ""}?subject=${encodeURIComponent(share.title)}&body=${encodeURIComponent(share.text)}`}
-          >
-            Email
-          </Button>
-        </Stack>
-      </Paper>
+        <Button component={Link} to={`/clients/show/${clientId}/workout-diet-plans`} startIcon={<ArrowBackIcon />} variant="text" size="small">
+          Back to editor
+        </Button>
+        <Box sx={{ flex: 1 }} />
+        <Button startIcon={<PrintIcon />} variant="contained" size="small" onClick={() => window.print()}>
+          Export PDF
+        </Button>
+        <Button startIcon={<ShareIcon />} variant="outlined" size="small" onClick={() => void nativeShare()}>
+          Share
+        </Button>
+        <Button
+          startIcon={<WhatsAppIcon />}
+          variant="outlined"
+          size="small"
+          component="a"
+          href={`https://wa.me/?text=${encodeURIComponent(share.text)}`}
+          target="_blank"
+          rel="noreferrer"
+        >
+          WhatsApp
+        </Button>
+        <Button
+          startIcon={<SendIcon />}
+          variant="outlined"
+          size="small"
+          component="a"
+          href={`https://t.me/share/url?url=${encodeURIComponent(share.url)}&text=${encodeURIComponent(share.title)}`}
+          target="_blank"
+          rel="noreferrer"
+        >
+          Telegram
+        </Button>
+        <Button
+          startIcon={<EmailIcon />}
+          variant="outlined"
+          size="small"
+          component="a"
+          href={`mailto:${client?.email ?? ""}?subject=${encodeURIComponent(share.title)}&body=${encodeURIComponent(share.text)}`}
+        >
+          Email
+        </Button>
+      </Stack>
 
       {loading ? (
         <Box sx={{ py: 8, display: "flex", justifyContent: "center" }}>

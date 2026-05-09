@@ -295,3 +295,92 @@ html[data-theme="light"] .workout-items-editor__dnd-tip.MuiAlert-root {
   border-color: var(--app-border-strong);
   background: color-mix(in srgb, var(--app-accent) 5%, var(--app-surface-elevated));
 }
+
+/* Coaching plan preview — keeps the card surfaces clean on screen and PDF. */
+.coaching-preview {
+  --coaching-card-radius: 14px;
+}
+
+/* No hover effects on preview cards — keep borders stable across :hover and :focus-within. */
+.coaching-preview__exercise,
+.coaching-preview__block,
+.coaching-preview__meal,
+.coaching-preview__hero {
+  transition: none !important;
+}
+
+.coaching-preview__exercise:hover,
+.coaching-preview__exercise:focus-within,
+.coaching-preview__meal:hover,
+.coaching-preview__meal:focus-within,
+.coaching-preview__hero:hover,
+.coaching-preview__hero:focus-within {
+  border-color: var(--app-border) !important;
+  background-color: var(--app-surface) !important;
+}
+
+/* Block-grouped exercise cards keep their accent border on hover too. */
+.coaching-preview__block:hover,
+.coaching-preview__block:focus-within {
+  border-color: color-mix(in srgb, var(--app-accent) 32%, var(--app-border)) !important;
+  background-color: var(--app-surface) !important;
+}
+
+/* Suppress MUI ripple / action-hover backgrounds inside the preview surfaces
+   so hovering an exercise body never surfaces an extra border or panel. */
+.coaching-preview .MuiButtonBase-root:not(.MuiButton-root):hover {
+  background-color: transparent !important;
+}
+
+@media (max-width: 600px) {
+  .coaching-preview__section-head {
+    gap: 4px;
+  }
+}
+
+/* Print: tighter, ink-friendly, page-break aware. */
+@media print {
+  body {
+    background: #fff !important;
+  }
+  .coaching-preview {
+    color: #111 !important;
+  }
+  .coaching-preview__hero,
+  .coaching-preview__exercise,
+  .coaching-preview__block,
+  .coaching-preview__meal {
+    box-shadow: none !important;
+    background: #fff !important;
+    border-color: rgba(0, 0, 0, 0.18) !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  .coaching-preview__block {
+    background: #fff !important;
+  }
+  .coaching-preview__hero {
+    background: #fff !important;
+  }
+  .coaching-preview__hero::after {
+    display: none !important;
+  }
+  .coaching-preview__more-toggle {
+    display: none !important;
+  }
+  /* Force-expand all collapse panels so coaches see set tables in the PDF. */
+  .coaching-preview .MuiCollapse-root {
+    height: auto !important;
+    visibility: visible !important;
+    min-height: 0 !important;
+  }
+  .coaching-preview .MuiCollapse-wrapper,
+  .coaching-preview .MuiCollapse-wrapperInner {
+    height: auto !important;
+    visibility: visible !important;
+  }
+  .coaching-preview iframe,
+  .coaching-preview video {
+    display: none !important;
+  }
+}
