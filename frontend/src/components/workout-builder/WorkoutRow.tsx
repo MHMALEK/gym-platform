@@ -1,13 +1,18 @@
-import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
-import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
-import LinkIcon from "@mui/icons-material/Link";
-import UndoIcon from "@mui/icons-material/Undo";
 import Chip from "@mui/material/Chip";
 import IconButton from "@mui/material/IconButton";
+import InputAdornment from "@mui/material/InputAdornment";
 import TextField from "@mui/material/TextField";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import type { TFunction } from "i18next";
+import {
+  GripVertical,
+  Link2,
+  RotateCcw,
+  Timer,
+  Trash2,
+  TimerReset,
+} from "lucide-react";
 import type { CSSProperties } from "react";
 
 import {
@@ -267,7 +272,7 @@ export function WorkoutRow({
                 {...dragHandleProps.attributes}
                 {...dragHandleProps.listeners}
               >
-                <DragIndicatorIcon fontSize="small" />
+                <GripVertical size={16} strokeWidth={2} />
               </IconButton>
             </Tooltip>
           ) : showRowDragHandle ? (
@@ -285,7 +290,7 @@ export function WorkoutRow({
                 "&:hover": { color: "error.main", bgcolor: "action.hover" },
               }}
             >
-              <DeleteOutlineIcon fontSize="small" />
+              <Trash2 size={15} strokeWidth={2} />
             </IconButton>
           </Tooltip>
           {showLinkInRail ? (
@@ -294,8 +299,9 @@ export function WorkoutRow({
                 size="small"
                 aria-label={t("workouts.linkExerciseRow")}
                 onClick={onPickExtendBlock}
+                sx={{ color: "text.secondary" }}
               >
-                <LinkIcon fontSize="small" />
+                <Link2 size={15} strokeWidth={2} />
               </IconButton>
             </Tooltip>
           ) : null}
@@ -315,8 +321,9 @@ export function WorkoutRow({
                     notes: null,
                   })
                 }
+                sx={{ color: "text.secondary" }}
               >
-                <UndoIcon fontSize="small" />
+                <RotateCcw size={15} strokeWidth={2} />
               </IconButton>
             </Tooltip>
           ) : null}
@@ -435,7 +442,7 @@ export function WorkoutRow({
                 size="small"
                 inputProps={{ min: 0 }}
                 sx={{
-                  width: 76,
+                  width: 84,
                   "& .MuiOutlinedInput-root": { borderRadius: "10px" },
                 }}
                 placeholder={t("workouts.colReps")}
@@ -446,40 +453,74 @@ export function WorkoutRow({
                   })
                 }
               />
-              <TextField
-                type="number"
-                size="small"
-                inputProps={{ min: 0 }}
-                sx={{
-                  width: 84,
-                  "& .MuiOutlinedInput-root": { borderRadius: "10px" },
-                }}
-                placeholder={t("workouts.colDurationSec")}
-                value={displayDur ?? ""}
-                onChange={(e) =>
-                  updateAt(index, {
-                    duration_sec:
-                      e.target.value === "" ? null : Number(e.target.value),
-                  })
-                }
-              />
-              <TextField
-                type="number"
-                size="small"
-                inputProps={{ min: 0 }}
-                sx={{
-                  width: 84,
-                  "& .MuiOutlinedInput-root": { borderRadius: "10px" },
-                }}
-                placeholder={t("workouts.colRestSec")}
-                value={displayRest ?? ""}
-                onChange={(e) =>
-                  updateAt(index, {
-                    rest_sec:
-                      e.target.value === "" ? null : Number(e.target.value),
-                  })
-                }
-              />
+              {/* Hold (time-under-tension): only relevant for plank-style holds.
+                  Hidden by default unless a row has data, or advanced is on. */}
+              {showAdvanced || displayDur != null ? (
+                <Tooltip title={translate(t, "workouts.colHoldHint", "Hold time per set (seconds)")}>
+                  <TextField
+                    type="number"
+                    size="small"
+                    inputProps={{ min: 0 }}
+                    sx={{
+                      width: 100,
+                      "& .MuiOutlinedInput-root": { borderRadius: "10px" },
+                    }}
+                    placeholder={translate(t, "workouts.colHold", "Hold")}
+                    aria-label="Hold time (seconds)"
+                    value={displayDur ?? ""}
+                    onChange={(e) =>
+                      updateAt(index, {
+                        duration_sec:
+                          e.target.value === "" ? null : Number(e.target.value),
+                      })
+                    }
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <Timer size={14} strokeWidth={2} />
+                        </InputAdornment>
+                      ),
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <span style={{ fontSize: 11, opacity: 0.6 }}>s</span>
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
+                </Tooltip>
+              ) : null}
+              <Tooltip title={translate(t, "workouts.colRestHint", "Rest between sets (seconds)")}>
+                <TextField
+                  type="number"
+                  size="small"
+                  inputProps={{ min: 0 }}
+                  sx={{
+                    width: 100,
+                    "& .MuiOutlinedInput-root": { borderRadius: "10px" },
+                  }}
+                  placeholder={translate(t, "workouts.colRest", "Rest")}
+                  aria-label="Rest (seconds)"
+                  value={displayRest ?? ""}
+                  onChange={(e) =>
+                    updateAt(index, {
+                      rest_sec:
+                        e.target.value === "" ? null : Number(e.target.value),
+                    })
+                  }
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <TimerReset size={14} strokeWidth={2} />
+                      </InputAdornment>
+                    ),
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <span style={{ fontSize: 11, opacity: 0.6 }}>s</span>
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              </Tooltip>
               {showAdvanced ? (
                 <>
                   <TextField
@@ -571,4 +612,9 @@ export function WorkoutRow({
       </Flex>
     </div>
   );
+}
+
+function translate(t: TFunction<"translation">, key: string, fallback: string): string {
+  const v = t(key);
+  return v === key ? fallback : v;
 }

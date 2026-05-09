@@ -1,7 +1,4 @@
-import AddIcon from "@mui/icons-material/Add";
-import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
-import LinkIcon from "@mui/icons-material/Link";
-import LinkOffIcon from "@mui/icons-material/LinkOff";
+import { ChevronDown, ChevronRight, Layers, Plus, Unlink } from "lucide-react";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -287,6 +284,17 @@ export function WorkoutItemsEditor({
   /** Selection used when the picker is in `groupSelect` mode (multi-pick to create a new block). */
   const [groupSelected, setGroupSelected] = useState<ExerciseOpt[]>([]);
   const [groupBlockType, setGroupBlockType] = useState<WorkoutBlockType>("superset");
+
+  /** Block IDs the user has collapsed in the current session (in-memory only). */
+  const [collapsedBlocks, setCollapsedBlocks] = useState<Set<string>>(new Set());
+  const toggleBlockCollapsed = useCallback((blockId: string) => {
+    setCollapsedBlocks((prev) => {
+      const next = new Set(prev);
+      if (next.has(blockId)) next.delete(blockId);
+      else next.add(blockId);
+      return next;
+    });
+  }, []);
 
   const closeExercisePickerModal = useCallback(() => {
     setExercisePickerModalOpen(false);
@@ -615,9 +623,72 @@ export function WorkoutItemsEditor({
         </div>
       )}
 
+      {/* Inline Add toolbar — always visible, sits above the list. */}
+      <Stack
+        direction="row"
+        spacing={1}
+        sx={{
+          width: "100%",
+          mb: 1.5,
+          alignItems: "center",
+          flexWrap: "wrap",
+        }}
+        useFlexGap
+      >
+        <Button
+          variant="contained"
+          color="primary"
+          size="small"
+          startIcon={<Plus size={16} strokeWidth={2.25} />}
+          onClick={() => armPickerContext({ mode: "append" })}
+          sx={{
+            borderRadius: 1.5,
+            fontWeight: 500,
+            textTransform: "none",
+            px: 1.75,
+            boxShadow: "none",
+            "&:hover": { boxShadow: "none" },
+          }}
+        >
+          {t("workouts.addExercise")}
+        </Button>
+        <Button
+          variant="outlined"
+          size="small"
+          startIcon={<Layers size={16} strokeWidth={2.25} />}
+          onClick={() => armPickerContext({ mode: "groupSelect" })}
+          sx={{
+            borderRadius: 1.5,
+            fontWeight: 500,
+            textTransform: "none",
+            color: "text.secondary",
+            borderColor: "divider",
+            px: 1.5,
+            "&:hover": {
+              color: "primary.main",
+              borderColor: "primary.main",
+              bgcolor: "action.hover",
+            },
+          }}
+        >
+          {t("workouts.addSuperset")}
+        </Button>
+      </Stack>
+
       {items.length === 0 ? (
-        <Box sx={{ textAlign: "center", py: 4, opacity: 0.85 }}>
-          <Typography color="text.secondary">{t("workouts.emptyItems")}</Typography>
+        <Box
+          sx={{
+            textAlign: "center",
+            py: 5,
+            border: 1,
+            borderColor: "divider",
+            borderRadius: 2,
+            borderStyle: "dashed",
+          }}
+        >
+          <Typography color="text.secondary" sx={{ fontSize: 14 }}>
+            {t("workouts.emptyItems")}
+          </Typography>
         </Box>
       ) : (
         <DndContext
@@ -716,7 +787,35 @@ export function WorkoutItemsEditor({
                     }}
                   >
                     <div style={{ padding: "10px 12px" }}>
-                      <Flex align="center" wrap="wrap" gap={8} style={{ marginBottom: 8 }}>
+                      <Flex align="center" wrap="wrap" gap={8} style={{ marginBottom: collapsedBlocks.has(bid) ? 0 : 8 }}>
+                        <Tooltip
+                          title={
+                            collapsedBlocks.has(bid)
+                              ? t("workouts.expandBlock") !== "workouts.expandBlock"
+                                ? t("workouts.expandBlock")
+                                : "Expand"
+                              : t("workouts.collapseBlock") !== "workouts.collapseBlock"
+                                ? t("workouts.collapseBlock")
+                                : "Collapse"
+                          }
+                        >
+                          <IconButton
+                            size="small"
+                            onClick={() => toggleBlockCollapsed(bid)}
+                            aria-label={collapsedBlocks.has(bid) ? "Expand block" : "Collapse block"}
+                            sx={{
+                              p: 0.5,
+                              color: "text.secondary",
+                              "&:hover": { color: "text.primary", bgcolor: "action.hover" },
+                            }}
+                          >
+                            {collapsedBlocks.has(bid) ? (
+                              <ChevronRight size={18} strokeWidth={2} />
+                            ) : (
+                              <ChevronDown size={18} strokeWidth={2} />
+                            )}
+                          </IconButton>
+                        </Tooltip>
                         <span
                           aria-hidden
                           style={{
@@ -762,7 +861,7 @@ export function WorkoutItemsEditor({
                             size="small"
                             variant="text"
                             color="inherit"
-                            startIcon={<LinkOffIcon fontSize="small" />}
+                            startIcon={<Unlink size={14} />}
                             onClick={() => ungroupBlockById(bid)}
                             sx={{
                               color: "text.secondary",
@@ -783,7 +882,7 @@ export function WorkoutItemsEditor({
                           </Button>
                         </Tooltip>
                       </Flex>
-                      {(() => {
+                      {!collapsedBlocks.has(bid) && (() => {
                       const dividerStyle: CSSProperties = {
                         height: 1,
                         background: "var(--app-border)",
@@ -960,34 +1059,6 @@ export function WorkoutItemsEditor({
         </Alert>
       ) : null}
 
-      <Stack direction="row" spacing={1} sx={{ width: "100%", mt: 1.5 }} useFlexGap flexWrap="wrap">
-        <Button
-          variant="contained"
-          color="primary"
-          size="small"
-          startIcon={<AddIcon fontSize="small" />}
-          onClick={() => armPickerContext({ mode: "append" })}
-          sx={{ borderRadius: 1.5, fontWeight: 500, textTransform: "none", px: 1.75 }}
-        >
-          {t("workouts.addExercise")}
-        </Button>
-        <Button
-          variant="text"
-          size="small"
-          startIcon={<LinkIcon fontSize="small" />}
-          onClick={() => armPickerContext({ mode: "groupSelect" })}
-          sx={{
-            borderRadius: 1.5,
-            fontWeight: 500,
-            textTransform: "none",
-            color: "text.secondary",
-            px: 1.5,
-            "&:hover": { color: "primary.main", bgcolor: "action.hover" },
-          }}
-        >
-          {t("workouts.addSuperset")}
-        </Button>
-      </Stack>
 
       <ExercisePickerModal
         open={exercisePickerModalOpen}

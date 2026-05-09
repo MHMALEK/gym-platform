@@ -1,40 +1,42 @@
 /**
- * Coach console — arena charcoal + field green (dark) and clean light variant.
- * Sporting feel: high-energy accent on deep turf-toned neutrals.
+ * Coach console — modern, neutral indigo accent on cool charcoal/cream
+ * neutrals. Inspired by Linear / Vercel / Stripe; a step away from the
+ * gym-bro field-green look. Green survives as a `success` semantic
+ * color (chips, paid status), not the primary brand color.
  */
 export const coachBrand = {
-  /** Field green — strong on dark surfaces, reads “performance / go” */
-  primary: "#22c55e",
-  primaryHover: "#4ade80",
-  primaryActive: "#16a34a",
-  primaryBgSoft: "rgba(34, 197, 94, 0.2)",
-  primaryBgHover: "rgba(34, 197, 94, 0.12)",
-  /** Near-black with a subtle green shift (stadium night) */
-  layoutBg: "#0a0d0c",
+  /** Soft electric indigo — strong on dark surfaces without being neon */
+  primary: "#818cf8",
+  primaryHover: "#a5b4fc",
+  primaryActive: "#6366f1",
+  primaryBgSoft: "rgba(129, 140, 248, 0.18)",
+  primaryBgHover: "rgba(129, 140, 248, 0.10)",
+  /** Near-black with a faint cool tint (graphite, not warm) */
+  layoutBg: "#0b0c10",
   /** Primary panels (cards, form surfaces) */
-  surface: "#131a17",
+  surface: "#15171c",
   /** Header, sider, slightly lifted chrome */
-  surfaceElevated: "#1a2420",
-  text: "#e2e8f0",
-  textSecondary: "#94a3b8",
-  border: "rgba(148, 163, 184, 0.2)",
-  borderSecondary: "rgba(148, 163, 184, 0.1)",
+  surfaceElevated: "#1c1f26",
+  text: "#e5e7eb",
+  textSecondary: "#9ca3af",
+  border: "rgba(148, 163, 184, 0.18)",
+  borderSecondary: "rgba(148, 163, 184, 0.08)",
 } as const;
 
-/** Light shell — same accent, high-contrast neutrals for daytime use */
+/** Light shell — same indigo accent, cool neutrals for daytime use */
 export const coachBrandLight = {
-  primary: "#16a34a",
-  primaryHover: "#22c55e",
-  primaryActive: "#15803d",
-  primaryBgSoft: "rgba(22, 163, 74, 0.14)",
-  primaryBgHover: "rgba(22, 163, 74, 0.08)",
-  layoutBg: "#f1f5f9",
+  primary: "#6366f1",
+  primaryHover: "#818cf8",
+  primaryActive: "#4f46e5",
+  primaryBgSoft: "rgba(99, 102, 241, 0.12)",
+  primaryBgHover: "rgba(99, 102, 241, 0.06)",
+  layoutBg: "#f8fafc",
   surface: "#ffffff",
-  surfaceElevated: "#f8fafc",
+  surfaceElevated: "#fafafb",
   text: "#0f172a",
   textSecondary: "#64748b",
-  border: "rgba(15, 23, 42, 0.12)",
-  borderSecondary: "rgba(15, 23, 42, 0.08)",
+  border: "rgba(15, 23, 42, 0.10)",
+  borderSecondary: "rgba(15, 23, 42, 0.06)",
 } as const;
 
 export type CoachBrandPalette = typeof coachBrand;

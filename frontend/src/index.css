@@ -1,23 +1,23 @@
-/* Mirrors theme/brand.ts (arena + field green) — CSS variables follow html[data-theme] (see index.html bootstrap script). */
+/* Mirrors theme/brand.ts (modern indigo) — CSS variables follow html[data-theme] (see index.html bootstrap script). */
 :root {
-  --app-layout-bg: #0a0d0c;
-  --app-surface: #131a17;
-  --app-surface-elevated: #1a2420;
+  --app-layout-bg: #0b0c10;
+  --app-surface: #15171c;
+  --app-surface-elevated: #1c1f26;
   --app-border: rgba(148, 163, 184, 0.16);
   --app-border-strong: rgba(148, 163, 184, 0.22);
-  --app-accent: #22c55e;
+  --app-accent: #818cf8;
   --app-text-heading: #f1f5f9;
-  --app-text-body: #e2e8f0;
-  --app-text-muted: #94a3b8;
+  --app-text-body: #e5e7eb;
+  --app-text-muted: #9ca3af;
 }
 
 html[data-theme="light"] {
-  --app-layout-bg: #f1f5f9;
+  --app-layout-bg: #f8fafc;
   --app-surface: #ffffff;
-  --app-surface-elevated: #f8fafc;
-  --app-border: rgba(15, 23, 42, 0.12);
-  --app-border-strong: rgba(15, 23, 42, 0.18);
-  --app-accent: #16a34a;
+  --app-surface-elevated: #fafafb;
+  --app-border: rgba(15, 23, 42, 0.10);
+  --app-border-strong: rgba(15, 23, 42, 0.16);
+  --app-accent: #6366f1;
   --app-text-heading: #0f172a;
   --app-text-body: #1e293b;
   --app-text-muted: #64748b;
