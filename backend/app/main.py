@@ -5,6 +5,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.api import (
+    ai_coach_chat,
+    ai_workout,
     auth,
     billing,
     clients,
@@ -50,6 +52,8 @@ app.include_router(exercises.router, prefix=v1)
 app.include_router(exercise_media.router, prefix=v1)
 app.include_router(media.router, prefix=v1)
 app.include_router(training_plans.router, prefix=v1)
+app.include_router(ai_workout.router, prefix=v1)
+app.include_router(ai_coach_chat.router, prefix=v1)
 app.include_router(nutrition_templates.router, prefix=v1)
 app.include_router(clients.router, prefix=v1)
 app.include_router(invoices.router, prefix=v1)

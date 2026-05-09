@@ -410,8 +410,11 @@ export const WorkoutItemsEditor = forwardRef<
     () => ({
       openAddExercise: () => armPickerContext({ mode: "append" }),
       openAddGroup: () => armPickerContext({ mode: "groupSelect" }),
+      replaceItems: (next: WorkoutLine[]) => {
+        pushItems(next);
+      },
     }),
-    [armPickerContext],
+    [armPickerContext, pushItems],
   );
 
   const toggleGroupSelected = useCallback((ex: ExerciseOpt) => {

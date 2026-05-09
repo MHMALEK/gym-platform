@@ -7,6 +7,7 @@ import Dialog from "@mui/material/Dialog";
 import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
+import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { useForm } from "@refinedev/react-hook-form";
 import { Check, Eye, Layers, Loader2, Plus } from "lucide-react";
@@ -17,6 +18,7 @@ import { Link } from "react-router-dom";
 import { CoachingPlanPreview } from "../../components/CoachingPlanPreview";
 import { PageHeader } from "../../components/layout/PageHeader";
 import { StickyActionBar } from "../../components/layout/StickyActionBar";
+import { TrainingPlanAiAssistant } from "../../components/TrainingPlanAiAssistant";
 import {
   type WorkoutLine,
   WorkoutItemsEditor,
@@ -184,10 +186,24 @@ export function TrainingPlanEdit() {
             sx={{ p: { xs: 1.5, sm: 2 }, "&:last-child": { pb: { xs: 1.5, sm: 2 } } }}
           >
             <Box sx={{ px: { xs: 0.5, sm: 1 }, pt: 0.5 }}>
-              <SectionHeading
-                title={t("trainingPlans.create.stepProgramTitle")}
-                subtitle={t("trainingPlans.create.stepProgramHint")}
-              />
+              <Stack
+                direction={{ xs: "column", sm: "row" }}
+                justifyContent="space-between"
+                alignItems={{ xs: "stretch", sm: "flex-start" }}
+                spacing={1.5}
+                sx={{ mb: 2 }}
+              >
+                <SectionHeading
+                  title={t("trainingPlans.create.stepProgramTitle")}
+                  subtitle={t("trainingPlans.create.stepProgramHint")}
+                  compact
+                />
+                {record?.id ? (
+                  <Box sx={{ flexShrink: 0, alignSelf: { xs: "flex-end", sm: "auto" } }}>
+                    <TrainingPlanAiAssistant venueType={venueLive} workoutEditorRef={editorRef} />
+                  </Box>
+                ) : null}
+              </Stack>
             </Box>
             {query?.isLoading ? (
               <Box sx={{ py: 6, display: "flex", justifyContent: "center" }}>
@@ -379,9 +395,18 @@ function StickyAutoSaveStatus({
 
 /** Compact section title used to demarcate the Details / Overview / Program
  *  sections that used to live in separate tabs. */
-function SectionHeading({ title, subtitle }: { title: string; subtitle?: string }) {
+function SectionHeading({
+  title,
+  subtitle,
+  compact,
+}: {
+  title: string;
+  subtitle?: string;
+  /** When true, omit bottom margin (e.g. beside toolbar actions). */
+  compact?: boolean;
+}) {
   return (
-    <Box sx={{ mb: 2 }}>
+    <Box sx={{ mb: compact ? 0 : 2, flex: 1, minWidth: 0 }}>
       <Typography
         component="h2"
         sx={{ fontSize: 14, fontWeight: 600, letterSpacing: "0.02em", color: "text.primary" }}

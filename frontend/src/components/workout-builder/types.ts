@@ -53,6 +53,8 @@ export type WorkoutItemsEditorProps = {
 export type WorkoutItemsEditorHandle = {
   openAddExercise: () => void;
   openAddGroup: () => void;
+  /** Replace the full workout list (e.g. AI draft apply) and persist like other edits. */
+  replaceItems: (items: WorkoutLine[]) => void;
 };
 
 /**

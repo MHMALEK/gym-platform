@@ -13,13 +13,6 @@ export function buildCoachMuiTheme(
   const brand = mode === "dark" ? coachBrand : coachBrandLight;
   const primary = (primaryOverride?.trim() || brand.primary) as string;
 
-  /** Soft "paper lifted off the page" elevation. Light mode only — in dark mode
-   *  the surface contrast already lifts cards visually, so we drop to a hairline. */
-  const paperShadow =
-    mode === "dark"
-      ? "none"
-      : "0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 1px rgba(15, 23, 42, 0.03)";
-
   /** Heavier shadow used by overlay-like surfaces (e.g. menus, popovers). */
   const elevatedShadow =
     mode === "dark"
@@ -106,6 +99,10 @@ export function buildCoachMuiTheme(
         styleOverrides: {
           root: {
             backgroundImage: "none",
+            "&.MuiPaper-outlined": {
+              border: "none",
+              boxShadow: "none",
+            },
           },
           elevation1: {
             boxShadow: elevatedShadow,
@@ -118,14 +115,12 @@ export function buildCoachMuiTheme(
         },
         styleOverrides: {
           root: {
-            borderRadius: 10,
-            border: `1px solid ${brand.border}`,
-            boxShadow: paperShadow,
+            borderRadius: 12,
+            border: "none",
+            boxShadow: "none",
             backgroundColor: brand.surface,
-            // Outlined variant in MUI normally adds its own border; ours already
-            // has one, so suppress duplication.
             "&.MuiPaper-outlined": {
-              borderColor: brand.border,
+              border: "none",
             },
           },
         },

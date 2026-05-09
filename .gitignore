@@ -1,4 +1,5 @@
 backend/.venv/
+backend/.pip_vendor/
 backend/dev.db
 backend/uploads/
 backend/vendor-fpdf2/

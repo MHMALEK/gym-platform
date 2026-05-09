@@ -7,10 +7,13 @@ export function PageHeader({
   title,
   subtitle,
   actions,
+  subtitleMaxWidth = 720,
 }: {
   title: ReactNode;
   subtitle?: ReactNode;
   actions?: ReactNode;
+  /** Use `"none"` so the subtitle spans the full content width (e.g. assistant page). */
+  subtitleMaxWidth?: number | "none";
 }) {
   return (
     <Stack
@@ -34,7 +37,11 @@ export function PageHeader({
           {title}
         </Typography>
         {subtitle ? (
-          <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 720 }}>
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{ maxWidth: subtitleMaxWidth === "none" ? "none" : subtitleMaxWidth }}
+          >
             {subtitle}
           </Typography>
         ) : null}

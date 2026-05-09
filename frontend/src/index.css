@@ -93,38 +93,40 @@ html[lang="fa"] #root {
 }
 
 .client-section-card--readonly.MuiCard-root {
-  border: 1px solid var(--app-border);
+  border: none;
   box-shadow: none;
+  background: var(--app-surface);
 }
 
 .client-section-card--readonly .MuiCardHeader-root {
-  background: rgba(255, 255, 255, 0.03);
+  background: transparent;
   border-bottom: 1px solid var(--app-border);
 }
 
 html[data-theme="light"] .client-section-card--readonly .MuiCardHeader-root {
-  background: rgba(15, 23, 42, 0.04);
+  background: transparent;
 }
 
 .client-section-card--editable.MuiCard-root {
-  border: 1px solid var(--app-border);
+  border: none;
   border-inline-start: 3px solid var(--app-accent);
   box-shadow: none;
+  background: var(--app-surface);
 }
 
 .client-section-card--editable .MuiCardHeader-root {
-  background: rgba(255, 255, 255, 0.03);
+  background: transparent;
   border-bottom: 1px solid var(--app-border);
 }
 
 html[data-theme="light"] .client-section-card--editable .MuiCardHeader-root {
-  background: rgba(17, 17, 19, 0.03);
-  border-bottom: 1px solid var(--app-border);
+  background: transparent;
 }
 
 .client-feed-card.MuiCard-root {
-  border: 1px solid var(--app-border);
+  border: none;
   box-shadow: none;
+  background: var(--app-surface);
 }
 
 /* Single-surface profile editor (edit client) */
@@ -134,14 +136,10 @@ html[data-theme="light"] .client-section-card--editable .MuiCardHeader-root {
 }
 
 .client-profile-editor-surface.MuiCard-root {
-  border: 1px solid var(--app-border-strong);
+  border: none;
   border-radius: 12px;
   background: var(--app-surface);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
-}
-
-html[data-theme="light"] .client-profile-editor-surface.MuiCard-root {
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+  box-shadow: none;
 }
 
 .client-profile-editor-surface .MuiCardContent-root {

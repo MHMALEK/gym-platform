@@ -8,6 +8,7 @@ import {
   Home,
   LayoutDashboard,
   Library,
+  MessageCircle,
   Palette,
   Users,
 } from "lucide-react";
@@ -42,6 +43,7 @@ import { ClientFinance } from "./pages/clients/finance";
 import { ClientShow } from "./pages/clients/show";
 import { ClientPlanViewerPage } from "./pages/clients/plan-viewer";
 import { ClientWorkoutDietPlansPage } from "./pages/clients/workout-diet-plans";
+import { CoachAssistantPage } from "./pages/assistant/CoachAssistantPage";
 import { CoachDeskPage } from "./pages/coach-desk";
 import { DashboardPage } from "./pages/dashboard";
 import { buildCoachMuiTheme } from "./theme/muiCoachTheme";
@@ -117,6 +119,11 @@ function RefineShell() {
         name: "dashboard",
         list: "/dashboard",
         meta: { label: t("nav.dashboard"), icon: <LayoutDashboard size={18} strokeWidth={2} /> },
+      },
+      {
+        name: "coach-assistant",
+        list: "/assistant",
+        meta: { label: t("nav.coachAssistant"), icon: <MessageCircle size={18} strokeWidth={2} /> },
       },
       {
         name: "clients",
@@ -219,6 +226,7 @@ function RefineShell() {
           <Route index element={<CoachDeskPage />} />
           <Route path="/workouts" element={<Navigate to="/training-plans" replace />} />
           <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/assistant" element={<CoachAssistantPage />} />
           <Route path="/clients" element={<ClientList />} />
           <Route path="/clients/create" element={<ClientCreate />} />
           <Route path="/clients/edit/:id" element={<ClientEdit />} />

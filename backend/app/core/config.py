@@ -73,5 +73,18 @@ class Settings(BaseSettings):
             return v
         return (_BACKEND_ROOT / v).resolve()
 
+    # --- AI workout draft (OpenAI-compatible API: OpenAI, OpenRouter, etc.) ---
+    openai_api_key: str | None = None
+    # e.g. https://openrouter.ai/api/v1 — omit for default OpenAI endpoint
+    openai_base_url: str | None = None
+    # Default: low-cost instruct model (override with OPENAI_MODEL). OpenRouter: use full slug, e.g. openai/gpt-4.1-nano
+    openai_model: str = "gpt-4.1-nano"
+    ai_workout_max_messages: int = 16
+    ai_workout_max_total_chars: int = 24_000
+
+    # Coach assistant chat (POST /api/v1/ai/coach-chat)
+    ai_coach_chat_max_messages: int = 32
+    ai_coach_chat_max_chars: int = 48_000
+
 
 settings = Settings()

@@ -60,7 +60,7 @@ export function LoginPage() {
         <ThemeSwitcher />
         <LanguageSwitcher />
       </Box>
-      <Card sx={{ width: "min(420px, 100%)", borderRadius: 3, boxShadow: 6 }}>
+      <Card sx={{ width: "min(420px, 100%)", borderRadius: 3, boxShadow: "none" }}>
         <CardHeader title={t("login.title")} />
         <CardContent>
           {devAuth ? (

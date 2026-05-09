@@ -404,7 +404,7 @@ export function ClientSubscriptionsPanel({ clientId, allowMutation, compactHeade
   );
 
   const assignCard = (
-    <Card variant="outlined" sx={splitLayout ? { borderColor: "divider" } : { mt: 2 }}>
+    <Card variant="outlined" sx={splitLayout ? undefined : { mt: 2 }}>
       <CardHeader
         title={t("memberships.panel.assignTitle")}
         subheader={t("memberships.panel.assignSubheader")}

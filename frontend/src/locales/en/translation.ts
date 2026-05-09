@@ -34,6 +34,7 @@ const translation = {
   nav: {
     coachDesk: "Quick desk",
     dashboard: "Dashboard",
+    coachAssistant: "Assistant",
     branding: "Branding",
     clients: "Clients",
     invoices: "Invoices",
@@ -50,6 +51,32 @@ const translation = {
     groupLibrary: "Library",
     groupSettings: "Settings",
     groupOther: "Other",
+  },
+  coachAssistant: {
+    pageTitle: "Coach assistant",
+    msgYou: "You",
+    msgAssistant: "Assistant",
+    thinking: "Thinking…",
+    pageSubtitle:
+      "Ask about your practice, clients, workouts, and invoices. The assistant reads your data with built-in tools (read-only). Chats are saved in this browser: you can open past sessions or start a new one.",
+    emptyState:
+      "Try: “How many active clients do I have?” or “List my unpaid invoices” or “Search exercises containing squat.”",
+    inputPlaceholder: "Ask a question… (Shift+Enter for new line)",
+    send: "Send",
+    errorGeneric: "Something went wrong. Try again.",
+    networkError: "Network error. Check your connection and try again.",
+    emptyReply: "(No text in reply)",
+    clearChat: "Clear conversation",
+    newChat: "New chat",
+    sessionsHeading: "History",
+    deleteSession: "Delete chat",
+    openSessions: "Chat history",
+    migratedChatTitle: "Previous chat",
+    contextToggle: "Session context (optional)",
+    contextLabel: "Notes for the assistant",
+    contextPlaceholder:
+      "e.g. “Focusing on client #12 renewal” or “Comparing two leg programs” — not stored in chat messages; sent with each request.",
+    contextHelper: "Shown only to you locally. Helps interpret your questions; facts still come from your Gym Coach data.",
   },
   assignPlanToClients: {
     titleTraining: "Assign workout to clients",
@@ -126,6 +153,11 @@ const translation = {
   },
   dashboard: {
     title: "Dashboard",
+    tagline: "Roster, billing, and library counts at a glance — jump into any area below.",
+    sectionSnapshot: "Snapshot",
+    sectionContent: "Your content",
+    sectionRevenue: "Revenue",
+    sectionAttention: "Needs attention",
     profileError: "Could not load your profile. Check that the API is running and you are signed in.",
     signedInAs: "Signed in as",
     loadingProfile: "Loading profile…",
@@ -644,6 +676,23 @@ const translation = {
       planOverviewHint: "Name and venue drive how this program appears in lists and which exercises are suggested when you build the workout.",
       namePlaceholder: "e.g. Upper strength · Block A",
       descriptionPlaceholder: "Optional summary shown in lists and when you share the plan.",
+    },
+    ai: {
+      openButton: "AI draft",
+      drawerTitle: "AI workout draft",
+      drawerHint:
+        "Describe the goal, experience level, session length, and equipment. You get a flat exercise list matched to your library — review, then apply.",
+      promptLabel: "What should this workout look like?",
+      promptPlaceholder:
+        "e.g. 45-minute upper push for intermediate in a commercial gym, bench-focused, 5–6 lifts plus core finisher…",
+      generate: "Generate",
+      apply: "Apply to program",
+      genericError: "Could not generate a draft. Try again or shorten your message.",
+      networkError: "Network error. Check your connection and try again.",
+      unresolvedTitle: "Some exercises were not matched to your library:",
+      tryPick: "similar in your library",
+      suggestedName: "Suggested plan name",
+      linesCount: "{{count}} exercise(s) matched and ready to apply.",
     },
   },
   nutritionTemplates: {

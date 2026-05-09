@@ -114,7 +114,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     id: "workspace",
     labelKey: "nav.groupWorkspace",
-    items: ["coach-desk", "dashboard"],
+    items: ["coach-desk", "dashboard", "coach-assistant"],
   },
   {
     id: "clients",

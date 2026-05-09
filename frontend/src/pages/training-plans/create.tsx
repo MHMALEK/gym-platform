@@ -17,6 +17,7 @@ import { useNavigate } from "react-router-dom";
 import { CoachingPlanPreview } from "../../components/CoachingPlanPreview";
 import { PageHeader } from "../../components/layout/PageHeader";
 import { StickyActionBar } from "../../components/layout/StickyActionBar";
+import { TrainingPlanAiAssistant } from "../../components/TrainingPlanAiAssistant";
 import {
   WorkoutItemsEditor,
   normalizeWorkoutItemsForApi,
@@ -46,7 +47,7 @@ export function TrainingPlanCreate() {
   const [workoutLines, setWorkoutLines] = useState<WorkoutLine[]>([]);
   const [previewOpen, setPreviewOpen] = useState(false);
 
-  const { control, saveButtonProps, trigger, watch } = useForm<FormValues>({
+  const { control, saveButtonProps, trigger, watch, setValue } = useForm<FormValues>({
     refineCoreProps: {
       resource: "training-plans",
       redirect: false,
@@ -148,6 +149,22 @@ export function TrainingPlanCreate() {
         </Card>
         <Card>
           <CardContent sx={{ p: { xs: 1.5, sm: 2 }, "&:last-child": { pb: { xs: 1.5, sm: 2 } } }}>
+            <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 1 }}>
+              <TrainingPlanAiAssistant
+                venueType={venueType}
+                onApplyWorkoutLines={setWorkoutLines}
+                onApplyPlanMeta={({ planName, planDescription }) => {
+                  const nameNow = watch("name");
+                  if (!String(nameNow ?? "").trim()) {
+                    setValue("name", planName, { shouldDirty: true });
+                  }
+                  const descNow = watch("description");
+                  if (planDescription && !String(descNow ?? "").trim()) {
+                    setValue("description", planDescription, { shouldDirty: true });
+                  }
+                }}
+              />
+            </Box>
             <WorkoutItemsEditor
               mode="training-plan"
               planVenue={venueType}
