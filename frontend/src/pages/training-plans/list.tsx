@@ -12,9 +12,7 @@ import { type BaseRecord } from "@refinedev/core";
 import {
   CreateButton,
   DeleteButton,
-  EditButton,
   List,
-  ShowButton,
   useDataGrid,
 } from "@refinedev/mui";
 import { useMemo, useState } from "react";
@@ -40,7 +38,23 @@ export function TrainingPlanList() {
   ];
 
   const columns: GridColDef<BaseRecord>[] = [
-    { field: "name", headerName: t("trainingPlans.list.name"), flex: 1, minWidth: 160 },
+    {
+      field: "name",
+      headerName: t("trainingPlans.list.name"),
+      flex: 1,
+      minWidth: 200,
+      // Plan name is the primary affordance — clicking it opens the
+      // editor. With auto-save, there's no separate "Build workout"
+      // path; the editor is the only screen.
+      renderCell: ({ row }) => (
+        <Link
+          to={`/training-plans/edit/${row.id}`}
+          style={{ fontWeight: 500, textDecoration: "none" }}
+        >
+          {String((row as BaseRecord).name ?? "")}
+        </Link>
+      ),
+    },
     { field: "description", headerName: t("trainingPlans.list.description"), flex: 1, minWidth: 140 },
     {
       field: "venue_type",
@@ -62,23 +76,22 @@ export function TrainingPlanList() {
       headerName: t("trainingPlans.list.actions"),
       sortable: false,
       filterable: false,
-      width: 360,
+      width: 220,
       renderCell: ({ row }) => (
         <Stack direction="row" flexWrap="wrap" gap={0.5} alignItems="center">
-          <Button component={Link} to={`/training-plans/edit/${row.id}`} variant="contained" size="small">
-            {t("trainingPlans.list.buildWorkout")}
-          </Button>
           <Button
-            variant="outlined"
+            variant="text"
             size="small"
             onClick={() =>
-              setAssignTarget({ id: Number(row.id), name: String((row as BaseRecord).name ?? "") })
+              setAssignTarget({
+                id: Number(row.id),
+                name: String((row as BaseRecord).name ?? ""),
+              })
             }
+            sx={{ textTransform: "none" }}
           >
             {t("assignPlanToClients.assignToClientsButton")}
           </Button>
-          <EditButton hideText size="small" recordItemId={row.id} />
-          <ShowButton hideText size="small" recordItemId={row.id} />
           <DeleteButton hideText size="small" recordItemId={row.id} />
         </Stack>
       ),

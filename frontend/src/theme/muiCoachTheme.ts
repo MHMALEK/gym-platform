@@ -26,9 +26,9 @@ export function buildCoachMuiTheme(
       ? "0 1px 2px rgba(0, 0, 0, 0.35), 0 4px 16px -4px rgba(0, 0, 0, 0.45)"
       : "0 1px 2px rgba(15, 23, 42, 0.06), 0 4px 12px -2px rgba(15, 23, 42, 0.08)";
 
-  /** In-app links (incl. react-router `<Link>`) — sky / cyan, not browser purple */
-  const linkColor = mode === "dark" ? "#38bdf8" : "#0284c7";
-  const linkHover = mode === "dark" ? "#7dd3fc" : "#0369a1";
+  /** In-app links (incl. react-router `<Link>`) — match the indigo brand. */
+  const linkColor = mode === "dark" ? "#a5b4fc" : "#4f46e5";
+  const linkHover = mode === "dark" ? "#c7d2fe" : "#4338ca";
 
   return createTheme({
     direction,

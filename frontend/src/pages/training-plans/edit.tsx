@@ -4,8 +4,7 @@ import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import CircularProgress from "@mui/material/CircularProgress";
-import Tab from "@mui/material/Tab";
-import Tabs from "@mui/material/Tabs";
+import Typography from "@mui/material/Typography";
 import { useForm } from "@refinedev/react-hook-form";
 import { Layers, Plus } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -59,7 +58,6 @@ const PAGE_MAX_WIDTH = "100%";
 export function TrainingPlanEdit() {
   const { t } = useTranslation();
   const [assignOpen, setAssignOpen] = useState(false);
-  const [tab, setTab] = useState<0 | 1>(0);
 
   const editorRef = useRef<WorkoutItemsEditorHandle>(null);
   const formAutoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -127,45 +125,39 @@ export function TrainingPlanEdit() {
         actions={headerActions}
       />
 
-      <Tabs
-        value={tab}
-        onChange={(_, v) => setTab(v as 0 | 1)}
-        sx={{
-          borderBottom: 1,
-          borderColor: "divider",
-          mb: 3,
-          minHeight: 40,
-          "& .MuiTab-root": {
-            minHeight: 40,
-            textTransform: "none",
-            fontWeight: 500,
-            fontSize: 14,
-            px: 1.5,
-          },
-        }}
-      >
-        <Tab label={t("trainingPlans.create.stepBasicsTitle")} />
-        <Tab label={t("trainingPlans.create.stepProgramTitle")} />
-      </Tabs>
-
-      <Box component="form" sx={{ display: tab === 0 ? "block" : "none" }}>
+      {/* Single scrolling page — Details + Program live together. Three
+          stacked sections separated by sub-headings, all auto-saving. */}
+      <Box component="form" sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
         <Card>
           <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+            <SectionHeading
+              title={t("trainingPlans.create.stepBasicsTitle")}
+              subtitle={t("trainingPlans.create.stepBasicsHint")}
+            />
             <TrainingPlanOverviewCard control={control} variant="edit" />
           </CardContent>
         </Card>
-      </Box>
 
-      <Box sx={{ display: tab === 1 ? "block" : "none" }}>
-        <Card sx={{ mb: 2 }}>
+        <Card>
           <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+            <SectionHeading
+              title={t("workouts.richSectionTitle")}
+              subtitle={t("workouts.richPlaceholder")}
+            />
             <TrainingPlanWorkoutRichField control={control} />
           </CardContent>
         </Card>
+
         <Card>
           <CardContent
             sx={{ p: { xs: 1.5, sm: 2 }, "&:last-child": { pb: { xs: 1.5, sm: 2 } } }}
           >
+            <Box sx={{ px: { xs: 0.5, sm: 1 }, pt: 0.5 }}>
+              <SectionHeading
+                title={t("trainingPlans.create.stepProgramTitle")}
+                subtitle={t("trainingPlans.create.stepProgramHint")}
+              />
+            </Box>
             {query?.isLoading ? (
               <Box sx={{ py: 6, display: "flex", justifyContent: "center" }}>
                 <CircularProgress />
@@ -187,52 +179,46 @@ export function TrainingPlanEdit() {
       </Box>
 
       <StickyActionBar>
-        {/* Sticky bar replaces the legacy Save/Cancel: with both items and
-            form fields auto-saving, the user just adds content. The
-            auto-save status indicator inside the workout builder confirms
-            persistence. */}
-        {tab === 1 ? (
-          <>
-            <Button
-              variant="contained"
-              color="primary"
-              size="medium"
-              startIcon={<Plus size={16} strokeWidth={2.25} />}
-              onClick={() => editorRef.current?.openAddExercise()}
-              sx={{
-                borderRadius: 1.5,
-                fontWeight: 500,
-                textTransform: "none",
-                px: 2,
-                boxShadow: "none",
-                "&:hover": { boxShadow: "none" },
-              }}
-            >
-              {t("workouts.addExercise")}
-            </Button>
-            <Button
-              variant="outlined"
-              size="medium"
-              startIcon={<Layers size={16} strokeWidth={2.25} />}
-              onClick={() => editorRef.current?.openAddGroup()}
-              sx={{
-                borderRadius: 1.5,
-                fontWeight: 500,
-                textTransform: "none",
-                color: "text.secondary",
-                borderColor: "divider",
-                px: 1.75,
-                "&:hover": {
-                  color: "primary.main",
-                  borderColor: "primary.main",
-                  bgcolor: "action.hover",
-                },
-              }}
-            >
-              {t("workouts.addSuperset")}
-            </Button>
-          </>
-        ) : null}
+        {/* With both items and form fields auto-saving, Save/Cancel are gone;
+            the bar carries the primary "add" affordances. */}
+        <Button
+          variant="contained"
+          color="primary"
+          size="medium"
+          startIcon={<Plus size={16} strokeWidth={2.25} />}
+          onClick={() => editorRef.current?.openAddExercise()}
+          sx={{
+            borderRadius: 1.5,
+            fontWeight: 500,
+            textTransform: "none",
+            px: 2,
+            boxShadow: "none",
+            "&:hover": { boxShadow: "none" },
+          }}
+        >
+          {t("workouts.addExercise")}
+        </Button>
+        <Button
+          variant="outlined"
+          size="medium"
+          startIcon={<Layers size={16} strokeWidth={2.25} />}
+          onClick={() => editorRef.current?.openAddGroup()}
+          sx={{
+            borderRadius: 1.5,
+            fontWeight: 500,
+            textTransform: "none",
+            color: "text.secondary",
+            borderColor: "divider",
+            px: 1.75,
+            "&:hover": {
+              color: "primary.main",
+              borderColor: "primary.main",
+              bgcolor: "action.hover",
+            },
+          }}
+        >
+          {t("workouts.addSuperset")}
+        </Button>
       </StickyActionBar>
 
       <AssignPlanToClientsDialog
@@ -242,6 +228,26 @@ export function TrainingPlanEdit() {
         resourceId={record?.id ?? 0}
         resourceName={record?.name}
       />
+    </Box>
+  );
+}
+
+/** Compact section title used to demarcate the Details / Overview / Program
+ *  sections that used to live in separate tabs. */
+function SectionHeading({ title, subtitle }: { title: string; subtitle?: string }) {
+  return (
+    <Box sx={{ mb: 2 }}>
+      <Typography
+        component="h2"
+        sx={{ fontSize: 14, fontWeight: 600, letterSpacing: "0.02em", color: "text.primary" }}
+      >
+        {title}
+      </Typography>
+      {subtitle ? (
+        <Typography variant="body2" color="text.secondary" sx={{ fontSize: 13, mt: 0.25 }}>
+          {subtitle}
+        </Typography>
+      ) : null}
     </Box>
   );
 }
