@@ -499,6 +499,26 @@ export function stripOrphanWorkoutBlocks(items: WorkoutLine[]): WorkoutLine[] {
 }
 
 /**
+ * Append a fresh block (superset / circuit / tri-set / giant-set / dropset)
+ * to the end of the list, made up of one head + one set per supplied exercise.
+ * Two or more exercises required for a real block.
+ */
+export function createBlockFromExercises(
+  items: WorkoutLine[],
+  exercises: Array<{ id: number; name: string }>,
+  blockType: WorkoutBlockType,
+): WorkoutLine[] {
+  if (exercises.length < 2) return items;
+  const blockId = newLocalId();
+  const newRows: WorkoutLine[] = [];
+  for (const ex of exercises) {
+    const bundle = newExerciseWithOneSetInBlock(ex, blockId, blockType);
+    newRows.push(...bundle);
+  }
+  return [...items, ...newRows].map((r, i) => ({ ...r, sort_order: i }));
+}
+
+/**
  * Ungroup an entire block: every row sharing `blockId` is detached so the
  * exercises become standalone (block_id and block_type are cleared, sets
  * stay intact). Order and sets are preserved.

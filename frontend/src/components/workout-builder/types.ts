@@ -22,14 +22,13 @@ export type WorkoutItemsEditorProps = {
  * Picker UI mode:
  *   - `append`: add a new exercise at the end of the list
  *   - `extendBlock`: add an exercise into an existing block
- *   - `newSupersetFirst`: pick the first of two for a brand-new superset
- *   - `newSupersetSecond`: pick the second to complete a half-built superset
+ *   - `groupSelect`: multi-select two or more exercises to create a new
+ *     superset / circuit / tri-set / giant-set / dropset in one step
  */
 export type PickerContext =
   | { mode: "append" }
   | { mode: "extendBlock"; afterIndex: number }
-  | { mode: "newSupersetFirst" }
-  | { mode: "newSupersetSecond"; afterHeadLocalId: string };
+  | { mode: "groupSelect" };
 
 export type RowPresentation = "exercise_head" | "set_under" | "legacy_combined";
 

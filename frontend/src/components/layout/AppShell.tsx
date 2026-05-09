@@ -104,6 +104,45 @@ export function AppShell({ children }: { children: ReactNode }) {
   );
 }
 
+/**
+ * Nav grouping. Each menu item (by Refine resource `name`) is sorted into
+ * a group; items not listed fall into a trailing "Other" group so a new
+ * resource never silently disappears from the sidebar.
+ */
+type NavGroup = { id: string; labelKey: string; items: string[] };
+
+const NAV_GROUPS: NavGroup[] = [
+  {
+    id: "workspace",
+    labelKey: "nav.groupWorkspace",
+    items: ["coach-desk", "dashboard"],
+  },
+  {
+    id: "clients",
+    labelKey: "nav.groupClients",
+    items: ["clients", "invoices"],
+  },
+  {
+    id: "programs",
+    labelKey: "nav.groupPrograms",
+    items: ["training-plans", "plan-templates", "exercises", "nutrition-templates"],
+  },
+  {
+    id: "library",
+    labelKey: "nav.groupLibrary",
+    items: [
+      "directory-exercises",
+      "directory-training-plans",
+      "directory-nutrition-templates",
+    ],
+  },
+  {
+    id: "settings",
+    labelKey: "nav.groupSettings",
+    items: ["branding"],
+  },
+];
+
 function SidebarContent() {
   const { t } = useTranslation();
   const { branding } = useCoachBranding();
@@ -111,15 +150,32 @@ function SidebarContent() {
 
   const displayName = branding.loading ? t("app.title") : branding.name || t("app.title");
 
+  /** Bucket menu items into known groups; unknown ones land in "Other" so nothing disappears. */
+  const grouped = useMemo(() => {
+    const known = new Set<string>();
+    const groups = NAV_GROUPS.map((g) => {
+      const items = g.items
+        .map((name) => menuItems.find((m) => m.name === name))
+        .filter((m): m is NonNullable<typeof m> => Boolean(m));
+      items.forEach((m) => known.add(m.name));
+      return { ...g, resolved: items };
+    }).filter((g) => g.resolved.length > 0);
+
+    const others = menuItems.filter((m) => !known.has(m.name));
+    if (others.length > 0) {
+      groups.push({
+        id: "other",
+        labelKey: "nav.groupOther",
+        items: [],
+        resolved: others,
+      });
+    }
+    return groups;
+  }, [menuItems]);
+
   return (
     <>
-      <Box
-        sx={{
-          px: 2,
-          pt: 2.25,
-          pb: 1.5,
-        }}
-      >
+      <Box sx={{ px: 2, pt: 2.25, pb: 1.5 }}>
         <Stack direction="row" spacing={1.25} alignItems="center" sx={{ minWidth: 0 }}>
           {branding.logoUrl && !branding.loading ? (
             <Box
@@ -176,17 +232,42 @@ function SidebarContent() {
           py: 1.5,
         }}
       >
-        <Stack spacing={0.25}>
-          {menuItems.map((item) => (
-            <NavItem
-              key={item.key ?? item.name}
-              to={item.route ?? "/"}
-              label={(item.label as string) ?? item.name}
-              icon={item.icon as ReactNode}
-              active={selectedKey === item.key}
-            />
-          ))}
-        </Stack>
+        {grouped.map((group, gi) => {
+          const label = t(group.labelKey);
+          const showLabel = label && label !== group.labelKey;
+          return (
+            <Box key={group.id} sx={{ mb: gi === grouped.length - 1 ? 0 : 1.5 }}>
+              {showLabel ? (
+                <Typography
+                  component="div"
+                  sx={{
+                    px: 1.25,
+                    pt: gi === 0 ? 0 : 0.75,
+                    pb: 0.5,
+                    fontSize: 11,
+                    fontWeight: 600,
+                    letterSpacing: "0.06em",
+                    textTransform: "uppercase",
+                    color: "text.disabled",
+                  }}
+                >
+                  {label}
+                </Typography>
+              ) : null}
+              <Stack spacing={0.25}>
+                {group.resolved.map((item) => (
+                  <NavItem
+                    key={item.key ?? item.name}
+                    to={item.route ?? "/"}
+                    label={(item.label as string) ?? item.name}
+                    icon={item.icon as ReactNode}
+                    active={selectedKey === item.key}
+                  />
+                ))}
+              </Stack>
+            </Box>
+          );
+        })}
       </Box>
 
       <Divider sx={{ mx: 2 }} />
@@ -280,30 +361,38 @@ function NavItem({
 function SidebarFooter() {
   const { t } = useTranslation();
   const { mutate: logout } = useLogout();
+  const logoutLabel = t("auth.logout") !== "auth.logout" ? t("auth.logout") : "Sign out";
 
   return (
-    <Stack spacing={1.25} sx={{ px: 2, py: 1.5 }}>
-      <LanguageSwitcher layout="sider" />
-      <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
-        <Tooltip title={t("auth.logout") !== "auth.logout" ? t("auth.logout") : "Sign out"}>
-          <Button
-            size="small"
-            color="inherit"
-            onClick={() => logout()}
-            startIcon={<LogoutIcon fontSize="small" />}
-            sx={{
-              color: "text.secondary",
-              fontWeight: 500,
-              minWidth: 0,
-              px: 1,
-              "&:hover": { color: "text.primary", bgcolor: "action.hover" },
-            }}
-          >
-            {t("auth.logout") !== "auth.logout" ? t("auth.logout") : "Sign out"}
-          </Button>
-        </Tooltip>
-        <ThemeSwitcher />
-      </Stack>
+    <Stack
+      direction="row"
+      alignItems="center"
+      spacing={1}
+      sx={{ px: 1.5, py: 1.25, minHeight: 48 }}
+    >
+      <Tooltip title={logoutLabel} placement="top">
+        <Button
+          size="small"
+          onClick={() => logout()}
+          startIcon={<LogoutIcon fontSize="small" />}
+          sx={{
+            color: "text.secondary",
+            fontWeight: 500,
+            textTransform: "none",
+            minWidth: 0,
+            px: 1,
+            flex: 1,
+            justifyContent: "flex-start",
+            "&:hover": { color: "text.primary", bgcolor: "action.hover" },
+          }}
+        >
+          {logoutLabel}
+        </Button>
+      </Tooltip>
+      <Box sx={{ flexShrink: 0 }}>
+        <LanguageSwitcher />
+      </Box>
+      <ThemeSwitcher />
     </Stack>
   );
 }

@@ -83,15 +83,14 @@ import {
   isMergeDragRoot,
   isWorkoutLineSetLikeRow,
   mergeExerciseBundleAfterTarget,
+  createBlockFromExercises,
   newExerciseWithOneSet,
-  newExerciseWithOneSetInBlock,
   newLocalId,
   normalizeWorkoutLinesForApi,
   orderedExerciseHeadLocalIds,
   reorderWorkoutLinesByHeadMove,
   setOrdinalInGroup,
   setRowUISegment,
-  stripBlocksWithFewerThanTwoExercises,
   ungroupBlock,
   validateWorkoutLinesSequence,
 } from "../lib/workoutLineModel";
@@ -285,45 +284,42 @@ export function WorkoutItemsEditor({
     void loadExerciseOptions();
   }, [exercisePickerModalOpen, loadExerciseOptions]);
 
+  /** Selection used when the picker is in `groupSelect` mode (multi-pick to create a new block). */
+  const [groupSelected, setGroupSelected] = useState<ExerciseOpt[]>([]);
+  const [groupBlockType, setGroupBlockType] = useState<WorkoutBlockType>("superset");
+
   const closeExercisePickerModal = useCallback(() => {
-    const ctx = pickerContextRef.current;
     setExercisePickerModalOpen(false);
-    if (ctx.mode === "newSupersetSecond") {
-      setPickerBanner({ mode: "newSupersetSecond", afterHeadLocalId: ctx.afterHeadLocalId });
-      return;
-    }
     pickerContextRef.current = { mode: "append" };
     setPickerBanner({ mode: "append" });
+    setGroupSelected([]);
   }, []);
 
-  const cancelIncompleteSuperset = useCallback(() => {
+  const armPickerContext = useCallback((ctx: PickerContext) => {
+    pickerContextRef.current = ctx;
+    setPickerBanner(ctx);
+    if (ctx.mode !== "groupSelect") {
+      setGroupSelected([]);
+    }
+    setExercisePickerModalOpen(true);
+  }, []);
+
+  const toggleGroupSelected = useCallback((ex: ExerciseOpt) => {
+    setGroupSelected((prev) => {
+      const exists = prev.some((p) => p.id === ex.id && p.source === ex.source);
+      if (exists) return prev.filter((p) => !(p.id === ex.id && p.source === ex.source));
+      return [...prev, ex];
+    });
+  }, []);
+
+  const commitGroupSelection = useCallback(() => {
+    if (groupSelected.length < 2) return;
+    pushItems(createBlockFromExercises(items, groupSelected, groupBlockType));
+    setGroupSelected([]);
     pickerContextRef.current = { mode: "append" };
     setPickerBanner({ mode: "append" });
-    setItems((prev) => {
-      const cleaned = stripBlocksWithFewerThanTwoExercises(prev).map((r, i) => ({ ...r, sort_order: i }));
-      if (validateWorkoutLinesSequence(cleaned) !== null) return prev;
-      onChange?.(cleaned);
-      return cleaned;
-    });
-  }, [onChange]);
-
-  const armPickerContext = useCallback(
-    (ctx: PickerContext) => {
-      const prev = pickerContextRef.current;
-      if (prev.mode === "newSupersetSecond" && ctx.mode !== "newSupersetSecond") {
-        setItems((p) => {
-          const cleaned = stripBlocksWithFewerThanTwoExercises(p).map((r, i) => ({ ...r, sort_order: i }));
-          if (validateWorkoutLinesSequence(cleaned) !== null) return p;
-          onChange?.(cleaned);
-          return cleaned;
-        });
-      }
-      pickerContextRef.current = ctx;
-      setPickerBanner(ctx);
-      setExercisePickerModalOpen(true);
-    },
-    [onChange],
-  );
+    setExercisePickerModalOpen(false);
+  }, [groupBlockType, groupSelected, items, pushItems]);
 
   const pickerLists = useMemo(() => {
     const q = pickerQuery.trim().toLowerCase();
@@ -347,25 +343,8 @@ export function WorkoutItemsEditor({
         setPickerBanner({ mode: "append" });
         return;
       }
-      if (ctx.mode === "newSupersetFirst") {
-        const bid = newLocalId();
-        const bundle = newExerciseWithOneSetInBlock(ex, bid, "superset");
-        const afterHeadLocalId = bundle[0]!.localId;
-        pushItems([...items, ...bundle].map((r, i) => ({ ...r, sort_order: i })));
-        pickerContextRef.current = { mode: "newSupersetSecond", afterHeadLocalId };
-        setPickerBanner({ mode: "newSupersetSecond", afterHeadLocalId });
-        return;
-      }
-      if (ctx.mode === "newSupersetSecond") {
-        const afterIdx = items.findIndex((r) => r.localId === ctx.afterHeadLocalId);
-        if (afterIdx < 0) return;
-        const next = insertLinkedExerciseAfter(items, afterIdx, ex);
-        pushItems(next);
-        pickerContextRef.current = { mode: "append" };
-        setPickerBanner({ mode: "append" });
-        setExercisePickerModalOpen(false);
-        return;
-      }
+      // Default + groupSelect "single add" both fall through to append; groupSelect uses
+      // toggleGroupSelected + commitGroupSelection for the multi-pick path.
       const next = [...items, ...newExerciseWithOneSet(ex)];
       pushItems(next.map((r, i) => ({ ...r, sort_order: i })));
       pickerContextRef.current = { mode: "append" };
@@ -979,59 +958,47 @@ export function WorkoutItemsEditor({
         </DndContext>
       )}
 
-      {!exercisePickerModalOpen && pickerBanner.mode !== "append" ? (
+      {!exercisePickerModalOpen && pickerBanner.mode === "extendBlock" ? (
         <Alert
           severity="info"
           className="workout-items-editor__banner"
           sx={{ mt: 2.5 }}
           action={
-            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-              {pickerBanner.mode === "newSupersetSecond" ? (
-                <Button size="small" onClick={cancelIncompleteSuperset}>
-                  {t("workouts.cancelSupersetDraft")}
-                </Button>
-              ) : null}
-              <Button size="small" variant="contained" color="primary" onClick={() => setExercisePickerModalOpen(true)}>
-                {t("workouts.openExerciseLibrary")}
-              </Button>
-            </Stack>
+            <Button
+              size="small"
+              variant="contained"
+              color="primary"
+              onClick={() => setExercisePickerModalOpen(true)}
+            >
+              {t("workouts.openExerciseLibrary")}
+            </Button>
           }
         >
-          {pickerBanner.mode === "newSupersetSecond"
-            ? t("workouts.pickerCollapsedSupersetHint")
-            : t("workouts.pickerCollapsedLinkHint")}
+          {t("workouts.pickerCollapsedLinkHint")}
         </Alert>
       ) : null}
 
-      <Flex vertical gap={10} style={{ width: "100%", marginTop: 20 }}>
+      <Stack direction="row" spacing={1.5} sx={{ width: "100%", mt: 2.5, flexWrap: "wrap" }} useFlexGap>
         <Button
           variant="contained"
           color="primary"
-          fullWidth
           size="large"
           startIcon={<AddIcon />}
           onClick={() => armPickerContext({ mode: "append" })}
-          style={{ borderRadius: 12, height: 46, fontWeight: 600 }}
+          sx={{ borderRadius: 2, fontWeight: 600, flex: "2 1 240px" }}
         >
           {t("workouts.addExercise")}
         </Button>
         <Button
-          fullWidth
           variant="outlined"
           size="large"
           startIcon={<LinkIcon />}
-          onClick={() => armPickerContext({ mode: "newSupersetFirst" })}
-          style={{
-            borderRadius: 12,
-            height: 46,
-            fontWeight: 600,
-            borderColor: "var(--app-border-strong)",
-            background: "var(--app-surface-elevated)",
-          }}
+          onClick={() => armPickerContext({ mode: "groupSelect" })}
+          sx={{ borderRadius: 2, fontWeight: 600, flex: "1 1 200px" }}
         >
           {t("workouts.addSuperset")}
         </Button>
-      </Flex>
+      </Stack>
 
       <ExercisePickerModal
         open={exercisePickerModalOpen}
@@ -1047,8 +1014,12 @@ export function WorkoutItemsEditor({
         total={pickerTotal}
         onAddExercise={addExerciseFromPicker}
         onResetMode={() => armPickerContext({ mode: "append" })}
-        onCancelSupersetDraft={cancelIncompleteSuperset}
         onRefresh={() => void loadExerciseOptions()}
+        groupSelected={groupSelected}
+        onToggleGroupSelected={toggleGroupSelected}
+        groupBlockType={groupBlockType}
+        setGroupBlockType={setGroupBlockType}
+        onCommitGroupSelection={commitGroupSelection}
         t={t}
       />
 
