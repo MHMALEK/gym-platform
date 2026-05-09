@@ -296,6 +296,17 @@ export function WorkoutItemsEditor({
     });
   }, []);
 
+  /** Standalone exercise heads (by head localId) the user has collapsed — hides set rows. */
+  const [collapsedExercises, setCollapsedExercises] = useState<Set<string>>(new Set());
+  const toggleExerciseCollapsed = useCallback((headLocalId: string) => {
+    setCollapsedExercises((prev) => {
+      const next = new Set(prev);
+      if (next.has(headLocalId)) next.delete(headLocalId);
+      else next.add(headLocalId);
+      return next;
+    });
+  }, []);
+
   const closeExercisePickerModal = useCallback(() => {
     setExercisePickerModalOpen(false);
     pickerContextRef.current = { mode: "append" };
@@ -623,58 +634,6 @@ export function WorkoutItemsEditor({
         </div>
       )}
 
-      {/* Inline Add toolbar — always visible, sits above the list. */}
-      <Stack
-        direction="row"
-        spacing={1}
-        sx={{
-          width: "100%",
-          mb: 1.5,
-          alignItems: "center",
-          flexWrap: "wrap",
-        }}
-        useFlexGap
-      >
-        <Button
-          variant="contained"
-          color="primary"
-          size="small"
-          startIcon={<Plus size={16} strokeWidth={2.25} />}
-          onClick={() => armPickerContext({ mode: "append" })}
-          sx={{
-            borderRadius: 1.5,
-            fontWeight: 500,
-            textTransform: "none",
-            px: 1.75,
-            boxShadow: "none",
-            "&:hover": { boxShadow: "none" },
-          }}
-        >
-          {t("workouts.addExercise")}
-        </Button>
-        <Button
-          variant="outlined"
-          size="small"
-          startIcon={<Layers size={16} strokeWidth={2.25} />}
-          onClick={() => armPickerContext({ mode: "groupSelect" })}
-          sx={{
-            borderRadius: 1.5,
-            fontWeight: 500,
-            textTransform: "none",
-            color: "text.secondary",
-            borderColor: "divider",
-            px: 1.5,
-            "&:hover": {
-              color: "primary.main",
-              borderColor: "primary.main",
-              bgcolor: "action.hover",
-            },
-          }}
-        >
-          {t("workouts.addSuperset")}
-        </Button>
-      </Stack>
-
       {items.length === 0 ? (
         <Box
           sx={{
@@ -706,12 +665,14 @@ export function WorkoutItemsEditor({
                 const row = items[i];
                 if (!row.block_id) {
                   const [lo, hi] = exerciseGroupRange(items, i);
+                  const headLocalId = items[lo].localId;
+                  const isCollapsed = collapsedExercises.has(headLocalId);
                   nodes.push(
                     <SortableExerciseGroup
-                      key={`exercise-group-${items[lo].localId}`}
-                      headLocalId={items[lo].localId}
+                      key={`exercise-group-${headLocalId}`}
+                      headLocalId={headLocalId}
                       shellStyle={exerciseGroupShellStyle}
-                      mergeDropEnabled={mergeDropActiveForHead(items[lo].localId)}
+                      mergeDropEnabled={mergeDropActiveForHead(headLocalId)}
                       activeDragHeadId={activeDragId}
                     >
                       {(drag) => (
@@ -725,6 +686,10 @@ export function WorkoutItemsEditor({
                                 : r.row_type === "set"
                                   ? "set_under"
                                   : "legacy_combined";
+                            // Hide everything below the head when this exercise is collapsed.
+                            if (isCollapsed && presentation !== "exercise_head") {
+                              return null;
+                            }
                             const setOrd = setOrdinalInGroup(items, idx);
                             const setLabel =
                               presentation === "exercise_head" ? "—" : t("workouts.setNumber", { n: setOrd });
@@ -750,6 +715,14 @@ export function WorkoutItemsEditor({
                                   onPickExtendBlock={() => armPickerContext({ mode: "extendBlock", afterIndex: idx })}
                                   dragHandleProps={idx === lo ? drag : undefined}
                                   showAdvanced={effectiveShowAdvanced}
+                                  collapsed={
+                                    presentation === "exercise_head" ? isCollapsed : undefined
+                                  }
+                                  onToggleCollapsed={
+                                    presentation === "exercise_head"
+                                      ? () => toggleExerciseCollapsed(headLocalId)
+                                      : undefined
+                                  }
                                   t={t}
                                   updateAt={updateAt}
                                   removeAt={removeAt}
@@ -757,7 +730,12 @@ export function WorkoutItemsEditor({
                               </Fragment>
                             );
                           })}
-                          <AddSetBelowFooter onClick={() => addSetBelow(hi)} label={t("workouts.addSetBelow")} />
+                          {isCollapsed ? null : (
+                            <AddSetBelowFooter
+                              onClick={() => addSetBelow(hi)}
+                              label={t("workouts.addSetBelow")}
+                            />
+                          )}
                         </>
                       )}
                     </SortableExerciseGroup>,
@@ -1039,11 +1017,58 @@ export function WorkoutItemsEditor({
         </DndContext>
       )}
 
+      {/* Add toolbar at the bottom of the list — primary "Add exercise" + secondary "Add superset". */}
+      <Stack
+        direction="row"
+        spacing={1}
+        sx={{ width: "100%", mt: 2, alignItems: "center", flexWrap: "wrap" }}
+        useFlexGap
+      >
+        <Button
+          variant="contained"
+          color="primary"
+          size="medium"
+          startIcon={<Plus size={16} strokeWidth={2.25} />}
+          onClick={() => armPickerContext({ mode: "append" })}
+          sx={{
+            borderRadius: 1.5,
+            fontWeight: 500,
+            textTransform: "none",
+            px: 2,
+            boxShadow: "none",
+            "&:hover": { boxShadow: "none" },
+          }}
+        >
+          {t("workouts.addExercise")}
+        </Button>
+        <Button
+          variant="outlined"
+          size="medium"
+          startIcon={<Layers size={16} strokeWidth={2.25} />}
+          onClick={() => armPickerContext({ mode: "groupSelect" })}
+          sx={{
+            borderRadius: 1.5,
+            fontWeight: 500,
+            textTransform: "none",
+            color: "text.secondary",
+            borderColor: "divider",
+            px: 1.75,
+            "&:hover": {
+              color: "primary.main",
+              borderColor: "primary.main",
+              bgcolor: "action.hover",
+            },
+          }}
+        >
+          {t("workouts.addSuperset")}
+        </Button>
+      </Stack>
+
       {!exercisePickerModalOpen && pickerBanner.mode === "extendBlock" ? (
         <Alert
           severity="info"
           className="workout-items-editor__banner"
-          sx={{ mt: 2.5 }}
+          sx={{ mt: 2 }}
           action={
             <Button
               size="small"
@@ -1058,7 +1083,6 @@ export function WorkoutItemsEditor({
           {t("workouts.pickerCollapsedLinkHint")}
         </Alert>
       ) : null}
-
 
       <ExercisePickerModal
         open={exercisePickerModalOpen}

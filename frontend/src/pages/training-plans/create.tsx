@@ -1,4 +1,3 @@
-import ArrowBackIcon from "@mui/icons-material/ArrowBackRounded";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Divider from "@mui/material/Divider";
@@ -11,6 +10,7 @@ import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
 import { PageHeader } from "../../components/layout/PageHeader";
+import { StickyActionBar } from "../../components/layout/StickyActionBar";
 import {
   WorkoutItemsEditor,
   normalizeWorkoutItemsForApi,
@@ -87,33 +87,7 @@ export function TrainingPlanCreate() {
     if (ok) setStep(1);
   }, [trigger]);
 
-  const headerActions =
-    step === 0 ? (
-      <>
-        <Button
-          variant="text"
-          color="inherit"
-          size="small"
-          startIcon={<ArrowBackIcon fontSize="small" />}
-          onClick={() => navigate("/training-plans")}
-          sx={{ color: "text.secondary" }}
-        >
-          {t("common.back") !== "common.back" ? t("common.back") : "Back"}
-        </Button>
-        <Button variant="contained" onClick={() => void goNext()}>
-          {t("trainingPlans.create.continueToProgram")}
-        </Button>
-      </>
-    ) : (
-      <>
-        <Button variant="text" color="inherit" onClick={() => setStep(0)} sx={{ color: "text.secondary" }}>
-          {t("trainingPlans.create.backToDetails")}
-        </Button>
-        <Button variant="contained" {...saveButtonProps}>
-          {t("trainingPlans.create.savePlan")}
-        </Button>
-      </>
-    );
+  const cancelLabel = t("common.cancel") !== "common.cancel" ? t("common.cancel") : "Cancel";
 
   return (
     <Box sx={{ maxWidth: PAGE_MAX_WIDTH, mx: "auto", width: "100%" }}>
@@ -124,7 +98,6 @@ export function TrainingPlanCreate() {
             ? t("trainingPlans.create.stepBasicsHint")
             : t("trainingPlans.create.stepProgramHint")
         }
-        actions={headerActions}
       />
 
       <Tabs
@@ -169,6 +142,44 @@ export function TrainingPlanCreate() {
           onChange={onWorkoutChange}
         />
       </Box>
+
+      <StickyActionBar>
+        <Button
+          variant="text"
+          color="inherit"
+          onClick={() => navigate("/training-plans")}
+          sx={{ color: "text.secondary", textTransform: "none", fontWeight: 500 }}
+        >
+          {cancelLabel}
+        </Button>
+        {step === 0 ? (
+          <Button
+            variant="contained"
+            onClick={() => void goNext()}
+            sx={{ borderRadius: 1.5, fontWeight: 500, textTransform: "none", px: 2.5 }}
+          >
+            {t("trainingPlans.create.continueToProgram")}
+          </Button>
+        ) : (
+          <>
+            <Button
+              variant="text"
+              color="inherit"
+              onClick={() => setStep(0)}
+              sx={{ color: "text.secondary", textTransform: "none", fontWeight: 500 }}
+            >
+              {t("trainingPlans.create.backToDetails")}
+            </Button>
+            <Button
+              variant="contained"
+              {...saveButtonProps}
+              sx={{ borderRadius: 1.5, fontWeight: 500, textTransform: "none", px: 2.5 }}
+            >
+              {t("trainingPlans.create.savePlan")}
+            </Button>
+          </>
+        )}
+      </StickyActionBar>
     </Box>
   );
 }

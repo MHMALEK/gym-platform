@@ -9,8 +9,11 @@ import { useForm } from "@refinedev/react-hook-form";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { useNavigate } from "react-router-dom";
+
 import { AssignPlanToClientsDialog } from "../../components/AssignPlanToClientsDialog";
 import { PageHeader } from "../../components/layout/PageHeader";
+import { StickyActionBar } from "../../components/layout/StickyActionBar";
 import {
   WorkoutItemsEditor,
   workoutLinesFromApiItems,
@@ -54,6 +57,7 @@ const PAGE_MAX_WIDTH = 1100;
 
 export function TrainingPlanEdit() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [assignOpen, setAssignOpen] = useState(false);
   const [tab, setTab] = useState<0 | 1>(0);
   const { control, saveButtonProps, watch, refineCore } = useForm<FormValues>({
@@ -70,24 +74,24 @@ export function TrainingPlanEdit() {
   const venueLive = watch("venue_type") ?? record?.venue_type ?? "mixed";
 
   const headerActions = (
-    <>
-      <Button
-        variant="outlined"
-        size="small"
-        startIcon={<GroupAddIcon fontSize="small" />}
-        disabled={record?.id == null}
-        onClick={() => setAssignOpen(true)}
-        sx={{ borderRadius: 2 }}
-      >
-        {t("assignPlanToClients.assignToClientsButton")}
-      </Button>
-      <Button variant="contained" {...saveButtonProps}>
-        {t("trainingPlans.create.savePlan") !== "trainingPlans.create.savePlan"
-          ? t("trainingPlans.create.savePlan")
-          : "Save"}
-      </Button>
-    </>
+    <Button
+      variant="outlined"
+      size="small"
+      startIcon={<GroupAddIcon fontSize="small" />}
+      disabled={record?.id == null}
+      onClick={() => setAssignOpen(true)}
+      sx={{ borderRadius: 2 }}
+    >
+      {t("assignPlanToClients.assignToClientsButton")}
+    </Button>
   );
+
+  const cancelLabel =
+    t("common.cancel") !== "common.cancel" ? t("common.cancel") : "Cancel";
+  const saveLabel =
+    t("trainingPlans.create.savePlan") !== "trainingPlans.create.savePlan"
+      ? t("trainingPlans.create.savePlan")
+      : "Save";
 
   return (
     <Box sx={{ maxWidth: PAGE_MAX_WIDTH, mx: "auto", width: "100%" }}>
@@ -142,6 +146,24 @@ export function TrainingPlanEdit() {
           />
         ) : null}
       </Box>
+
+      <StickyActionBar>
+        <Button
+          variant="text"
+          color="inherit"
+          onClick={() => navigate("/training-plans")}
+          sx={{ color: "text.secondary", textTransform: "none", fontWeight: 500 }}
+        >
+          {cancelLabel}
+        </Button>
+        <Button
+          variant="contained"
+          {...saveButtonProps}
+          sx={{ borderRadius: 1.5, fontWeight: 500, textTransform: "none", px: 2.5 }}
+        >
+          {saveLabel}
+        </Button>
+      </StickyActionBar>
 
       <AssignPlanToClientsDialog
         open={assignOpen}

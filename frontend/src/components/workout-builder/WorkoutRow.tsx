@@ -1,3 +1,4 @@
+import Box from "@mui/material/Box";
 import Chip from "@mui/material/Chip";
 import IconButton from "@mui/material/IconButton";
 import InputAdornment from "@mui/material/InputAdornment";
@@ -6,6 +7,8 @@ import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import type { TFunction } from "i18next";
 import {
+  ChevronDown,
+  ChevronRight,
   GripVertical,
   Link2,
   RotateCcw,
@@ -41,6 +44,9 @@ export type WorkoutRowProps = {
   dragHandleProps?: DragHandleBag;
   /** When true, render weight/RPE/tempo inputs alongside reps/duration/rest. */
   showAdvanced: boolean;
+  /** When provided, an exercise head can be collapsed (its sets hidden by parent). */
+  collapsed?: boolean;
+  onToggleCollapsed?: () => void;
   t: TFunction<"translation">;
   updateAt: (i: number, patch: Partial<WorkoutLine>) => void;
   removeAt: (i: number) => void;
@@ -65,6 +71,8 @@ export function WorkoutRow({
   onPickExtendBlock,
   dragHandleProps,
   showAdvanced,
+  collapsed,
+  onToggleCollapsed,
   t,
   updateAt,
   removeAt,
@@ -234,106 +242,99 @@ export function WorkoutRow({
       (presentation === "legacy_combined" && !isExtraSetRow)) &&
     canExtendLink;
 
+  /** Inline action cluster — sits at the END of the head row, replacing the old left gutter. */
+  const actionCluster = (
+    <Flex align="center" gap={2} style={{ flexShrink: 0 }}>
+      {showRowDragHandle && dragHandleProps ? (
+        <Tooltip placement="top" title={t("workouts.rowToolbar.dragTooltipTitle")}>
+          <IconButton
+            size="small"
+            aria-label={t("workouts.rowToolbar.drag")}
+            sx={{
+              cursor: "grab",
+              borderRadius: 1.25,
+              color: "text.secondary",
+              "&:hover": { color: "text.primary", bgcolor: "action.hover" },
+            }}
+            {...dragHandleProps.attributes}
+            {...dragHandleProps.listeners}
+          >
+            <GripVertical size={15} strokeWidth={2} />
+          </IconButton>
+        </Tooltip>
+      ) : null}
+      {showLinkInRail ? (
+        <Tooltip title={t("workouts.linkExerciseRow")}>
+          <IconButton
+            size="small"
+            aria-label={t("workouts.linkExerciseRow")}
+            onClick={onPickExtendBlock}
+            sx={{
+              color: "text.secondary",
+              "&:hover": { color: "primary.main", bgcolor: "action.hover" },
+            }}
+          >
+            <Link2 size={15} strokeWidth={2} />
+          </IconButton>
+        </Tooltip>
+      ) : null}
+      {isSetUnder && hasSetOverride ? (
+        <Tooltip title={t("workouts.clearSetOverrides")}>
+          <IconButton
+            size="small"
+            aria-label={t("workouts.clearSetOverrides")}
+            onClick={() =>
+              updateAt(index, {
+                reps: null,
+                duration_sec: null,
+                rest_sec: null,
+                weight_kg: null,
+                rpe: null,
+                tempo: null,
+                notes: null,
+              })
+            }
+            sx={{
+              color: "text.secondary",
+              "&:hover": { color: "text.primary", bgcolor: "action.hover" },
+            }}
+          >
+            <RotateCcw size={15} strokeWidth={2} />
+          </IconButton>
+        </Tooltip>
+      ) : null}
+      <Tooltip title={t("common.delete")}>
+        <IconButton
+          size="small"
+          aria-label={t("common.delete")}
+          onClick={() => removeAt(index)}
+          sx={{
+            color: "text.disabled",
+            "&:hover": { color: "error.main", bgcolor: "action.hover" },
+          }}
+        >
+          <Trash2 size={15} strokeWidth={2} />
+        </IconButton>
+      </Tooltip>
+    </Flex>
+  );
+
+  /** Per-exercise collapse only makes sense for standalone heads with sets under them. */
+  const showExerciseCollapse =
+    presentation === "exercise_head" &&
+    !insideBlock &&
+    setCountInGroup(items, index) > 0 &&
+    onToggleCollapsed != null;
+
   return (
     <div style={style}>
       <Flex align="stretch" gap={0} style={{ width: "100%" }}>
-        <Flex
-          vertical
-          justify="flex-start"
-          align="center"
-          gap={2}
-          style={rowActionsRailStyle}
-        >
-          {showRowDragHandle && dragHandleProps ? (
-            <Tooltip
-              placement="right"
-              title={
-                <div style={{ maxWidth: 280 }}>
-                  <div style={{ fontWeight: 600, marginBottom: 6 }}>
-                    {t("workouts.rowToolbar.dragTooltipTitle")}
-                  </div>
-                  <div style={{ fontSize: 12, lineHeight: 1.45, opacity: 0.92 }}>
-                    {t("workouts.rowToolbar.dragTooltipBody")}
-                  </div>
-                </div>
-              }
-            >
-              <IconButton
-                size="small"
-                aria-label={t("workouts.rowToolbar.drag")}
-                sx={{
-                  margin: 0,
-                  cursor: "grab",
-                  borderRadius: "10px",
-                  color: "var(--app-text-muted)",
-                  background:
-                    "color-mix(in srgb, var(--app-accent) 8%, transparent)",
-                }}
-                {...dragHandleProps.attributes}
-                {...dragHandleProps.listeners}
-              >
-                <GripVertical size={16} strokeWidth={2} />
-              </IconButton>
-            </Tooltip>
-          ) : showRowDragHandle ? (
-            <div style={{ width: 32, height: 32, flexShrink: 0 }} aria-hidden />
-          ) : (
-            <div style={{ width: 32, height: 32, flexShrink: 0 }} aria-hidden />
-          )}
-          <Tooltip title={t("common.delete")} placement="right">
-            <IconButton
-              size="small"
-              aria-label={t("common.delete")}
-              onClick={() => removeAt(index)}
-              sx={{
-                color: "text.disabled",
-                "&:hover": { color: "error.main", bgcolor: "action.hover" },
-              }}
-            >
-              <Trash2 size={15} strokeWidth={2} />
-            </IconButton>
-          </Tooltip>
-          {showLinkInRail ? (
-            <Tooltip title={t("workouts.linkExerciseRow")} placement="right">
-              <IconButton
-                size="small"
-                aria-label={t("workouts.linkExerciseRow")}
-                onClick={onPickExtendBlock}
-                sx={{ color: "text.secondary" }}
-              >
-                <Link2 size={15} strokeWidth={2} />
-              </IconButton>
-            </Tooltip>
-          ) : null}
-          {isSetUnder && hasSetOverride ? (
-            <Tooltip title={t("workouts.clearSetOverrides")} placement="right">
-              <IconButton
-                size="small"
-                aria-label={t("workouts.clearSetOverrides")}
-                onClick={() =>
-                  updateAt(index, {
-                    reps: null,
-                    duration_sec: null,
-                    rest_sec: null,
-                    weight_kg: null,
-                    rpe: null,
-                    tempo: null,
-                    notes: null,
-                  })
-                }
-                sx={{ color: "text.secondary" }}
-              >
-                <RotateCcw size={15} strokeWidth={2} />
-              </IconButton>
-            </Tooltip>
-          ) : null}
-        </Flex>
         <div
           style={{
             flex: 1,
             minWidth: 0,
-            paddingLeft: contentPadLeft,
-            paddingRight: 14,
+            paddingLeft: 14,
+            paddingRight: 10,
             paddingTop: 4,
             paddingBottom: 4,
           }}
@@ -357,6 +358,32 @@ export function WorkoutRow({
           <Flex vertical gap={6} style={{ width: "100%" }}>
             {presentation === "exercise_head" ? (
               <Flex align="center" gap={8} style={{ width: "100%" }}>
+                {showExerciseCollapse ? (
+                  <Tooltip
+                    title={
+                      collapsed
+                        ? translate(t, "workouts.expandBlock", "Expand")
+                        : translate(t, "workouts.collapseBlock", "Collapse")
+                    }
+                  >
+                    <IconButton
+                      size="small"
+                      onClick={onToggleCollapsed}
+                      aria-label={collapsed ? "Expand exercise" : "Collapse exercise"}
+                      sx={{
+                        p: 0.5,
+                        color: "text.secondary",
+                        "&:hover": { color: "text.primary", bgcolor: "action.hover" },
+                      }}
+                    >
+                      {collapsed ? (
+                        <ChevronRight size={16} strokeWidth={2} />
+                      ) : (
+                        <ChevronDown size={16} strokeWidth={2} />
+                      )}
+                    </IconButton>
+                  </Tooltip>
+                ) : null}
                 {blockStepLabel ? (
                   <Typography
                     variant="caption"
@@ -391,6 +418,7 @@ export function WorkoutRow({
                 >
                   {row.exercise_name ?? `ID ${row.exercise_id}`}
                 </Typography>
+                {actionCluster}
               </Flex>
             ) : (
               <Flex align="center" gap={8} style={{ width: "100%" }}>
@@ -423,12 +451,16 @@ export function WorkoutRow({
                       overflow: "hidden",
                       textOverflow: "ellipsis",
                       whiteSpace: "nowrap",
+                      flex: 1,
                     }}
                     title={row.exercise_name ?? `ID ${row.exercise_id}`}
                   >
                     {row.exercise_name ?? `ID ${row.exercise_id}`}
                   </Typography>
-                ) : null}
+                ) : (
+                  <Box sx={{ flex: 1 }} />
+                )}
+                {actionCluster}
               </Flex>
             )}
             <Flex
