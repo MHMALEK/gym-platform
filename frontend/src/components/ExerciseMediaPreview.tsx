@@ -30,14 +30,19 @@ export function ExerciseMediaPreview({
   url,
   title,
   compact = false,
+  fit = "contain",
 }: {
   url?: string | null;
   title?: string;
   compact?: boolean;
+  fit?: "contain" | "cover";
 }) {
   const cleanUrl = url?.trim();
   const embed = cleanUrl ? youtubeEmbedUrl(cleanUrl) : null;
   const height = compact ? 150 : 230;
+  const video = cleanUrl ? isVideoUrl(cleanUrl) : false;
+  const mediaFit = fit;
+  const isStaticImage = !embed && !video;
 
   if (!cleanUrl) {
     return (
@@ -68,9 +73,12 @@ export function ExerciseMediaPreview({
         height,
         overflow: "hidden",
         borderRadius: 3,
-        bgcolor: "grey.100",
+        bgcolor: isStaticImage ? "common.white" : "grey.950",
         border: "1px solid",
         borderColor: "divider",
+        backgroundImage: isStaticImage
+          ? "none"
+          : "radial-gradient(circle at 50% 45%, rgba(255,255,255,0.16), transparent 35%), linear-gradient(135deg, rgba(255,255,255,0.08), transparent)",
       }}
     >
       {embed ? (
@@ -81,21 +89,21 @@ export function ExerciseMediaPreview({
           allowFullScreen
           style={{ width: "100%", height: "100%", border: 0 }}
         />
-      ) : isVideoUrl(cleanUrl) ? (
+      ) : video ? (
         <video
           src={mediaSrc(cleanUrl)}
           controls
           muted
-          style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+          style={{ width: "100%", height: "100%", objectFit: mediaFit, objectPosition: "center", display: "block" }}
         />
       ) : (
         <img
           src={mediaSrc(cleanUrl)}
           alt={title ?? ""}
-          style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+          style={{ width: "100%", height: "100%", objectFit: mediaFit, objectPosition: "center", display: "block" }}
         />
       )}
-      {!embed && isVideoUrl(cleanUrl) ? null : !embed && /\.gif(\?|#|$)/i.test(cleanUrl) ? (
+      {!embed && video ? null : !embed && /\.gif(\?|#|$)/i.test(cleanUrl) ? (
         <Box sx={{ position: "absolute", right: 10, bottom: 10, color: "common.white" }}>
           <PlayCircle size={22} />
         </Box>

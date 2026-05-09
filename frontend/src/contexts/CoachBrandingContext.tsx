@@ -93,6 +93,17 @@ const ltrCache = createCache({
   key: "muiltr",
 });
 
+const previousDefaultBrandColors = new Set([
+  "#4f46e5",
+  "#6366f1",
+  "#818cf8",
+  "#a5b4fc",
+  "#059669",
+  "#10b981",
+  "#34d399",
+  "#6ee7b7",
+]);
+
 /** Emotion cache: RTL stylis plugin for Persian, plain LTR for English. */
 export function EmotionDirectionBridge({ direction, children }: { direction: "ltr" | "rtl"; children: ReactNode }) {
   return <CacheProvider value={direction === "rtl" ? rtlCache : ltrCache}>{children}</CacheProvider>;
@@ -105,6 +116,7 @@ export function BrandedMuiOverride({ children }: { children: ReactNode }) {
 
   const theme = useMemo(() => {
     const primary = branding.primaryColor?.trim();
+    if (primary && previousDefaultBrandColors.has(primary.toLowerCase())) return null;
     if (!primary) return null;
     return createTheme(parentTheme, {
       palette: {

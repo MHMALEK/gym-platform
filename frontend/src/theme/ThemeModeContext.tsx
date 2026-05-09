@@ -2,7 +2,7 @@ import { type ReactNode, createContext, useCallback, useContext, useEffect, useM
 
 export type ThemeMode = "light" | "dark";
 
-const STORAGE_KEY = "gym-coach-theme";
+const STORAGE_KEY = "gym-coach-theme-v2";
 
 function readStoredMode(): ThemeMode {
   try {
@@ -26,7 +26,7 @@ function applyDomTheme(mode: ThemeMode) {
   document.documentElement.dataset.theme = mode;
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) {
-    meta.setAttribute("content", mode === "light" ? "#f1f5f9" : "#0a0d0c");
+    meta.setAttribute("content", mode === "light" ? "#f4f4f5" : "#030303");
   }
 }
 

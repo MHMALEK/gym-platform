@@ -49,10 +49,10 @@ export function TrainingPlanPreviewPage() {
   return (
     <Box
       sx={{
-        maxWidth: 1180,
+        maxWidth: 980,
         mx: "auto",
-        px: { xs: 1, md: 2 },
-        pb: 6,
+        px: { xs: 1, md: 1.5 },
+        pb: 4,
         "@media print": {
           maxWidth: "none",
           px: 0,
@@ -66,26 +66,23 @@ export function TrainingPlanPreviewPage() {
         className="training-preview-actions"
         elevation={0}
         sx={{
-          position: "sticky",
-          top: 72,
-          zIndex: 4,
-          p: 1.5,
-          mb: 2,
-          borderRadius: 3,
+          p: 1,
+          mb: 1.5,
+          borderRadius: 2.5,
           border: "1px solid",
           borderColor: "divider",
           bgcolor: "background.paper",
         }}
       >
         <Stack direction="row" alignItems="center" gap={1} flexWrap="wrap">
-          <Button component={Link} to="/training-plans" startIcon={<ArrowBackIcon />} variant="text">
+          <Button component={Link} to="/training-plans" startIcon={<ArrowBackIcon />} variant="text" size="small">
             Back to list
           </Button>
           <Box sx={{ flex: 1 }} />
-          <Button component={Link} to={`/training-plans/edit/${planId}`} startIcon={<EditOutlinedIcon />} variant="outlined">
+          <Button component={Link} to={`/training-plans/edit/${planId}`} startIcon={<EditOutlinedIcon />} variant="outlined" size="small">
             Edit workout
           </Button>
-          <Button startIcon={<PrintIcon />} variant="contained" onClick={() => window.print()}>
+          <Button startIcon={<PrintIcon />} variant="contained" size="small" onClick={() => window.print()}>
             Export PDF
           </Button>
         </Stack>

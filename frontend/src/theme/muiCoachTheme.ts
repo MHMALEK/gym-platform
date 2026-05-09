@@ -26,22 +26,22 @@ export function buildCoachMuiTheme(
       ? "0 1px 2px rgba(0, 0, 0, 0.35), 0 4px 16px -4px rgba(0, 0, 0, 0.45)"
       : "0 1px 2px rgba(15, 23, 42, 0.06), 0 4px 12px -2px rgba(15, 23, 42, 0.08)";
 
-  /** In-app links (incl. react-router `<Link>`) — match the indigo brand. */
-  const linkColor = mode === "dark" ? "#a5b4fc" : "#4f46e5";
-  const linkHover = mode === "dark" ? "#c7d2fe" : "#4338ca";
+  /** In-app links stay light and quiet; orange is only used for hover/focus. */
+  const linkColor = mode === "dark" ? "#e5e7eb" : "#111113";
+  const linkHover = mode === "dark" ? brand.primaryHover : brand.primaryActive;
 
   return createTheme({
     direction,
     palette: {
       mode,
       primary: { main: primary },
-      /** Warm contrast vs primary green — jersey / energy accent */
-      secondary: { main: mode === "dark" ? "#fb923c" : "#ea580c" },
+      /** Keep secondary neutral; avoid colorful chrome. */
+      secondary: { main: mode === "dark" ? "#d4d4d8" : "#52525b" },
       success: { main: mode === "dark" ? "#22c55e" : "#16a34a" },
       warning: { main: mode === "dark" ? "#f59e0b" : "#d97706" },
       error: { main: mode === "dark" ? "#f87171" : "#dc2626" },
-      info: { main: mode === "dark" ? "#38bdf8" : "#0369a1" },
-      divider: mode === "dark" ? "rgba(148, 163, 184, 0.12)" : "rgba(15, 23, 42, 0.08)",
+      info: { main: mode === "dark" ? "#d4d4d8" : "#52525b" },
+      divider: mode === "dark" ? "rgba(255, 255, 255, 0.10)" : "rgba(17, 17, 19, 0.08)",
       text: {
         primary: brand.text,
         secondary: brand.textSecondary,
@@ -154,6 +154,39 @@ export function buildCoachMuiTheme(
         styleOverrides: {
           root: {
             borderRadius: 8,
+          },
+        },
+      },
+      MuiOutlinedInput: {
+        styleOverrides: {
+          root: {
+            backgroundColor: mode === "dark" ? "#111114" : "#ffffff",
+            color: brand.text,
+            "& .MuiOutlinedInput-notchedOutline": {
+              borderColor: mode === "dark" ? "rgba(255, 255, 255, 0.14)" : "rgba(17, 17, 19, 0.14)",
+            },
+            "&:hover .MuiOutlinedInput-notchedOutline": {
+              borderColor: brand.primaryHover,
+            },
+            "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+              borderColor: primary,
+            },
+          },
+          input: {
+            "&::placeholder": {
+              color: brand.textSecondary,
+              opacity: 0.82,
+            },
+          },
+        },
+      },
+      MuiInputLabel: {
+        styleOverrides: {
+          root: {
+            color: brand.textSecondary,
+            "&.Mui-focused": {
+              color: primary,
+            },
           },
         },
       },

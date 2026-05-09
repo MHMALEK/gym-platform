@@ -84,10 +84,10 @@ export function ClientPlanViewerPage() {
   return (
     <Box
       sx={{
-        maxWidth: 1180,
+        maxWidth: 980,
         mx: "auto",
-        px: { xs: 1, md: 2 },
-        pb: 6,
+        px: { xs: 1, md: 1.5 },
+        pb: 4,
         "@media print": {
           maxWidth: "none",
           px: 0,
@@ -101,31 +101,29 @@ export function ClientPlanViewerPage() {
         className="viewer-actions"
         elevation={0}
         sx={{
-          position: "sticky",
-          top: 72,
-          zIndex: 4,
-          p: 1.5,
-          mb: 2,
-          borderRadius: 3,
+          p: 1,
+          mb: 1.5,
+          borderRadius: 2.5,
           border: "1px solid",
           borderColor: "divider",
           bgcolor: "background.paper",
         }}
       >
         <Stack direction="row" alignItems="center" gap={1} flexWrap="wrap">
-          <Button component={Link} to={`/clients/show/${clientId}/workout-diet-plans`} startIcon={<ArrowBackIcon />} variant="text">
+          <Button component={Link} to={`/clients/show/${clientId}/workout-diet-plans`} startIcon={<ArrowBackIcon />} variant="text" size="small">
             Back to editor
           </Button>
           <Box sx={{ flex: 1 }} />
-          <Button startIcon={<PrintIcon />} variant="contained" onClick={() => window.print()}>
+          <Button startIcon={<PrintIcon />} variant="contained" size="small" onClick={() => window.print()}>
             Export PDF
           </Button>
-          <Button startIcon={<ShareIcon />} variant="outlined" onClick={() => void nativeShare()}>
+          <Button startIcon={<ShareIcon />} variant="outlined" size="small" onClick={() => void nativeShare()}>
             Share
           </Button>
           <Button
             startIcon={<WhatsAppIcon />}
             variant="outlined"
+            size="small"
             component="a"
             href={`https://wa.me/?text=${encodeURIComponent(share.text)}`}
             target="_blank"
@@ -136,6 +134,7 @@ export function ClientPlanViewerPage() {
           <Button
             startIcon={<SendIcon />}
             variant="outlined"
+            size="small"
             component="a"
             href={`https://t.me/share/url?url=${encodeURIComponent(share.url)}&text=${encodeURIComponent(share.title)}`}
             target="_blank"
@@ -146,6 +145,7 @@ export function ClientPlanViewerPage() {
           <Button
             startIcon={<EmailIcon />}
             variant="outlined"
+            size="small"
             component="a"
             href={`mailto:${client?.email ?? ""}?subject=${encodeURIComponent(share.title)}&body=${encodeURIComponent(share.text)}`}
           >

@@ -1,28 +1,30 @@
-/* Mirrors theme/brand.ts (modern indigo) — CSS variables follow html[data-theme] (see index.html bootstrap script). */
+/* Mirrors theme/brand.ts (black / orange / red sports palette) — CSS variables follow html[data-theme]. */
 :root {
-  --app-layout-bg: #0b0c10;
-  --app-surface: #15171c;
-  --app-surface-elevated: #1c1f26;
-  --app-border: rgba(148, 163, 184, 0.16);
-  --app-border-strong: rgba(148, 163, 184, 0.22);
-  --app-accent: #818cf8;
-  --app-text-heading: #f1f5f9;
-  --app-text-body: #e5e7eb;
-  --app-text-muted: #9ca3af;
+  --app-layout-bg: #030303;
+  --app-surface: #0c0c0d;
+  --app-surface-elevated: #151518;
+  --app-input-bg: #111114;
+  --app-border: rgba(255, 255, 255, 0.10);
+  --app-border-strong: rgba(255, 255, 255, 0.18);
+  --app-accent: #f59e0b;
+  --app-accent-soft: rgba(245, 158, 11, 0.08);
+  --app-text-heading: #f7f7f8;
+  --app-text-body: #ececef;
+  --app-text-muted: #a5a5ab;
 }
 
 html[data-theme="light"] {
-  /* Page background is a clearly grey field; surfaces are pure white,
-     so cards read as "paper" lifted off the page. */
-  --app-layout-bg: #f1f5f9;
+  --app-layout-bg: #f4f4f5;
   --app-surface: #ffffff;
   --app-surface-elevated: #ffffff;
-  --app-border: rgba(15, 23, 42, 0.10);
-  --app-border-strong: rgba(15, 23, 42, 0.16);
-  --app-accent: #6366f1;
-  --app-text-heading: #0f172a;
-  --app-text-body: #1e293b;
-  --app-text-muted: #64748b;
+  --app-input-bg: #ffffff;
+  --app-border: rgba(17, 17, 19, 0.10);
+  --app-border-strong: rgba(17, 17, 19, 0.18);
+  --app-accent: #d97706;
+  --app-accent-soft: rgba(217, 119, 6, 0.08);
+  --app-text-heading: #111113;
+  --app-text-body: #242428;
+  --app-text-muted: #64646c;
 }
 
 body {
@@ -46,12 +48,12 @@ body {
 
 /* Primary focus visibility (keyboard / a11y) — matches contained buttons */
 .MuiButton-containedPrimary:focus-visible {
-  outline: 2px solid rgba(74, 222, 128, 0.55);
+  outline: 2px solid rgba(245, 158, 11, 0.5);
   outline-offset: 2px;
 }
 
 html[data-theme="light"] .MuiButton-containedPrimary:focus-visible {
-  outline-color: rgba(22, 163, 74, 0.5);
+  outline-color: rgba(217, 119, 6, 0.42);
 }
 
 /* English: Inter for Latin UI; Persian glyphs still fall back to Vazirmatn when needed */
@@ -111,13 +113,13 @@ html[data-theme="light"] .client-section-card--readonly .MuiCardHeader-root {
 }
 
 .client-section-card--editable .MuiCardHeader-root {
-  background: rgba(34, 197, 94, 0.1);
-  border-bottom: 1px solid rgba(34, 197, 94, 0.22);
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid var(--app-border);
 }
 
 html[data-theme="light"] .client-section-card--editable .MuiCardHeader-root {
-  background: rgba(22, 163, 74, 0.09);
-  border-bottom: 1px solid rgba(22, 163, 74, 0.22);
+  background: rgba(17, 17, 19, 0.03);
+  border-bottom: 1px solid var(--app-border);
 }
 
 .client-feed-card.MuiCard-root {
@@ -182,33 +184,67 @@ html[data-theme="light"] .client-profile-editor-surface.MuiCard-root {
   border-color: var(--app-border);
   border-radius: 8px 8px 0 0;
   background: var(--app-surface-elevated);
+  color: var(--app-text-body);
 }
 .workout-rich-editor .ql-container.ql-snow {
   border-color: var(--app-border);
   border-radius: 0 0 8px 8px;
-  background: var(--app-surface);
+  background: var(--app-input-bg);
   color: var(--app-text-body);
   font-size: 14px;
 }
 .workout-rich-editor .ql-editor {
   min-height: 140px;
+  color: var(--app-text-body);
+}
+.workout-rich-editor .ql-editor.ql-blank::before {
+  color: var(--app-text-muted);
+  font-style: normal;
+  opacity: 0.82;
 }
 .workout-rich-editor .ql-stroke {
-  stroke: var(--app-text-muted);
+  stroke: var(--app-text-body);
 }
 .workout-rich-editor .ql-fill {
-  fill: var(--app-text-muted);
+  fill: var(--app-text-body);
+}
+.workout-rich-editor .ql-picker,
+.workout-rich-editor .ql-picker-label,
+.workout-rich-editor .ql-picker-item {
+  color: var(--app-text-body);
+}
+.workout-rich-editor .ql-picker-options {
+  background: var(--app-surface-elevated);
+  border-color: var(--app-border) !important;
+}
+.workout-rich-editor .ql-toolbar button:hover .ql-stroke,
+.workout-rich-editor .ql-toolbar button.ql-active .ql-stroke,
+.workout-rich-editor .ql-toolbar .ql-picker-label:hover .ql-stroke,
+.workout-rich-editor .ql-toolbar .ql-picker-label.ql-active .ql-stroke {
+  stroke: var(--app-text-heading);
+}
+.workout-rich-editor .ql-toolbar button:hover .ql-fill,
+.workout-rich-editor .ql-toolbar button.ql-active .ql-fill,
+.workout-rich-editor .ql-toolbar .ql-picker-label:hover .ql-fill,
+.workout-rich-editor .ql-toolbar .ql-picker-label.ql-active .ql-fill {
+  fill: var(--app-text-heading);
+}
+.workout-rich-editor .ql-toolbar button:hover,
+.workout-rich-editor .ql-toolbar button.ql-active,
+.workout-rich-editor .ql-toolbar .ql-picker-label:hover,
+.workout-rich-editor .ql-toolbar .ql-picker-label.ql-active {
+  color: var(--app-text-heading);
 }
 .workout-rich-preview {
   border: 1px solid var(--app-border);
   border-radius: 8px;
-  padding: 12px 16px;
+  padding: 10px 12px;
   background: var(--app-surface);
-  font-size: 14px;
-  line-height: 1.55;
+  font-size: 12.5px;
+  line-height: 1.45;
 }
 .workout-rich-preview p {
-  margin: 0 0 0.5em;
+  margin: 0 0 0.4em;
 }
 .workout-rich-preview p:last-child {
   margin-bottom: 0;
