@@ -140,7 +140,7 @@ export function TrainingPlanCreate() {
           </CardContent>
         </Card>
         <Card>
-          <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
+          <CardContent sx={{ p: { xs: 1.5, sm: 2 }, "&:last-child": { pb: { xs: 1.5, sm: 2 } } }}>
             <WorkoutItemsEditor
               mode="training-plan"
               planVenue={venueType}
