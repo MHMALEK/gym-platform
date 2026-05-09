@@ -1015,11 +1015,21 @@ export function WorkoutItemsEditor({
         </DndContext>
       )}
 
-      {/* Add toolbar at the bottom of the list — primary "Add exercise" + secondary "Add superset". */}
+      {/* Add toolbar at the bottom of the list — primary "Add exercise" + secondary
+          "Add superset". Breathing room above + a subtle top divider so the toolbar
+          doesn't look glued onto the last set row. */}
       <Stack
         direction="row"
-        spacing={1}
-        sx={{ width: "100%", mt: 2, alignItems: "center", flexWrap: "wrap" }}
+        spacing={1.5}
+        sx={{
+          width: "100%",
+          mt: 4,
+          pt: 3,
+          borderTop: 1,
+          borderColor: "divider",
+          alignItems: "center",
+          flexWrap: "wrap",
+        }}
         useFlexGap
       >
         <Button

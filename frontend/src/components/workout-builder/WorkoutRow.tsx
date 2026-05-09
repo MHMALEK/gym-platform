@@ -582,9 +582,9 @@ export function WorkoutRow({
               <TextField
                 size="small"
                 sx={{
-                  flex: "1 1 220px",
-                  minWidth: 168,
-                  maxWidth: 520,
+                  // Notes field grows to fill the rest of the row.
+                  flex: "1 1 200px",
+                  minWidth: 160,
                   "& .MuiOutlinedInput-root": {
                     borderRadius: "8px",
                     fontSize: 13,
