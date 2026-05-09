@@ -867,6 +867,7 @@ const translation = {
     colRestHint: "استراحت بین ست‌ها (ثانیه).",
     collapseBlock: "بستن",
     expandBlock: "باز کردن",
+    customizeSet: "سفارشی‌سازی این ست",
     ungroupBlock: "جدا کردن گروه",
     ungroupBlockHint: "همه‌ی حرکات این بلوک را جدا می‌کند. ست‌ها حفظ می‌شوند.",
     pickerGroupTitle: "ساخت بلوک",

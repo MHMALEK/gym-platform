@@ -859,6 +859,7 @@ const translation = {
     colRestHint: "Rest between sets (seconds).",
     collapseBlock: "Collapse",
     expandBlock: "Expand",
+    customizeSet: "Customize this set",
     ungroupBlock: "Ungroup",
     ungroupBlockHint: "Detach all exercises from this block. Sets are kept.",
     pickerGroupTitle: "Build a block",

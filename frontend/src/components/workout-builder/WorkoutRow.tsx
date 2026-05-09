@@ -11,6 +11,7 @@ import {
   ChevronRight,
   GripVertical,
   Link2,
+  Pencil,
   RotateCcw,
   Timer,
   Trash2,
@@ -47,6 +48,12 @@ export type WorkoutRowProps = {
   /** When provided, an exercise head can be collapsed (its sets hidden by parent). */
   collapsed?: boolean;
   onToggleCollapsed?: () => void;
+  /**
+   * For set rows: whether the user has opened this set's inputs to
+   * override the head's defaults. Default render is chip + trash only.
+   */
+  expanded?: boolean;
+  onToggleExpanded?: () => void;
   t: TFunction<"translation">;
   updateAt: (i: number, patch: Partial<WorkoutLine>) => void;
   removeAt: (i: number) => void;
@@ -73,6 +80,8 @@ export function WorkoutRow({
   showAdvanced,
   collapsed,
   onToggleCollapsed,
+  expanded,
+  onToggleExpanded,
   t,
   updateAt,
   removeAt,
@@ -375,7 +384,39 @@ export function WorkoutRow({
                 ) : null}
               </>
             )}
-            {/* Inputs cluster — sits inline with the identity above. */}
+            {/* Inputs cluster.
+             *  Head rows: always show inputs (they're the defaults for this exercise).
+             *  Set rows: hide by default. Sets inherit from the head — show inputs
+             *  only when the user has explicitly opened them, or when this set
+             *  already has its own override values. A small "Customize" pencil
+             *  button reveals them otherwise. */}
+            {isSetUnder && !expanded && !hasSetOverride ? (
+              <Flex align="center" gap={8} style={{ flex: "1 1 auto", minWidth: 0 }}>
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{ fontSize: 12, fontStyle: "italic" }}
+                >
+                  {translate(t, "workouts.setInheritsHint", "Uses exercise targets")}
+                </Typography>
+                <Box sx={{ flex: 1 }} />
+                <Tooltip
+                  title={translate(t, "workouts.customizeSet", "Customize this set")}
+                >
+                  <IconButton
+                    size="small"
+                    onClick={onToggleExpanded}
+                    aria-label="Customize this set"
+                    sx={{
+                      color: "text.secondary",
+                      "&:hover": { color: "primary.main", bgcolor: "action.hover" },
+                    }}
+                  >
+                    <Pencil size={14} strokeWidth={2} />
+                  </IconButton>
+                </Tooltip>
+              </Flex>
+            ) : (
             <Flex
               wrap="wrap"
               gap={6}
@@ -601,6 +642,7 @@ export function WorkoutRow({
                 }
               />
             </Flex>
+            )}
             {/* Actions live at the END of the same inline row. */}
             {actionCluster}
           </Flex>

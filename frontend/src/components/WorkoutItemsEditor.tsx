@@ -329,6 +329,19 @@ export function WorkoutItemsEditor({
     });
   }, []);
 
+  /** Set rows the user has explicitly opened to override head defaults.
+   *  Without this, set rows render only the chip + trash; inputs stay
+   *  hidden because they'd just duplicate the exercise head's values. */
+  const [expandedSets, setExpandedSets] = useState<Set<string>>(new Set());
+  const toggleSetExpanded = useCallback((rowLocalId: string) => {
+    setExpandedSets((prev) => {
+      const next = new Set(prev);
+      if (next.has(rowLocalId)) next.delete(rowLocalId);
+      else next.add(rowLocalId);
+      return next;
+    });
+  }, []);
+
   const closeExercisePickerModal = useCallback(() => {
     setExercisePickerModalOpen(false);
     pickerContextRef.current = { mode: "append" };
@@ -745,6 +758,16 @@ export function WorkoutItemsEditor({
                                       ? () => toggleExerciseCollapsed(headLocalId)
                                       : undefined
                                   }
+                                  expanded={
+                                    presentation === "set_under"
+                                      ? expandedSets.has(r.localId)
+                                      : undefined
+                                  }
+                                  onToggleExpanded={
+                                    presentation === "set_under"
+                                      ? () => toggleSetExpanded(r.localId)
+                                      : undefined
+                                  }
                                   t={t}
                                   updateAt={updateAt}
                                   removeAt={removeAt}
@@ -947,6 +970,16 @@ export function WorkoutItemsEditor({
                                           }
                                           dragHandleProps={idx === lo ? drag : undefined}
                                           showAdvanced={effectiveShowAdvanced}
+                                          expanded={
+                                            presentation === "set_under"
+                                              ? expandedSets.has(r.localId)
+                                              : undefined
+                                          }
+                                          onToggleExpanded={
+                                            presentation === "set_under"
+                                              ? () => toggleSetExpanded(r.localId)
+                                              : undefined
+                                          }
                                           t={t}
                                           updateAt={updateAt}
                                           removeAt={removeAt}
