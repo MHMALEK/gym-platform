@@ -8,6 +8,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 
 import { ClientAssignedPlansSummary } from "./ClientAssignedPlansSummary";
 import { ClientCoachingPlansEditor } from "./ClientCoachingPlansEditor";
+import { clientPlanViewerPath } from "./ClientPlansCta";
 
 export function ClientWorkoutDietPlansPage() {
   const { id } = useParams<{ id: string }>();
@@ -67,9 +68,14 @@ export function ClientWorkoutDietPlansPage() {
           reloadToken={coachingSync}
           onCoachingPlansMutated={() => setCoachingSync((k) => k + 1)}
           extraActions={
-            <Button variant="outlined" onClick={() => navigate(`/clients/show/${clientId}#workout`)}>
-              {t("clients.plans.backToClient")}
-            </Button>
+            <Stack direction="row" gap={1} flexWrap="wrap">
+              <Button variant="contained" component={Link} to={clientPlanViewerPath(clientId)}>
+                View client plan
+              </Button>
+              <Button variant="outlined" onClick={() => navigate(`/clients/show/${clientId}#workout`)}>
+                {t("clients.plans.backToClient")}
+              </Button>
+            </Stack>
           }
         />
       </Stack>

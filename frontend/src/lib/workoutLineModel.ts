@@ -18,6 +18,21 @@ export type WorkoutLine = {
   tempo: string | null;
   notes: string | null;
   exercise_name?: string;
+  exercise?: {
+    id?: number;
+    name?: string;
+    description?: string | null;
+    tips?: string | null;
+    common_mistakes?: string | null;
+    correct_form_cues?: string | null;
+    setup_notes?: string | null;
+    safety_notes?: string | null;
+    thumbnail_url?: string | null;
+    demo_media_url?: string | null;
+    equipment?: string | null;
+    difficulty?: string | null;
+    video_links?: Array<{ id?: number; url: string; title?: string | null }>;
+  };
   block_id: string | null;
   block_type: WorkoutBlockType | null;
   block_sequence?: number | null;
@@ -680,7 +695,7 @@ export function workoutLinesFromApiItems(
     block_sequence?: number | null;
     row_type?: string | null;
     exercise_instance_id?: string | null;
-    exercise?: { name?: string };
+    exercise?: WorkoutLine["exercise"];
     exercise_name?: string | null;
   }>,
 ): WorkoutLine[] {
@@ -704,6 +719,7 @@ export function workoutLinesFromApiItems(
         tempo: row.tempo ?? null,
         notes: row.notes ?? null,
         exercise_name: row.exercise?.name ?? row.exercise_name ?? undefined,
+        exercise: row.exercise,
         block_id: row.block_id?.trim() ? row.block_id.trim() : null,
         block_type: (row.block_type as WorkoutBlockType) || null,
         block_sequence:

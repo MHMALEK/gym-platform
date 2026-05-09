@@ -5,6 +5,10 @@ import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import Chip from "@mui/material/Chip";
 import CircularProgress from "@mui/material/CircularProgress";
+import Dialog from "@mui/material/Dialog";
+import DialogActions from "@mui/material/DialogActions";
+import DialogContent from "@mui/material/DialogContent";
+import DialogTitle from "@mui/material/DialogTitle";
 import Divider from "@mui/material/Divider";
 import InputAdornment from "@mui/material/InputAdornment";
 import MenuItem from "@mui/material/MenuItem";
@@ -27,6 +31,7 @@ import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
 import { NutritionMealsEditor } from "../../components/NutritionMealsEditor";
+import { CoachingPlanPreview } from "../../components/CoachingPlanPreview";
 import { WorkoutRichEditor } from "../../components/WorkoutRichEditor";
 import {
   normalizeWorkoutItemsForApi,
@@ -38,6 +43,7 @@ import { apiPrefix, authHeaders } from "../../lib/api";
 import { REFINE_LIST_FIRST_PAGE_200 } from "../../lib/refineListPagination";
 import { useAppMessage } from "../../lib/useAppMessage";
 import { dietMealsFromApi, normalizeDietMealsForApi, type DietMeal } from "../../lib/nutritionTotals";
+import { clientPlanViewerPath } from "./ClientPlansCta";
 
 export type CoachingPayload = {
   workout_plan: string | null;
@@ -58,7 +64,10 @@ export type CoachingPayload = {
     notes: string | null;
     block_id?: string | null;
     block_type?: string | null;
+    row_type?: string | null;
+    exercise_instance_id?: string | null;
     exercise_name?: string | null;
+    exercise?: WorkoutLine["exercise"];
   }>;
   updated_at: string | null;
   assigned_training_plan_id?: number | null;
@@ -79,6 +88,12 @@ type Props = {
   /** Bump to reload coaching data from the server (e.g. after assignment cleared elsewhere). */
   reloadToken?: number;
   onCoachingPlansMutated?: () => void;
+};
+
+type PreviewSnapshot = {
+  values: FormValues;
+  lines: WorkoutLine[];
+  dietMeals: DietMeal[];
 };
 
 const TABLE_PAGE = 8;
@@ -103,6 +118,7 @@ export function ClientCoachingPlansEditor({
   const [ntPage, setNtPage] = useState(0);
   const [assignedTrainingPlanId, setAssignedTrainingPlanId] = useState<number | null>(null);
   const [assignedNutritionTemplateId, setAssignedNutritionTemplateId] = useState<number | null>(null);
+  const [preview, setPreview] = useState<PreviewSnapshot | null>(null);
 
   const { control, handleSubmit, reset, getValues } = useForm<FormValues>({
     defaultValues: {
@@ -276,6 +292,22 @@ export function ClientCoachingPlansEditor({
     <Stack direction="row" flexWrap="wrap" gap={1}>
       <Button type="submit" variant="contained" disabled={saving} startIcon={<SaveIcon />}>
         {t("clients.plans.save")}
+      </Button>
+      <Button
+        type="button"
+        variant="outlined"
+        onClick={() =>
+          setPreview({
+            values: getValues(),
+            lines,
+            dietMeals,
+          })
+        }
+      >
+        Preview full plan
+      </Button>
+      <Button component={Link} to={clientPlanViewerPath(clientId)} type="button" variant="contained">
+        Open full viewer
       </Button>
       {extraActions}
     </Stack>
@@ -604,6 +636,28 @@ export function ClientCoachingPlansEditor({
           {saveButtons}
         </>
       ) : null}
+      <Dialog open={preview != null} onClose={() => setPreview(null)} maxWidth="lg" fullWidth>
+        <DialogTitle>Full workout and diet preview</DialogTitle>
+        <DialogContent dividers>
+          {preview ? (
+            <CoachingPlanPreview
+              clientName={`Client #${clientId}`}
+              programVenue={preview.values.program_venue}
+              workoutRichHtml={preview.values.workout_rich_html}
+              workoutNotes={preview.values.workout_plan}
+              workoutLines={preview.lines}
+              dietMeals={preview.dietMeals}
+              dietNotes={preview.values.diet_plan}
+            />
+          ) : null}
+        </DialogContent>
+        <DialogActions>
+          <Button component={Link} to={clientPlanViewerPath(clientId)} variant="contained">
+            Open full viewer
+          </Button>
+          <Button onClick={() => setPreview(null)}>Close</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 

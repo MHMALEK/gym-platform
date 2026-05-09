@@ -1,5 +1,6 @@
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
+import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
@@ -19,6 +20,7 @@ import { apiPrefix, authHeaders } from "../../lib/api";
 import { REFINE_LIST_FIRST_PAGE_200 } from "../../lib/refineListPagination";
 import { clearClientNutritionAssignment, clearClientWorkoutAssignment } from "../../lib/coachingPlanApply";
 import { useAppMessage } from "../../lib/useAppMessage";
+import { clientPlanViewerPath } from "./ClientPlansCta";
 
 type CoachingSnapshot = {
   updated_at: string | null;
@@ -195,16 +197,26 @@ export function ClientAssignedPlansSummary({
         )}
 
         {variant === "view" ? (
-          <Button
-            component={Link}
-            to={`/clients/edit/${clientId}#workout`}
-            size="small"
-            variant="contained"
-            sx={{ mt: 2 }}
-            startIcon={<EditOutlinedIcon />}
-          >
-            {t("clients.plans.changeAssignmentEditPage")}
-          </Button>
+          <Stack direction="row" gap={1} flexWrap="wrap" sx={{ mt: 2 }}>
+            <Button
+              component={Link}
+              to={clientPlanViewerPath(clientId)}
+              size="small"
+              variant="contained"
+              startIcon={<VisibilityOutlinedIcon />}
+            >
+              Open full viewer
+            </Button>
+            <Button
+              component={Link}
+              to={`/clients/edit/${clientId}#workout`}
+              size="small"
+              variant="outlined"
+              startIcon={<EditOutlinedIcon />}
+            >
+              {t("clients.plans.changeAssignmentEditPage")}
+            </Button>
+          </Stack>
         ) : (
           <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1.5 }}>
             {t("clients.plans.changeAssignmentEditHint")}

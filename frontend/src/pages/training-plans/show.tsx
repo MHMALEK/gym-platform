@@ -1,10 +1,13 @@
+import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
 import { useShow } from "@refinedev/core";
 import { Show } from "@refinedev/mui";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 
 import { WorkoutItemsEditor, workoutLinesFromApiItems } from "../../components/WorkoutItemsEditor";
+import { trainingPlanPreviewPath } from "./preview";
 
 type Item = {
   id: number;
@@ -44,7 +47,19 @@ export function TrainingPlanShow() {
   );
 
   return (
-    <Show isLoading={query?.isLoading}>
+    <Show
+      isLoading={query?.isLoading}
+      headerButtons={({ defaultButtons }) => (
+        <>
+          {defaultButtons}
+          {record?.id ? (
+            <Button component={Link} to={trainingPlanPreviewPath(record.id)} variant="contained" size="small">
+              Preview workout
+            </Button>
+          ) : null}
+        </>
+      )}
+    >
       <Typography variant="h6">{record?.name}</Typography>
       <Typography variant="body1" sx={{ mt: 1 }}>
         {record?.description}

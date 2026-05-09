@@ -33,8 +33,10 @@ from app.schemas.client import (
     MembershipListSummary,
     SubscriptionPlanSummary,
 )
+from app.schemas.exercise import exercise_to_read
 from app.services.diet_meals_json import diet_meals_to_json_column, parse_diet_meals_raw
 from app.services.exercise_access import exercise_ids_allowed_for_coach
+from app.services.exercise_muscles import EXERCISE_DETAIL_LOADERS
 from app.services.workout_item_tree import validate_any_workout_item_writes
 
 from app.schemas.goal_type import GoalTypeSummary
@@ -73,15 +75,18 @@ async def _enrich_client_workout_items(
             continue
     ids = list({x.exercise_id for x in validated})
     names: dict[int, str] = {}
+    exercises: dict[int, Exercise] = {}
     if ids:
-        result = await db.execute(select(Exercise).where(Exercise.id.in_(ids)))
+        result = await db.execute(select(Exercise).options(*EXERCISE_DETAIL_LOADERS).where(Exercise.id.in_(ids)))
         for ex in result.scalars().all():
             names[ex.id] = ex.name
+            exercises[ex.id] = ex
     seqs = block_sequences_for_ordered_items(validated)
     return [
         ClientWorkoutItemRead(
             **x.model_dump(),
             exercise_name=names.get(x.exercise_id),
+            exercise=exercise_to_read(exercises[x.exercise_id]) if x.exercise_id in exercises else None,
             block_sequence=sq,
         )
         for x, sq in zip(validated, seqs)

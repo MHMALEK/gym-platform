@@ -5,6 +5,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validator
 
 from app.schemas.common import ORMBase
+from app.schemas.exercise import ExerciseRead
 from app.schemas.goal_type import GoalTypeSummary
 from app.schemas.training_plan import WorkoutRowType
 
@@ -52,6 +53,9 @@ class ClientWorkoutItemWrite(BaseModel):
     reps: int | None = None
     duration_sec: int | None = None
     rest_sec: int | None = None
+    weight_kg: float | None = None
+    rpe: float | None = None
+    tempo: str | None = None
     notes: str | None = None
     block_id: str | None = None
     block_type: WorkoutBlockType | None = None
@@ -87,6 +91,7 @@ class ClientWorkoutItemWrite(BaseModel):
 
 class ClientWorkoutItemRead(ClientWorkoutItemWrite):
     exercise_name: str | None = None
+    exercise: ExerciseRead | None = None
     block_sequence: int | None = None
 
 

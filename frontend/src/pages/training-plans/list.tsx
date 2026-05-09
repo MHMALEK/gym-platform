@@ -20,6 +20,7 @@ import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
 import { AssignPlanToClientsDialog } from "../../components/AssignPlanToClientsDialog";
+import { trainingPlanPreviewPath } from "./preview";
 
 export function TrainingPlanList() {
   const { t } = useTranslation();
@@ -76,9 +77,18 @@ export function TrainingPlanList() {
       headerName: t("trainingPlans.list.actions"),
       sortable: false,
       filterable: false,
-      width: 220,
+      width: 320,
       renderCell: ({ row }) => (
         <Stack direction="row" flexWrap="wrap" gap={0.5} alignItems="center">
+          <Button
+            component={Link}
+            to={trainingPlanPreviewPath(row.id)}
+            variant="outlined"
+            size="small"
+            sx={{ textTransform: "none" }}
+          >
+            Preview
+          </Button>
           <Button
             variant="text"
             size="small"

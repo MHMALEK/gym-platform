@@ -40,6 +40,7 @@ import { ClientEdit } from "./pages/clients/edit";
 import { ClientList } from "./pages/clients/list";
 import { ClientFinance } from "./pages/clients/finance";
 import { ClientShow } from "./pages/clients/show";
+import { ClientPlanViewerPage } from "./pages/clients/plan-viewer";
 import { ClientWorkoutDietPlansPage } from "./pages/clients/workout-diet-plans";
 import { CoachDeskPage } from "./pages/coach-desk";
 import { DashboardPage } from "./pages/dashboard";
@@ -65,6 +66,7 @@ import { PlanTemplateList } from "./pages/plan-templates/list";
 import { TrainingPlanCreate } from "./pages/training-plans/create";
 import { TrainingPlanEdit } from "./pages/training-plans/edit";
 import { TrainingPlanList } from "./pages/training-plans/list";
+import { TrainingPlanPreviewPage } from "./pages/training-plans/preview";
 import { TrainingPlanShow } from "./pages/training-plans/show";
 
 function MuiLocaleBridge({ children }: { children: ReactNode }) {
@@ -222,6 +224,7 @@ function RefineShell() {
           <Route path="/clients/edit/:id" element={<ClientEdit />} />
           <Route path="/clients/show/:id/finance" element={<ClientFinance />} />
           <Route path="/clients/show/:id/workout-diet-plans" element={<ClientWorkoutDietPlansPage />} />
+          <Route path="/clients/show/:id/plan-viewer" element={<ClientPlanViewerPage />} />
           <Route path="/clients/show/:id" element={<ClientShow />} />
           <Route path="/invoices" element={<InvoiceList />} />
           <Route path="/invoices/create" element={<InvoiceCreate />} />
@@ -234,6 +237,7 @@ function RefineShell() {
           <Route path="/exercises/edit/:id" element={<ExerciseEdit />} />
           <Route path="/training-plans" element={<TrainingPlanList />} />
           <Route path="/training-plans/create" element={<TrainingPlanCreate />} />
+          <Route path="/training-plans/preview/:id" element={<TrainingPlanPreviewPage />} />
           <Route path="/training-plans/edit/:id" element={<TrainingPlanEdit />} />
           <Route path="/training-plans/show/:id" element={<TrainingPlanShow />} />
           <Route path="/nutrition-templates" element={<NutritionTemplateList />} />

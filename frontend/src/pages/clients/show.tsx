@@ -28,7 +28,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import { formatMoney } from "../../lib/money";
 import { ClientCoachingPlanAssignmentPanel } from "./ClientCoachingPlanAssignmentPanel";
-import { ClientPlansCta, clientWorkoutDietPath } from "./ClientPlansCta";
+import { ClientPlansCta, clientPlanViewerPath, clientWorkoutDietPath } from "./ClientPlansCta";
 import {
   type ClientDetailTab,
   clientDetailTabsSx,
@@ -322,6 +322,9 @@ export function ClientShow() {
               </Button>
               <Button component={Link} to={clientWorkoutDietPath(record.id)} size="small" variant="outlined">
                 {t("clients.plans.openFullPage")}
+              </Button>
+              <Button component={Link} to={clientPlanViewerPath(record.id)} size="small" variant="contained">
+                View client plan
               </Button>
             </Stack>
           ) : null}

@@ -19,6 +19,7 @@ import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
 import { formatMoney } from "../../lib/money";
+import { clientPlanViewerPath } from "./ClientPlansCta";
 
 const rosterChipColor: Record<string, "success" | "warning" | "default"> = {
   active: "success",
@@ -323,6 +324,18 @@ export function ClientList() {
               }}
             >
               {t("actions.financial")}
+            </MuiLink>
+            <MuiLink
+              component={Link}
+              to={clientPlanViewerPath(row.id)}
+              variant="body2"
+              sx={{
+                color: "primary.main",
+                fontWeight: 600,
+                "&:hover": { color: "primary.light" },
+              }}
+            >
+              Plan
             </MuiLink>
             <EditButton resource="clients" hideText size="small" recordItemId={row.id} />
             <ShowButton resource="clients" hideText size="small" recordItemId={row.id} />

@@ -10,6 +10,10 @@ export function clientWorkoutDietPath(clientId: number | string): string {
   return `/clients/show/${clientId}/workout-diet-plans`;
 }
 
+export function clientPlanViewerPath(clientId: number | string): string {
+  return `/clients/show/${clientId}/plan-viewer`;
+}
+
 type Props = {
   clientId: number;
   /** Tighter layout when nested in forms */
@@ -21,6 +25,7 @@ export function ClientPlansCta({ clientId, compact }: Props) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const to = clientWorkoutDietPath(clientId);
+  const viewerTo = clientPlanViewerPath(clientId);
   return (
     <Alert
       severity="info"
@@ -41,6 +46,9 @@ export function ClientPlansCta({ clientId, compact }: Props) {
           </Button>
           <Button component={Link} to={to} size="small" variant="outlined">
             {t("clients.plans.openDedicatedPage")}
+          </Button>
+          <Button component={Link} to={viewerTo} size="small" variant="outlined">
+            View client plan
           </Button>
         </Stack>
       </Stack>

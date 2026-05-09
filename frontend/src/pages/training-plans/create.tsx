@@ -2,6 +2,10 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
+import Dialog from "@mui/material/Dialog";
+import DialogActions from "@mui/material/DialogActions";
+import DialogContent from "@mui/material/DialogContent";
+import DialogTitle from "@mui/material/DialogTitle";
 import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
 import { useInvalidate } from "@refinedev/core";
@@ -10,6 +14,7 @@ import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
+import { CoachingPlanPreview } from "../../components/CoachingPlanPreview";
 import { PageHeader } from "../../components/layout/PageHeader";
 import { StickyActionBar } from "../../components/layout/StickyActionBar";
 import {
@@ -39,6 +44,7 @@ export function TrainingPlanCreate() {
   const invalidate = useInvalidate();
   const [step, setStep] = useState<0 | 1>(0);
   const [workoutLines, setWorkoutLines] = useState<WorkoutLine[]>([]);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const { control, saveButtonProps, trigger, watch } = useForm<FormValues>({
     refineCoreProps: {
@@ -78,6 +84,7 @@ export function TrainingPlanCreate() {
   });
 
   const venueType = watch("venue_type") ?? "mixed";
+  const watchedValues = watch();
 
   const onWorkoutChange = useCallback((next: WorkoutLine[]) => {
     setWorkoutLines(next);
@@ -181,6 +188,13 @@ export function TrainingPlanCreate() {
               {t("trainingPlans.create.backToDetails")}
             </Button>
             <Button
+              variant="outlined"
+              onClick={() => setPreviewOpen(true)}
+              sx={{ borderRadius: 1.5, fontWeight: 500, textTransform: "none", px: 2 }}
+            >
+              Preview
+            </Button>
+            <Button
               variant="contained"
               {...saveButtonProps}
               sx={{ borderRadius: 1.5, fontWeight: 500, textTransform: "none", px: 2.5 }}
@@ -190,6 +204,25 @@ export function TrainingPlanCreate() {
           </>
         )}
       </StickyActionBar>
+
+      <Dialog open={previewOpen} onClose={() => setPreviewOpen(false)} maxWidth="lg" fullWidth>
+        <DialogTitle>Workout preview</DialogTitle>
+        <DialogContent dividers>
+          <CoachingPlanPreview
+            title={watchedValues.name || "New workout plan"}
+            eyebrow="Workout preview"
+            programVenue={venueType}
+            workoutRichHtml={watchedValues.workout_rich_html}
+            workoutNotes={watchedValues.description}
+            workoutLines={workoutLines}
+            dietMeals={[]}
+            showDiet={false}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPreviewOpen(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

@@ -251,7 +251,12 @@ async def create_exercise_video_link(
         raise HTTPException(status_code=404, detail="Exercise not found")
     sort_order = body.sort_order
     if sort_order is None:
-        sort_order = (await db.scalar(select(func.max(ExerciseVideoLink.sort_order)).where(ExerciseVideoLink.exercise_id == exercise_id)) or 0) + 1
+        current_max = await db.scalar(
+            select(func.max(ExerciseVideoLink.sort_order)).where(
+                ExerciseVideoLink.exercise_id == exercise_id
+            )
+        )
+        sort_order = 0 if current_max is None else current_max + 1
     link = ExerciseVideoLink(
         exercise_id=exercise_id,
         provider=body.provider,
@@ -262,7 +267,19 @@ async def create_exercise_video_link(
         source=body.source,
     )
     db.add(link)
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        existing = await db.scalar(
+            select(ExerciseVideoLink).where(
+                ExerciseVideoLink.exercise_id == exercise_id,
+                ExerciseVideoLink.url == body.url,
+            )
+        )
+        if existing:
+            return video_link_to_read(existing)
+        raise HTTPException(status_code=409, detail="Video link already exists") from None
     await db.refresh(link)
     return video_link_to_read(link)
 

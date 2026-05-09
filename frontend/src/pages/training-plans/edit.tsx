@@ -3,15 +3,22 @@ import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import CircularProgress from "@mui/material/CircularProgress";
+import Dialog from "@mui/material/Dialog";
+import DialogActions from "@mui/material/DialogActions";
+import DialogContent from "@mui/material/DialogContent";
+import DialogTitle from "@mui/material/DialogTitle";
 import Typography from "@mui/material/Typography";
 import { useForm } from "@refinedev/react-hook-form";
-import { Check, Layers, Loader2, Plus } from "lucide-react";
+import { Check, Eye, Layers, Loader2, Plus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 
+import { CoachingPlanPreview } from "../../components/CoachingPlanPreview";
 import { PageHeader } from "../../components/layout/PageHeader";
 import { StickyActionBar } from "../../components/layout/StickyActionBar";
 import {
+  type WorkoutLine,
   WorkoutItemsEditor,
   workoutLinesFromApiItems,
 } from "../../components/WorkoutItemsEditor";
@@ -19,6 +26,7 @@ import type {
   SaveStatus,
   WorkoutItemsEditorHandle,
 } from "../../components/workout-builder/types";
+import { trainingPlanPreviewPath } from "./preview";
 import { TrainingPlanOverviewCard, TrainingPlanWorkoutRichField } from "./TrainingPlanSharedFields";
 
 type Item = {
@@ -77,6 +85,8 @@ export function TrainingPlanEdit() {
   /** Combined items + form auto-save state, surfaced in the sticky bar. */
   const [itemsSaveStatus, setItemsSaveStatus] = useState<SaveStatus>("idle");
   const [formSaveStatus, setFormSaveStatus] = useState<SaveStatus>("idle");
+  const [currentLines, setCurrentLines] = useState<WorkoutLine[]>([]);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const formSavedFlashRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onItemsSaveStatusChange = useCallback((s: SaveStatus) => {
     setItemsSaveStatus(s);
@@ -96,6 +106,10 @@ export function TrainingPlanEdit() {
   );
 
   const venueLive = watch("venue_type") ?? record?.venue_type ?? "mixed";
+
+  useEffect(() => {
+    setCurrentLines(initialLines);
+  }, [initialLines]);
 
   /** Form auto-save: 1500ms after the last edit, push through Refine's
    *  mutation. The lastSaved ref captures the loaded baseline on first
@@ -190,6 +204,7 @@ export function TrainingPlanEdit() {
                 hideHeader
                 hideAddButtons
                 hideSaveIndicator
+                onChange={setCurrentLines}
                 onSaveStatusChange={onItemsSaveStatusChange}
               />
             ) : null}
@@ -202,6 +217,50 @@ export function TrainingPlanEdit() {
             the Refine success toast that used to fire on every save. */}
         <StickyAutoSaveStatus status={combinedSaveStatus} t={t} />
         <Box sx={{ flex: 1 }} />
+        <Button
+          variant="outlined"
+          size="medium"
+          startIcon={<Eye size={16} strokeWidth={2.25} />}
+          onClick={() => setPreviewOpen(true)}
+          sx={{
+            borderRadius: 1.5,
+            fontWeight: 500,
+            textTransform: "none",
+            color: "text.secondary",
+            borderColor: "divider",
+            px: 1.75,
+            "&:hover": {
+              color: "primary.main",
+              borderColor: "primary.main",
+              bgcolor: "action.hover",
+            },
+          }}
+        >
+          Preview
+        </Button>
+        {record?.id ? (
+          <Button
+            component={Link}
+            to={trainingPlanPreviewPath(record.id)}
+            variant="outlined"
+            size="medium"
+            sx={{
+              borderRadius: 1.5,
+              fontWeight: 500,
+              textTransform: "none",
+              color: "text.secondary",
+              borderColor: "divider",
+              px: 1.75,
+              "&:hover": {
+                color: "primary.main",
+                borderColor: "primary.main",
+                bgcolor: "action.hover",
+              },
+            }}
+          >
+            Open preview page
+          </Button>
+        ) : null}
         <Button
           variant="contained"
           color="primary"
@@ -241,6 +300,30 @@ export function TrainingPlanEdit() {
           {t("workouts.addSuperset")}
         </Button>
       </StickyActionBar>
+
+      <Dialog open={previewOpen} onClose={() => setPreviewOpen(false)} maxWidth="lg" fullWidth>
+        <DialogTitle>Workout preview</DialogTitle>
+        <DialogContent dividers>
+          <CoachingPlanPreview
+            title={watchedValues.name || record?.name || "Workout plan"}
+            eyebrow="Workout preview"
+            programVenue={venueLive}
+            workoutRichHtml={watchedValues.workout_rich_html}
+            workoutNotes={watchedValues.description}
+            workoutLines={currentLines.length ? currentLines : initialLines}
+            dietMeals={[]}
+            showDiet={false}
+          />
+        </DialogContent>
+        <DialogActions>
+          {record?.id ? (
+            <Button component={Link} to={trainingPlanPreviewPath(record.id)} variant="contained">
+              Open preview page
+            </Button>
+          ) : null}
+          <Button onClick={() => setPreviewOpen(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

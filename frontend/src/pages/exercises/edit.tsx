@@ -33,7 +33,7 @@ export function ExerciseEdit() {
     queryOptions: { enabled: !!id },
   });
   const { control, saveButtonProps } = useForm<ExerciseFormValues>({
-    refineCoreProps: { resource: "exercises" },
+    refineCoreProps: { resource: "exercises", id },
     defaultValues: {
       muscle_group_ids: [] as number[],
     },
