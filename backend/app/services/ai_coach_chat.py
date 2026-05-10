@@ -1,8 +1,16 @@
-"""Coach assistant chat with read-only tools (OpenAI function calling)."""
+"""Coach assistant chat with read-only tools (OpenAI function calling).
+
+Public surface:
+- `stream_coach_chat_events`: async generator yielding event dicts. Frontend
+  uses this via SSE for incremental UI updates.
+- `run_coach_chat`: collects the same generator into a single string. Used
+  by callers that want a one-shot reply (tests, MCP integration, fallback).
+"""
 
 from __future__ import annotations
 
 import json
+from collections.abc import AsyncGenerator
 from decimal import Decimal
 from typing import Any
 
@@ -10,13 +18,21 @@ from openai import AsyncOpenAI
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from sqlalchemy.orm import selectinload
+
 from app.api.dashboard import build_dashboard_summary
 from app.core.config import settings
 from app.models.client import Client
+from app.models.client_coaching_plan import ClientCoachingPlan
+from app.models.client_subscription import ClientSubscription
 from app.models.coach import Coach
 from app.models.exercise import Exercise
+from app.models.exercise_muscle_group import ExerciseMuscleGroup
 from app.models.invoice import Invoice
+from app.models.muscle_group import MuscleGroup
+from app.models.plan_template import PlanTemplate
 from app.models.training_plan import TrainingPlan
+from app.models.training_plan_item import TrainingPlanItem
 
 
 def _venue_clause(venue_type: str | None):
@@ -87,16 +103,33 @@ COACH_CHAT_TOOLS: list[dict[str, Any]] = [
         "function": {
             "name": "search_exercises",
             "description": (
-                "Search this coach's exercise library plus the shared catalog by name substring. "
-                "Use for any request to find, list, filter, or search exercises by keyword — including "
-                "single English or Persian words (e.g. squat, deadlift, اسکات). This is app data lookup, not generic coaching advice."
+                "Search this coach's exercise library + the shared catalog. Use for any request to "
+                "find, list, filter, or search exercises by name keyword, muscle group, or equipment. "
+                "Single English or Persian words (e.g. squat, deadlift, اسکات) are valid name queries. "
+                "Use muscle_group / equipment when the coach asks for a category (e.g. 'a hamstring "
+                "exercise', 'something with dumbbells'). At least one of q / muscle_group / equipment "
+                "should be provided. This is app data lookup, not generic coaching advice."
             ),
             "parameters": {
                 "type": "object",
                 "properties": {
                     "q": {
                         "type": "string",
-                        "description": "Substring to match on exercise name (e.g. user says 'squat' → q='squat')",
+                        "description": "Substring to match on exercise name. Optional.",
+                    },
+                    "muscle_group": {
+                        "type": "string",
+                        "description": (
+                            "Filter to exercises tagged with this muscle group code or label "
+                            "(case-insensitive substring match — e.g. 'hamstring', 'chest', 'glutes')."
+                        ),
+                    },
+                    "equipment": {
+                        "type": "string",
+                        "description": (
+                            "Filter by equipment substring (e.g. 'dumbbell', 'barbell', 'bodyweight', "
+                            "'cable', 'kettlebell'). Case-insensitive."
+                        ),
                     },
                     "venue_type": {
                         "type": "string",
@@ -105,7 +138,25 @@ COACH_CHAT_TOOLS: list[dict[str, Any]] = [
                     },
                     "limit": {"type": "integer", "description": "Max rows (default 25, max 60)"},
                 },
-                "required": ["q"],
+                "additionalProperties": False,
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_exercise",
+            "description": (
+                "Fetch full details for one exercise (coach-owned or shared catalog) by id. "
+                "Returns name, description, equipment, venue, difficulty, instructions, tips, "
+                "common_mistakes, correct_form_cues, body parts, secondary muscles, and the "
+                "muscle-group tags. Use after search_exercises when the coach asks 'how do I "
+                "cue this?', 'what muscles does X hit?', etc."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {"exercise_id": {"type": "integer"}},
+                "required": ["exercise_id"],
                 "additionalProperties": False,
             },
         },
@@ -121,6 +172,41 @@ COACH_CHAT_TOOLS: list[dict[str, Any]] = [
                     "q": {"type": "string", "description": "Optional substring on plan name"},
                     "limit": {"type": "integer", "description": "Max rows (default 20, max 50)"},
                 },
+                "additionalProperties": False,
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_training_plan",
+            "description": (
+                "Fetch the full contents of a training plan: every exercise with its sets, reps, "
+                "rest, weight, RPE, tempo, notes, and block grouping (superset / circuit / etc.). "
+                "Use when the coach asks what's in a plan, what does a workout look like, or wants "
+                "to compare programs."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {"plan_id": {"type": "integer"}},
+                "required": ["plan_id"],
+                "additionalProperties": False,
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_client_plans",
+            "description": (
+                "Fetch what's assigned to a single client: their assigned training plan id + name, "
+                "the workout / diet free-text notes from their coaching plan row, and active "
+                "membership subscriptions (plan template + start/end dates)."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {"client_id": {"type": "integer"}},
+                "required": ["client_id"],
                 "additionalProperties": False,
             },
         },
@@ -202,28 +288,104 @@ async def _tool_get_client(db: AsyncSession, coach: Coach, args: dict[str, Any])
 
 async def _tool_search_exercises(db: AsyncSession, coach: Coach, args: dict[str, Any]) -> dict[str, Any]:
     q = (args.get("q") or "").strip()
-    if not q:
-        return {"items": []}
+    muscle_q = (args.get("muscle_group") or "").strip()
+    equipment_q = (args.get("equipment") or "").strip()
+    if not (q or muscle_q or equipment_q):
+        return {"items": [], "_note": "provide at least one of q / muscle_group / equipment"}
     limit = min(max(int(args.get("limit") or 25), 1), 60)
     vt = (args.get("venue_type") or "").strip() or "mixed"
     cond = [_exercise_scope(coach.id)]
     vc = _venue_clause(vt if vt in ("home", "commercial_gym") else None)
     if vc is not None:
         cond.append(vc)
-    term = f"%{q}%"
-    cond.append(Exercise.name.ilike(term))
-    stmt = select(Exercise).where(*cond).order_by(Exercise.name).limit(limit)
+    if q:
+        cond.append(Exercise.name.ilike(f"%{q}%"))
+    if equipment_q:
+        cond.append(Exercise.equipment.ilike(f"%{equipment_q}%"))
+    stmt = (
+        select(Exercise)
+        .options(selectinload(Exercise.muscle_links).selectinload(ExerciseMuscleGroup.muscle_group))
+        .where(*cond)
+        .order_by(Exercise.name)
+        .limit(limit * 2 if muscle_q else limit)  # fetch extra so post-filter still has volume
+    )
     rows = (await db.execute(stmt)).scalars().all()
+
+    def _muscle_labels(ex: Exercise) -> list[str]:
+        out: list[str] = []
+        for link in ex.muscle_links or []:
+            mg = link.muscle_group
+            if mg is None:
+                continue
+            if mg.label:
+                out.append(mg.label)
+            elif mg.code:
+                out.append(mg.code)
+        return out
+
+    if muscle_q:
+        needle = muscle_q.lower()
+        rows = [
+            ex
+            for ex in rows
+            if any(needle in (label or "").lower() for label in _muscle_labels(ex))
+            or any(
+                needle in (link.muscle_group.code or "").lower()
+                for link in (ex.muscle_links or [])
+                if link.muscle_group is not None
+            )
+        ]
+    rows = rows[:limit]
     return {
         "items": [
             {
                 "id": ex.id,
                 "name": ex.name,
                 "venue_type": ex.venue_type,
+                "equipment": ex.equipment,
+                "muscle_groups": _muscle_labels(ex),
                 "coach_owned": ex.coach_id is not None,
             }
             for ex in rows
         ]
+    }
+
+
+async def _tool_get_exercise(db: AsyncSession, coach: Coach, args: dict[str, Any]) -> dict[str, Any]:
+    eid = int(args["exercise_id"])
+    stmt = (
+        select(Exercise)
+        .options(selectinload(Exercise.muscle_links).selectinload(ExerciseMuscleGroup.muscle_group))
+        .where(Exercise.id == eid, _exercise_scope(coach.id))
+    )
+    ex = (await db.execute(stmt)).scalar_one_or_none()
+    if not ex:
+        return {"error": "exercise_not_found"}
+    muscle_groups = []
+    for link in ex.muscle_links or []:
+        mg = link.muscle_group
+        if mg is None:
+            continue
+        muscle_groups.append({"code": mg.code, "label": mg.label})
+    return {
+        "id": ex.id,
+        "name": ex.name,
+        "description": ex.description,
+        "category": ex.category,
+        "equipment": ex.equipment,
+        "venue_type": ex.venue_type,
+        "difficulty": ex.difficulty,
+        "exercise_type": ex.exercise_type,
+        "muscle_groups": muscle_groups,
+        "body_parts": ex.body_parts,
+        "secondary_muscles": ex.secondary_muscles,
+        "instructions": ex.instructions,
+        "tips": ex.tips,
+        "common_mistakes": ex.common_mistakes,
+        "correct_form_cues": ex.correct_form_cues,
+        "setup_notes": ex.setup_notes,
+        "safety_notes": ex.safety_notes,
+        "coach_owned": ex.coach_id is not None,
     }
 
 
@@ -239,6 +401,118 @@ async def _tool_list_training_plans(db: AsyncSession, coach: Coach, args: dict[s
     return {
         "total": total,
         "items": [{"id": p.id, "name": p.name, "venue_type": p.venue_type} for p in rows],
+    }
+
+
+async def _tool_get_training_plan(db: AsyncSession, coach: Coach, args: dict[str, Any]) -> dict[str, Any]:
+    pid = int(args["plan_id"])
+    plan_stmt = (
+        select(TrainingPlan)
+        .options(
+            selectinload(TrainingPlan.items).selectinload(TrainingPlanItem.exercise),
+        )
+        .where(TrainingPlan.id == pid, TrainingPlan.coach_id == coach.id)
+    )
+    plan = (await db.execute(plan_stmt)).scalar_one_or_none()
+    if not plan:
+        return {"error": "training_plan_not_found"}
+
+    # Sort items by sort_order; the model can interpret rows directly.
+    sorted_items = sorted(plan.items or [], key=lambda x: x.sort_order)
+    items_out: list[dict[str, Any]] = []
+    for it in sorted_items:
+        items_out.append(
+            {
+                "row_type": it.row_type,  # legacy_line | exercise (head) | set
+                "exercise_id": it.exercise_id,
+                "exercise_name": it.exercise.name if it.exercise else None,
+                "block_id": it.block_id,
+                "block_type": it.block_type,
+                "sets": it.sets,
+                "reps": it.reps,
+                "duration_sec": it.duration_sec,
+                "rest_sec": it.rest_sec,
+                "weight_kg": it.weight_kg,
+                "rpe": it.rpe,
+                "tempo": it.tempo,
+                "notes": (it.notes[:200] if it.notes else None),
+            }
+        )
+    return {
+        "id": plan.id,
+        "name": plan.name,
+        "description": plan.description,
+        "venue_type": plan.venue_type,
+        "items": items_out,
+    }
+
+
+async def _tool_list_client_plans(db: AsyncSession, coach: Coach, args: dict[str, Any]) -> dict[str, Any]:
+    cid = int(args["client_id"])
+    # Verify the client belongs to this coach.
+    client = (
+        await db.execute(select(Client).where(Client.id == cid, Client.coach_id == coach.id))
+    ).scalar_one_or_none()
+    if not client:
+        return {"error": "client_not_found"}
+
+    # Coaching plan row (per-client free-text + assigned plan id).
+    coaching_plan = (
+        await db.execute(select(ClientCoachingPlan).where(ClientCoachingPlan.client_id == cid))
+    ).scalar_one_or_none()
+
+    # Resolve assigned training plan name when present.
+    assigned_plan_name: str | None = None
+    if coaching_plan and coaching_plan.assigned_training_plan_id:
+        tp = (
+            await db.execute(
+                select(TrainingPlan).where(
+                    TrainingPlan.id == coaching_plan.assigned_training_plan_id,
+                    TrainingPlan.coach_id == coach.id,
+                )
+            )
+        ).scalar_one_or_none()
+        if tp:
+            assigned_plan_name = tp.name
+
+    # Active subscriptions (memberships).
+    subs = (
+        await db.execute(
+            select(ClientSubscription, PlanTemplate)
+            .join(PlanTemplate, PlanTemplate.id == ClientSubscription.plan_template_id)
+            .where(ClientSubscription.client_id == cid)
+            .order_by(ClientSubscription.starts_at.desc())
+            .limit(8)
+        )
+    ).all()
+    subs_out = [
+        {
+            "subscription_id": sub.id,
+            "plan_template_id": pt.id,
+            "plan_template_name": pt.name,
+            "status": sub.status,
+            "starts_at": sub.starts_at.isoformat() if sub.starts_at else None,
+            "ends_at": sub.ends_at.isoformat() if sub.ends_at else None,
+        }
+        for sub, pt in subs
+    ]
+
+    return {
+        "client_id": client.id,
+        "client_name": client.name,
+        "assigned_training_plan_id": coaching_plan.assigned_training_plan_id if coaching_plan else None,
+        "assigned_training_plan_name": assigned_plan_name,
+        "workout_notes": (
+            (coaching_plan.workout_plan or "")[:1000]
+            if coaching_plan and coaching_plan.workout_plan
+            else None
+        ),
+        "diet_notes": (
+            (coaching_plan.diet_plan or "")[:1000]
+            if coaching_plan and coaching_plan.diet_plan
+            else None
+        ),
+        "subscriptions": subs_out,
     }
 
 
@@ -272,8 +546,11 @@ _TOOL_DISPATCH = {
     "get_dashboard_snapshot": _tool_get_dashboard_snapshot,
     "list_clients": _tool_list_clients,
     "get_client": _tool_get_client,
+    "list_client_plans": _tool_list_client_plans,
     "search_exercises": _tool_search_exercises,
+    "get_exercise": _tool_get_exercise,
     "list_training_plans": _tool_list_training_plans,
+    "get_training_plan": _tool_get_training_plan,
     "list_invoices": _tool_list_invoices,
 }
 
@@ -343,28 +620,10 @@ def _language_guidance_for_chat(locale: str | None) -> str:
     )
 
 
-async def run_coach_chat(
-    db: AsyncSession,
-    coach: Coach,
-    messages: list[dict[str, str]],
-    *,
-    optional_context: str | None = None,
-    locale: str | None = None,
-) -> str:
-    if not settings.openai_api_key or not settings.openai_api_key.strip():
-        raise RuntimeError("AI is not configured (missing OPENAI_API_KEY).")
-
-    if len(messages) > settings.ai_coach_chat_max_messages:
-        raise ValueError("Too many messages.")
-    if _chat_chars(messages) > settings.ai_coach_chat_max_chars:
-        raise ValueError("Message content is too long.")
-
-    client = AsyncOpenAI(
-        api_key=settings.openai_api_key.strip(),
-        base_url=settings.openai_base_url.strip() if settings.openai_base_url else None,
-    )
-
-    system = "\n".join(
+def _build_system_prompt(locale: str | None) -> str:
+    """Single source of truth for the system prompt; used by both streaming
+    and non-streaming paths."""
+    return "\n".join(
         [
             "You are Gym Coach, an in-app assistant for personal trainers. You do TWO things:",
             "  (a) Look up data from THIS coach's app (clients, invoices, training plans, exercises, "
@@ -397,6 +656,30 @@ async def run_coach_chat(
             _language_guidance_for_chat(locale),
         ]
     )
+
+
+async def run_coach_chat(
+    db: AsyncSession,
+    coach: Coach,
+    messages: list[dict[str, str]],
+    *,
+    optional_context: str | None = None,
+    locale: str | None = None,
+) -> str:
+    if not settings.openai_api_key or not settings.openai_api_key.strip():
+        raise RuntimeError("AI is not configured (missing OPENAI_API_KEY).")
+
+    if len(messages) > settings.ai_coach_chat_max_messages:
+        raise ValueError("Too many messages.")
+    if _chat_chars(messages) > settings.ai_coach_chat_max_chars:
+        raise ValueError("Message content is too long.")
+
+    client = AsyncOpenAI(
+        api_key=settings.openai_api_key.strip(),
+        base_url=settings.openai_base_url.strip() if settings.openai_base_url else None,
+    )
+
+    system = _build_system_prompt(locale)
     if optional_context:
         system = (
             f"{system}\n\n---\nSession context from the coach (any language; use only to interpret questions; "
