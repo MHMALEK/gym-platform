@@ -282,6 +282,37 @@ def _chat_chars(messages: list[dict[str, str]]) -> int:
     return sum(len(m.get("content") or "") for m in messages)
 
 
+# Soft cap on a single tool result. We trim by whole items instead of mid-string
+# so the model never receives a JSON fragment that errors out parsing.
+_TOOL_RESULT_CHAR_BUDGET = 8000
+
+
+def _serialize_tool_result(payload: Any) -> str:
+    """Serialize a tool payload to JSON, dropping items from `items` until it
+    fits the char budget. Always returns a syntactically valid JSON string."""
+    safe = _json_safe(payload)
+    encoded = json.dumps(safe, default=str)
+    if len(encoded) <= _TOOL_RESULT_CHAR_BUDGET:
+        return encoded
+    if isinstance(safe, dict) and isinstance(safe.get("items"), list):
+        items = safe["items"]
+        # Halve the list until it fits, marking the truncation in `_truncated`.
+        while len(items) > 1:
+            items = items[: max(1, len(items) // 2)]
+            trimmed = {**safe, "items": items, "_truncated": True}
+            candidate = json.dumps(trimmed, default=str)
+            if len(candidate) <= _TOOL_RESULT_CHAR_BUDGET:
+                return candidate
+        return json.dumps(
+            {**safe, "items": items[:1], "_truncated": True}, default=str
+        )
+    # Last resort: return a marker rather than a malformed JSON fragment.
+    return json.dumps(
+        {"_truncated": True, "_note": "Tool result exceeded budget; rerun with a smaller limit."},
+        default=str,
+    )
+
+
 def _assistant_to_dict(msg: Any) -> dict[str, Any]:
     out: dict[str, Any] = {"role": "assistant", "content": msg.content or ""}
     tcs = getattr(msg, "tool_calls", None)
@@ -335,21 +366,34 @@ async def run_coach_chat(
 
     system = "\n".join(
         [
-            "You are Gym Coach, an in-app assistant for personal trainers using this web app.",
-            "You ONLY help with topics tied to this coach's practice as represented in the app: clients and roster, "
-            "goals/notes shown in tool results, invoices and billing status, training plans, exercises (library + catalog), "
-            "and dashboard-style summaries. You may briefly explain what you can look up or how to ask for it.",
-            "If the user asks anything outside that scope (general knowledge, news, coding, unrelated hobbies, "
-            "medical diagnosis, legal advice, jokes, small talk, homework, other apps, or explaining fitness science "
-            "without using app tools), do NOT use tools and do NOT answer the substance. Give one short polite reply "
-            "that you only handle questions about their Gym Coach data and operations, and suggest an example question.",
-            "IMPORTANT: Asking to search/find/list exercises by a name or keyword (e.g. 'squat', 'press', 'حرکت پا') is "
-            "always on-topic. Call search_exercises with q set to the substring they care about (strip filler words). "
-            "Do NOT treat bare exercise/move words as off-topic 'theory' — they are database search queries.",
-            "For on-topic questions, you only state facts about this coach's data using tool results. If tools return "
-            "nothing useful, say so. Never invent client names, invoice amounts, exercise ids, or tool results.",
-            "Be concise. Use bullet lists when comparing multiple rows.",
-            "Exercises may be coach-owned or from the shared catalog (coach_owned false).",
+            "You are Gym Coach, an in-app assistant for personal trainers. You do TWO things:",
+            "  (a) Look up data from THIS coach's app (clients, invoices, training plans, exercises, "
+            "dashboard) using the provided tools.",
+            "  (b) Answer general strength-and-conditioning / coaching / programming questions concisely "
+            "from your own training knowledge — supersets, periodization, RPE, warm-ups, programming a "
+            "block, exercise selection rationale, etc. You do NOT need a tool for these.",
+            "",
+            "Use tools when the question is about THIS coach's specific data (e.g. 'how many active clients', "
+            "'what's in client X's plan', 'overdue invoices', 'find a hamstring exercise in my library'). "
+            "Don't invent client names, invoice amounts, exercise ids, or tool results — only state app data "
+            "that came back from a tool call.",
+            "",
+            "Refuse only clearly unrelated requests (news, coding help, homework, other apps, medical "
+            "diagnosis, legal advice). For those, briefly say you focus on coaching topics + their app data.",
+            "",
+            "Domain vocabulary you should know and use naturally when relevant: ",
+            "  - rep schemes: strength 3-6, hypertrophy 6-12, endurance 12+; sets often 3-5",
+            "  - rest: strength ~2-5 min, hypertrophy ~60-90s, conditioning ~30-60s",
+            "  - intensity: %1RM, RPE (1-10) and RIR (reps in reserve, 0-4); RPE 8 ≈ 2 RIR",
+            "  - tempo notation '3-1-1-0' = 3s eccentric / 1s pause / 1s concentric / 1s pause",
+            "  - block types: superset, tri-set, giant set, circuit, drop set, cluster set, AMRAP",
+            "  - structure: warm-up, main lifts, accessories, conditioning, cool-down",
+            "  - planning: linear vs undulating periodization, deload weeks (typically every 4-6 weeks)",
+            "  - movement patterns: squat / hinge / push / pull / carry / lunge / rotation",
+            "",
+            "Be concise. Bullet lists for multiple rows or items. Plain prose for single answers and "
+            "programming explanations.",
+            "Exercises may be coach-owned or from the shared catalog (coach_owned: false).",
             _language_guidance_for_chat(locale),
         ]
     )
@@ -360,17 +404,20 @@ async def run_coach_chat(
         )
     oai_messages: list[Any] = [{"role": "system", "content": system}, *messages]
 
-    max_rounds = 10
+    # 4 rounds is plenty for the typical chain (e.g. list_clients -> get_client +
+    # list_invoices) without letting a weak tool-pick spiral. 1024 tokens fits any
+    # concise reply; bullet lists with all data still fit comfortably.
+    max_rounds = 4
     last_text = ""
 
     for _ in range(max_rounds):
         completion = await client.chat.completions.create(
-            model=settings.openai_model,
+            model=settings.openai_chat_model,
             messages=oai_messages,
             tools=COACH_CHAT_TOOLS,
             tool_choice="auto",
             temperature=0.25,
-            max_tokens=2048,
+            max_tokens=1024,
         )
         choice = completion.choices[0]
         msg = choice.message
@@ -400,7 +447,7 @@ async def run_coach_chat(
                 {
                     "role": "tool",
                     "tool_call_id": tc.id,
-                    "content": json.dumps(_json_safe(payload), default=str)[:12000],
+                    "content": _serialize_tool_result(payload),
                 }
             )
 

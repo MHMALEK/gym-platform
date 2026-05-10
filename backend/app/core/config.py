@@ -77,12 +77,17 @@ class Settings(BaseSettings):
     openai_api_key: str | None = None
     # e.g. https://openrouter.ai/api/v1 — omit for default OpenAI endpoint
     openai_base_url: str | None = None
-    # Default: low-cost instruct model (override with OPENAI_MODEL). OpenRouter: use full slug, e.g. openai/gpt-4.1-nano
+    # Default model for the workout-draft single-shot endpoint. Nano is fine for that
+    # because the request is one-shot JSON; multi-turn function calling needs a stronger
+    # model — see openai_chat_model below.
     openai_model: str = "gpt-4.1-nano"
     ai_workout_max_messages: int = 16
     ai_workout_max_total_chars: int = 24_000
 
-    # Coach assistant chat (POST /api/v1/ai/coach-chat)
+    # Coach assistant chat (POST /api/v1/ai/coach-chat). Multi-turn with up to several
+    # function-calling rounds, so use a stronger model than the workout-draft default.
+    # Override with OPENAI_CHAT_MODEL. OpenRouter: use full slug like openai/gpt-4.1.
+    openai_chat_model: str = "gpt-4.1"
     ai_coach_chat_max_messages: int = 32
     ai_coach_chat_max_chars: int = 48_000
 
