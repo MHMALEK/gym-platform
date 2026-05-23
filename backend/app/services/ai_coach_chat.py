@@ -33,6 +33,14 @@ from app.models.muscle_group import MuscleGroup
 from app.models.plan_template import PlanTemplate
 from app.models.training_plan import TrainingPlan
 from app.models.training_plan_item import TrainingPlanItem
+from app.services.client_chat import (
+    SENDER_COACH,
+    fetch_client_for_coach,
+    get_coach_message_inbox_summary,
+    get_thread_for_coach_client,
+    list_messages,
+)
+from app.services.coach_follow_up import get_coach_follow_up_candidates
 
 
 def _venue_clause(venue_type: str | None):
@@ -226,6 +234,68 @@ COACH_CHAT_TOOLS: list[dict[str, Any]] = [
                     },
                     "limit": {"type": "integer", "description": "Max rows (default 20, max 50)"},
                 },
+                "additionalProperties": False,
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_follow_up_candidates",
+            "description": (
+                "Clients who likely need coach follow-up: unreplied messages, overdue or due-soon "
+                "invoices, active clients without a training plan, inactive clients, memberships "
+                "expiring within 14 days. Use for 'who needs follow-up', 'who needs attention', "
+                "check-ins, or roster priority."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "limit": {
+                        "type": "integer",
+                        "description": "Max clients to return (default 20, max 40)",
+                    },
+                },
+                "additionalProperties": False,
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_message_inbox_summary",
+            "description": (
+                "Coach client messaging inbox. Returns threads awaiting a coach reply "
+                "(latest message sent by the client). Use for unread messages, who messaged me, "
+                "or conversations needing a response."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "limit": {
+                        "type": "integer",
+                        "description": "Max awaiting-reply threads to return (default 20, max 40)",
+                    },
+                },
+                "additionalProperties": False,
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_client_messages",
+            "description": (
+                "Recent chat messages between this coach and one client (must belong to this coach). "
+                "Use to read a conversation thread or summarize what a client said."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "client_id": {"type": "integer"},
+                    "limit": {"type": "integer", "description": "Max messages (default 25, max 80)"},
+                },
+                "required": ["client_id"],
                 "additionalProperties": False,
             },
         },
@@ -542,6 +612,54 @@ async def _tool_list_invoices(db: AsyncSession, coach: Coach, args: dict[str, An
     return {"items": out}
 
 
+async def _tool_get_message_inbox_summary(
+    db: AsyncSession, coach: Coach, args: dict[str, Any]
+) -> dict[str, Any]:
+    limit = min(max(int(args.get("limit") or 20), 1), 40)
+    data = await get_coach_message_inbox_summary(db, coach_id=coach.id, limit=limit)
+    return _json_safe(data)
+
+
+async def _tool_get_follow_up_candidates(
+    db: AsyncSession, coach: Coach, args: dict[str, Any]
+) -> dict[str, Any]:
+    limit = min(max(int(args.get("limit") or 20), 1), 40)
+    data = await get_coach_follow_up_candidates(db, coach_id=coach.id, limit=limit)
+    return _json_safe(data)
+
+
+async def _tool_list_client_messages(db: AsyncSession, coach: Coach, args: dict[str, Any]) -> dict[str, Any]:
+    cid = int(args["client_id"])
+    client = await fetch_client_for_coach(db, coach_id=coach.id, client_id=cid)
+    if not client:
+        return {"error": "client_not_found"}
+    limit = min(max(int(args.get("limit") or 25), 1), 80)
+    thread = await get_thread_for_coach_client(db, coach_id=coach.id, client_id=cid)
+    if not thread:
+        return {
+            "client_id": cid,
+            "client_name": client.name,
+            "thread_id": None,
+            "items": [],
+            "_note": "No conversation thread yet.",
+        }
+    rows = await list_messages(db, thread_id=thread.id, limit=limit, after_id=None)
+    return {
+        "client_id": cid,
+        "client_name": client.name,
+        "thread_id": thread.id,
+        "items": [
+            {
+                "id": m.id,
+                "sender": "coach" if m.sender_type == SENDER_COACH else "client",
+                "body": (m.body or "")[:500],
+                "created_at": m.created_at.isoformat() if m.created_at else None,
+            }
+            for m in rows
+        ],
+    }
+
+
 _TOOL_DISPATCH = {
     "get_dashboard_snapshot": _tool_get_dashboard_snapshot,
     "list_clients": _tool_list_clients,
@@ -552,6 +670,9 @@ _TOOL_DISPATCH = {
     "list_training_plans": _tool_list_training_plans,
     "get_training_plan": _tool_get_training_plan,
     "list_invoices": _tool_list_invoices,
+    "get_follow_up_candidates": _tool_get_follow_up_candidates,
+    "get_message_inbox_summary": _tool_get_message_inbox_summary,
+    "list_client_messages": _tool_list_client_messages,
 }
 
 
@@ -627,13 +748,16 @@ def _build_system_prompt(locale: str | None) -> str:
         [
             "You are Gym Coach, an in-app assistant for personal trainers. You do TWO things:",
             "  (a) Look up data from THIS coach's app (clients, invoices, training plans, exercises, "
-            "dashboard) using the provided tools.",
+            "client messages, dashboard) using the provided tools.",
             "  (b) Answer general strength-and-conditioning / coaching / programming questions concisely "
             "from your own training knowledge — supersets, periodization, RPE, warm-ups, programming a "
             "block, exercise selection rationale, etc. You do NOT need a tool for these.",
             "",
             "Use tools when the question is about THIS coach's specific data (e.g. 'how many active clients', "
-            "'what's in client X's plan', 'overdue invoices', 'find a hamstring exercise in my library'). "
+            "'what's in client X's plan', 'overdue invoices', 'unread client messages', "
+            "'who needs follow-up', 'find a hamstring exercise in my library'). "
+            "For follow-up / attention / check-in questions, call get_follow_up_candidates first. "
+            "Never say you lack access to app data — use the tools.",
             "Don't invent client names, invoice amounts, exercise ids, or tool results — only state app data "
             "that came back from a tool call.",
             "",
@@ -746,6 +870,6 @@ async def run_coach_chat(
     if not last_text:
         last_text = (
             "I could not produce a reply. Ask something about your clients, invoices, training plans, "
-            "or exercises in Gym Coach."
+            "messages, or exercises in Gym Coach."
         )
     return last_text
