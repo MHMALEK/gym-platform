@@ -1,4 +1,5 @@
 import { useLogin } from "@refinedev/core";
+import Link from "@mui/material/Link";
 import LoadingButton from "@mui/lab/LoadingButton";
 import Box from "@mui/material/Box";
 import Card from "@mui/material/Card";
@@ -8,6 +9,7 @@ import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { useTheme } from "@mui/material/styles";
 import { useTranslation } from "react-i18next";
+import { Link as RouterLink } from "react-router-dom";
 
 import { LanguageSwitcher } from "../components/LanguageSwitcher";
 import { ThemeSwitcher } from "../components/ThemeSwitcher";
@@ -118,6 +120,17 @@ export function LoginPage() {
               >
                 {t("login.signIn")}
               </LoadingButton>
+              <Typography variant="body2" sx={{ mt: 2, textAlign: "center" }}>
+                {t("register.noAccount")}{" "}
+                <Link component={RouterLink} to="/register">
+                  {t("register.signUp")}
+                </Link>
+              </Typography>
+              <Typography variant="body2" sx={{ mt: 1, textAlign: "center" }}>
+                <Link component={RouterLink} to="/client/login">
+                  {t("clientAuth.clientPortal")}
+                </Link>
+              </Typography>
             </Box>
           )}
         </CardContent>
