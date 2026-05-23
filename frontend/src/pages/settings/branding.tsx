@@ -14,6 +14,7 @@ import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 
 import { useCoachBranding } from "../../contexts/CoachBrandingContext";
+import { apiPrefix, authHeaders } from "../../lib/api";
 import { patchCoachProfile } from "../../lib/coachProfileApi";
 import { mediaSrc, uploadMediaFile } from "../../lib/exerciseMediaApi";
 import { useAppMessage } from "../../lib/useAppMessage";
@@ -33,6 +34,7 @@ export function BrandingSettingsPage() {
   });
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [inviteCode, setInviteCode] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const primaryColor = watch("primary_color");
 
@@ -44,6 +46,23 @@ export function BrandingSettingsPage() {
       primary_color: branding.primaryColor?.replace(/^#/, "") ? branding.primaryColor ?? "" : "",
     });
   }, [branding, reset]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`${apiPrefix}/me`, { headers: authHeaders() });
+        if (!res.ok) return;
+        const data = (await res.json()) as { invite_code?: string | null };
+        if (!cancelled) setInviteCode(data.invite_code ?? null);
+      } catch {
+        /* ignore */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [branding.loading]);
 
   const onSubmit = async (values: BrandForm) => {
     setSaving(true);
@@ -118,6 +137,44 @@ export function BrandingSettingsPage() {
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
         {t("branding.subtitle")}
       </Typography>
+
+      {inviteCode ? (
+        <Card variant="outlined" sx={{ mb: 3 }}>
+          <CardContent>
+            <Typography variant="subtitle1" gutterBottom>
+              {t("branding.inviteTitle")}
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              {t("branding.inviteSubtitle")}
+            </Typography>
+            <TextField
+              label={t("branding.inviteCode")}
+              value={inviteCode}
+              fullWidth
+              margin="dense"
+              InputProps={{ readOnly: true }}
+            />
+            <TextField
+              label={t("branding.inviteLink")}
+              value={`${window.location.origin}/client/register?invite=${inviteCode}`}
+              fullWidth
+              margin="dense"
+              InputProps={{ readOnly: true }}
+            />
+            <Button
+              sx={{ mt: 1 }}
+              onClick={() => {
+                void navigator.clipboard.writeText(
+                  `${window.location.origin}/client/register?invite=${inviteCode}`,
+                );
+                message.success(t("branding.inviteCopied"));
+              }}
+            >
+              {t("branding.inviteLink")}
+            </Button>
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Card variant="outlined">
         <CardContent>

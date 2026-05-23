@@ -156,6 +156,17 @@ export function ClientList() {
                 {String(row.email)}
               </Typography>
             ) : null}
+            <Chip
+              size="small"
+              variant="outlined"
+              color={(row as Record<string, unknown>).has_account ? "success" : "default"}
+              label={
+                (row as Record<string, unknown>).has_account
+                  ? t("clients.hasAccountYes")
+                  : t("clients.hasAccountNo")
+              }
+              sx={{ mt: 0.25, alignSelf: "flex-start" }}
+            />
           </Stack>
         ),
       },
