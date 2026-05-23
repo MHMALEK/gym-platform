@@ -9,6 +9,7 @@ from app.api import (
     ai_workout,
     auth,
     billing,
+    client_portal,
     clients,
     dashboard,
     directory,
@@ -45,6 +46,7 @@ app.add_middleware(
 
 v1 = settings.api_v1_prefix
 app.include_router(auth.router, prefix=v1)
+app.include_router(client_portal.router, prefix=v1)
 app.include_router(dashboard.router, prefix=v1)
 app.include_router(me.router, prefix=v1)
 app.include_router(directory.router, prefix=v1)
