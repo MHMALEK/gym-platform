@@ -14,7 +14,8 @@ from app.models.exercise import Exercise
 from app.models.invoice import Invoice
 from app.models.plan_template import PlanTemplate
 from app.models.training_plan import TrainingPlan
-from app.schemas.dashboard import DashboardSummary, FinanceAlertItem
+from app.schemas.dashboard import AIDashboardDigest, DashboardSummary, FinanceAlertItem
+from app.services.ai_dashboard_digest import generate_coach_dashboard_digest
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
@@ -217,3 +218,9 @@ async def build_dashboard_summary(coach: Coach, db: AsyncSession) -> DashboardSu
 @router.get("/summary", response_model=DashboardSummary)
 async def dashboard_summary(coach: CurrentCoach, db: DbSession) -> DashboardSummary:
     return await build_dashboard_summary(coach, db)
+
+
+@router.post("/ai-digest", response_model=AIDashboardDigest)
+async def dashboard_ai_digest(coach: CurrentCoach, db: DbSession) -> AIDashboardDigest:
+    summary = await build_dashboard_summary(coach, db)
+    return await generate_coach_dashboard_digest(db, coach_id=coach.id, summary=summary)

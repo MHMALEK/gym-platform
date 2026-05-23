@@ -39,3 +39,24 @@ class DashboardSummary(BaseModel):
     plan_templates: int
     exercises: int
     training_plans: int
+
+
+class AIDigestAction(BaseModel):
+    label: str
+    path: str
+
+
+class AIDigestItem(BaseModel):
+    title: str
+    reason: str
+    severity: str
+    action: AIDigestAction | None = None
+
+
+class AIDashboardDigest(BaseModel):
+    generated_at: str
+    headline: str
+    summary: str
+    priority_items: list[AIDigestItem]
+    watch_items: list[AIDigestItem]
+    model_used: str
