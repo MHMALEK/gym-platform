@@ -20,6 +20,20 @@ from app.services.diet_meals_json import parse_diet_meals_raw
 from app.services.client_feed import build_client_promotions, build_client_reminders
 from app.services.invoice_pdf import render_invoice_pdf
 from app.schemas.client_feed import ClientPromotionListResponse, ClientReminderListResponse
+from app.schemas.client_training import (
+    ClientWorkoutSessionCreate,
+    ClientWorkoutSessionListResponse,
+    ClientWorkoutSessionRead,
+    ClientWorkoutSessionUpdate,
+    WorkoutEntryLog,
+)
+from app.services.client_training import (
+    create_client_session,
+    entries_from_plan_items,
+    list_client_sessions,
+    read_client_session,
+    update_client_session,
+)
 
 router = APIRouter(prefix="/client", tags=["client-portal"])
 
@@ -158,6 +172,55 @@ async def list_client_reminders(client: CurrentClient, db: DbSession):
 async def list_client_promotions(client: CurrentClient, db: DbSession):
     items = await build_client_promotions(db, client)
     return ClientPromotionListResponse(items=items)
+
+
+@router.get("/training/log-template", response_model=list[WorkoutEntryLog])
+async def training_log_template(client: CurrentClient, db: DbSession):
+    plan = await _coaching_plan_read(db, client.id)
+    return entries_from_plan_items(plan.workout_items)
+
+
+@router.get("/training/sessions", response_model=ClientWorkoutSessionListResponse)
+async def list_training_sessions(
+    client: CurrentClient,
+    db: DbSession,
+    limit: int = Query(30, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+):
+    items, total = await list_client_sessions(db, client.id, limit=limit, offset=offset)
+    return ClientWorkoutSessionListResponse(items=items, total=total, limit=limit, offset=offset)
+
+
+@router.get("/training/sessions/{session_id}", response_model=ClientWorkoutSessionRead)
+async def get_training_session(session_id: int, client: CurrentClient, db: DbSession):
+    row = await read_client_session(db, client.id, session_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return row
+
+
+@router.post("/training/sessions", response_model=ClientWorkoutSessionRead, status_code=201)
+async def create_training_session(
+    client: CurrentClient,
+    db: DbSession,
+    body: ClientWorkoutSessionCreate,
+):
+    return await create_client_session(db, client, body)
+
+
+@router.patch("/training/sessions/{session_id}", response_model=ClientWorkoutSessionRead)
+async def patch_training_session(
+    session_id: int,
+    client: CurrentClient,
+    db: DbSession,
+    body: ClientWorkoutSessionUpdate,
+):
+    from app.services.client_training import get_client_session
+
+    row = await get_client_session(db, client.id, session_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return await update_client_session(db, row, body)
 
 
 @router.get("/messages", response_model=ChatMessageListResponse)
