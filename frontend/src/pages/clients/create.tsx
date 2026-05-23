@@ -36,9 +36,17 @@ function toClientPayload(v: ClientFormValues) {
     notes: v.notes ? String(v.notes).trim() : null,
     weight_kg: v.weight_kg != null && v.weight_kg !== "" ? v.weight_kg : null,
     height_cm: v.height_cm != null && v.height_cm !== "" ? v.height_cm : null,
-    goal_type_id: v.goal_type_id ?? null,
+    goal_type_id:
+      v.goal_type_id == null || v.goal_type_id === "" || v.goal_type_id === undefined
+        ? null
+        : Number(v.goal_type_id),
     goal: v.goal ? String(v.goal).trim() : null,
-    subscription_plan_template_id: v.subscription_plan_template_id ?? null,
+    subscription_plan_template_id:
+      v.subscription_plan_template_id == null ||
+      v.subscription_plan_template_id === "" ||
+      v.subscription_plan_template_id === undefined
+        ? null
+        : Number(v.subscription_plan_template_id),
     billing_preference,
     status: v.status ?? "active",
     account_status: v.account_status ?? "good_standing",
