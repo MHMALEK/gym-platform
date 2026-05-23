@@ -1,4 +1,4 @@
-from sqlalchemy import ForeignKey, String
+from sqlalchemy import Boolean, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin
@@ -17,6 +17,9 @@ class Coach(Base, TimestampMixin):
         ForeignKey("media_assets.id", ondelete="SET NULL"), nullable=True, index=True
     )
     invite_code: Mapped[str | None] = mapped_column(String(32), unique=True, index=True, nullable=True)
+    public_slug: Mapped[str | None] = mapped_column(String(64), unique=True, index=True, nullable=True)
+    site_content: Mapped[str | None] = mapped_column(Text, nullable=True)
+    site_published: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, server_default="false")
 
     clients = relationship("Client", back_populates="coach", cascade="all, delete-orphan")
     chat_threads = relationship("ChatThread", back_populates="coach", cascade="all, delete-orphan")

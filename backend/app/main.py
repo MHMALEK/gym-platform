@@ -11,6 +11,7 @@ from app.api import (
     billing,
     client_portal,
     clients,
+    coach_site,
     dashboard,
     demo,
     directory,
@@ -22,6 +23,7 @@ from app.api import (
     media,
     nutrition_templates,
     plan_templates,
+    public_site,
     training_plans,
 )
 from app.core.config import settings
@@ -51,6 +53,8 @@ app.include_router(auth.router, prefix=v1)
 app.include_router(client_portal.router, prefix=v1)
 app.include_router(dashboard.router, prefix=v1)
 app.include_router(me.router, prefix=v1)
+app.include_router(coach_site.router, prefix=v1)
+app.include_router(public_site.router, prefix=v1)
 app.include_router(directory.router, prefix=v1)
 app.include_router(exercises.router, prefix=v1)
 app.include_router(exercise_media.router, prefix=v1)
