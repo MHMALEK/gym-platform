@@ -2,6 +2,8 @@
 
 Stdio [Model Context Protocol](https://modelcontextprotocol.io) server for coaches. Tools are **loaded dynamically** from the FastAPI backend (`GET /api/v1/mcp/tools`), so the MCP package stays in sync with the same tool layer used by the in-app Assistant.
 
+Platform setup and demo walkthrough: [`../README.md`](../README.md), [`../DEMO.md`](../DEMO.md).
+
 ## What you get
 
 | Tool category | Examples |
