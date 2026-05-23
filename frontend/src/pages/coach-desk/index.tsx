@@ -1,12 +1,16 @@
 import AddIcon from "@mui/icons-material/AddRounded";
+import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForwardRounded";
 import GroupsIcon from "@mui/icons-material/GroupsRounded";
+import RefreshIcon from "@mui/icons-material/Refresh";
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLongRounded";
 import WarningAmberIcon from "@mui/icons-material/WarningAmberRounded";
+import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
 import Chip from "@mui/material/Chip";
+import Skeleton from "@mui/material/Skeleton";
 import Stack from "@mui/material/Stack";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
@@ -18,12 +22,13 @@ import Typography from "@mui/material/Typography";
 import { useList } from "@refinedev/core";
 import type { BaseRecord } from "@refinedev/core";
 import dayjs from "dayjs";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
 import { PageHeader } from "../../components/layout/PageHeader";
+import { apiPrefix, authHeaders } from "../../lib/api";
 import { formatMoney } from "../../lib/money";
 
 type MembershipSummary = {
@@ -42,6 +47,20 @@ type LastInvoiceSummary = {
   amount?: number | string | null;
   currency: string;
   reference?: string | null;
+};
+type DigestItem = {
+  title: string;
+  reason: string;
+  severity: "high" | "medium" | "low";
+  action?: { label: string; path: string } | null;
+};
+type DashboardDigest = {
+  generated_at: string;
+  headline: string;
+  summary: string;
+  priority_items: DigestItem[];
+  watch_items: DigestItem[];
+  model_used: string;
 };
 
 function membershipSummary(r: BaseRecord): MembershipSummary | undefined {
@@ -95,6 +114,9 @@ export function CoachDeskPage() {
   });
   const loc = i18n.language;
   const today = dayjs().startOf("day");
+  const [digest, setDigest] = useState<DashboardDigest | null>(null);
+  const [digestLoading, setDigestLoading] = useState(false);
+  const [digestError, setDigestError] = useState(false);
 
   const clients = clientsData?.data ?? [];
 
@@ -122,6 +144,32 @@ export function CoachDeskPage() {
     }
     return { total: clients.length, active, pending, overdue };
   }, [clients, today]);
+
+  const loadDigest = () => {
+    setDigestLoading(true);
+    setDigestError(false);
+    return fetch(`${apiPrefix}/dashboard/ai-digest`, {
+      method: "POST",
+      headers: authHeaders(),
+    })
+      .then(async (r) => {
+        if (!r.ok) throw new Error(await r.text());
+        return r.json() as Promise<DashboardDigest>;
+      })
+      .then((data) => {
+        setDigest(data);
+        setDigestError(false);
+      })
+      .catch(() => {
+        setDigest(null);
+        setDigestError(true);
+      })
+      .finally(() => setDigestLoading(false));
+  };
+
+  useEffect(() => {
+    void loadDigest();
+  }, []);
 
   function invoiceStatusLabel(status: string): string {
     const key = `invoices.status.${status}` as const;
@@ -194,6 +242,71 @@ export function CoachDeskPage() {
           tone="error"
         />
       </Box>
+
+      <Card
+        variant="outlined"
+        sx={{
+          p: 2,
+          borderRadius: 2,
+          mb: { xs: 2, md: 3 },
+        }}
+      >
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} justifyContent="space-between" alignItems={{ sm: "center" }}>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <AutoAwesomeIcon color="primary" fontSize="small" />
+            <Typography sx={{ fontSize: 14, fontWeight: 600 }}>
+              {digest?.headline || t("coachDesk.aiDigest.title")}
+            </Typography>
+          </Stack>
+          <Button
+            size="small"
+            variant="outlined"
+            startIcon={<RefreshIcon fontSize="small" />}
+            onClick={() => {
+              void loadDigest();
+            }}
+            disabled={digestLoading}
+          >
+            {digestLoading ? t("coachDesk.aiDigest.refreshing") : t("coachDesk.aiDigest.refresh")}
+          </Button>
+        </Stack>
+        {digestError ? (
+          <Alert severity="warning" sx={{ mt: 1.5, borderRadius: 2 }}>
+            {t("coachDesk.aiDigest.error")}
+          </Alert>
+        ) : digestLoading && !digest ? (
+          <Stack spacing={1.25} sx={{ mt: 1.5 }}>
+            <Skeleton variant="text" width="70%" />
+            <Skeleton variant="text" width="100%" />
+          </Stack>
+        ) : digest ? (
+          <Stack spacing={1} sx={{ mt: 1.5 }}>
+            <Typography variant="body2" color="text.secondary">
+              {digest.summary}
+            </Typography>
+            {digest.priority_items?.slice(0, 2).map((item, index) => (
+              <Typography key={`p-${index}`} variant="body2">
+                <Box component="span" sx={{ color: "error.main", fontWeight: 700, mr: 0.75 }}>
+                  •
+                </Box>
+                {item.title}
+              </Typography>
+            ))}
+            {digest.watch_items?.slice(0, 2).map((item, index) => (
+              <Typography key={`w-${index}`} variant="body2" color="text.secondary">
+                <Box component="span" sx={{ color: "text.secondary", fontWeight: 700, mr: 0.75 }}>
+                  •
+                </Box>
+                {item.title}
+              </Typography>
+            ))}
+          </Stack>
+        ) : (
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5 }}>
+            {t("coachDesk.aiDigest.empty")}
+          </Typography>
+        )}
+      </Card>
 
       <Card
         variant="outlined"

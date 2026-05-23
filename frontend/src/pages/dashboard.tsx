@@ -1,9 +1,11 @@
 import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
+import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import BookIcon from "@mui/icons-material/Book";
 import FitnessCenterIcon from "@mui/icons-material/FitnessCenter";
 import FormatListBulletedIcon from "@mui/icons-material/FormatListBulleted";
 import GroupsIcon from "@mui/icons-material/Groups";
 import PersonIcon from "@mui/icons-material/Person";
+import RefreshIcon from "@mui/icons-material/Refresh";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
@@ -56,6 +58,21 @@ type Summary = {
 };
 
 type MeWithInsights = Me & { insights?: Summary | null };
+type DigestSeverity = "high" | "medium" | "low";
+type DigestItem = {
+  title: string;
+  reason: string;
+  severity: DigestSeverity;
+  action?: { label: string; path: string } | null;
+};
+type DashboardDigest = {
+  generated_at: string;
+  headline: string;
+  summary: string;
+  priority_items: DigestItem[];
+  watch_items: DigestItem[];
+  model_used: string;
+};
 
 function formatMoney(amount: string | number | undefined, currency = "USD", locale?: string): string {
   if (amount == null) return "—";
@@ -252,12 +269,15 @@ export function DashboardPage() {
   const [summary, setSummary] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
+  const [digest, setDigest] = useState<DashboardDigest | null>(null);
+  const [digestLoading, setDigestLoading] = useState(false);
+  const [digestError, setDigestError] = useState(false);
   const loc = i18n.language;
 
-  useEffect(() => {
+  const loadSummary = () => {
     setLoading(true);
     setLoadError(false);
-    void fetch(`${apiPrefix}/me?insights=true`, { headers: authHeaders() })
+    return fetch(`${apiPrefix}/me?insights=true`, { headers: authHeaders() })
       .then(async (r) => {
         if (!r.ok) throw new Error(await r.text());
         return r.json() as Promise<MeWithInsights>;
@@ -278,6 +298,33 @@ export function DashboardPage() {
         setLoadError(true);
       })
       .finally(() => setLoading(false));
+  };
+
+  const loadDigest = () => {
+    setDigestLoading(true);
+    setDigestError(false);
+    return fetch(`${apiPrefix}/dashboard/ai-digest`, {
+      method: "POST",
+      headers: authHeaders(),
+    })
+      .then(async (r) => {
+        if (!r.ok) throw new Error(await r.text());
+        return r.json() as Promise<DashboardDigest>;
+      })
+      .then((data) => {
+        setDigest(data);
+        setDigestError(false);
+      })
+      .catch(() => {
+        setDigest(null);
+        setDigestError(true);
+      })
+      .finally(() => setDigestLoading(false));
+  };
+
+  useEffect(() => {
+    void loadSummary();
+    void loadDigest();
   }, []);
 
   const iconInTile = { fontSize: 22 };
@@ -396,6 +443,105 @@ export function DashboardPage() {
             </Grid>
           </Grid>
         )}
+      </DashboardSection>
+
+      <DashboardSection title={t("dashboard.aiDigest.title")}>
+        <Box sx={{ borderRadius: 2, bgcolor: "background.paper", p: 2 }}>
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems={{ sm: "center" }} justifyContent="space-between">
+            <Stack direction="row" spacing={1} alignItems="center">
+              <AutoAwesomeIcon color="primary" fontSize="small" />
+              <Typography variant="subtitle1" fontWeight={700}>
+                {digest?.headline || t("dashboard.aiDigest.title")}
+              </Typography>
+            </Stack>
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<RefreshIcon fontSize="small" />}
+              onClick={() => {
+                void loadDigest();
+              }}
+              disabled={digestLoading}
+            >
+              {digestLoading ? t("dashboard.aiDigest.refreshing") : t("dashboard.aiDigest.refresh")}
+            </Button>
+          </Stack>
+          {digestError ? (
+            <Alert severity="warning" sx={{ mt: 1.5, borderRadius: 2 }}>
+              {t("dashboard.aiDigest.error")}
+            </Alert>
+          ) : digestLoading && !digest ? (
+            <Stack spacing={1.25} sx={{ mt: 1.5 }}>
+              <Skeleton variant="text" width="70%" />
+              <Skeleton variant="text" width="100%" />
+              <Skeleton variant="text" width="90%" />
+            </Stack>
+          ) : digest ? (
+            <Stack spacing={1.25} sx={{ mt: 1.5 }}>
+              <Typography variant="body2" color="text.secondary">
+                {digest.summary}
+              </Typography>
+              {(digest.priority_items?.length ?? 0) > 0 ? (
+                <Stack spacing={1}>
+                  <Typography variant="caption" sx={{ textTransform: "uppercase", letterSpacing: "0.04em" }} color="text.secondary">
+                    {t("dashboard.aiDigest.priority")}
+                  </Typography>
+                  {digest.priority_items.map((item, index) => (
+                    <Stack key={`p-${index}`} direction="row" spacing={1} alignItems="flex-start">
+                      <Typography variant="body2" color="error.main" fontWeight={700}>
+                        •
+                      </Typography>
+                      <Box sx={{ minWidth: 0 }}>
+                        <Typography variant="body2" fontWeight={600}>
+                          {item.title}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {item.reason}
+                        </Typography>
+                        {item.action ? (
+                          <Button component={Link} to={item.action.path} size="small" variant="text" sx={{ p: 0, minWidth: 0, mt: 0.5 }}>
+                            {item.action.label}
+                          </Button>
+                        ) : null}
+                      </Box>
+                    </Stack>
+                  ))}
+                </Stack>
+              ) : null}
+              {(digest.watch_items?.length ?? 0) > 0 ? (
+                <Stack spacing={1}>
+                  <Typography variant="caption" sx={{ textTransform: "uppercase", letterSpacing: "0.04em" }} color="text.secondary">
+                    {t("dashboard.aiDigest.watch")}
+                  </Typography>
+                  {digest.watch_items.map((item, index) => (
+                    <Stack key={`w-${index}`} direction="row" spacing={1} alignItems="flex-start">
+                      <Typography variant="body2" color="text.secondary" fontWeight={700}>
+                        •
+                      </Typography>
+                      <Box sx={{ minWidth: 0 }}>
+                        <Typography variant="body2" fontWeight={600}>
+                          {item.title}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {item.reason}
+                        </Typography>
+                        {item.action ? (
+                          <Button component={Link} to={item.action.path} size="small" variant="text" sx={{ p: 0, minWidth: 0, mt: 0.5 }}>
+                            {item.action.label}
+                          </Button>
+                        ) : null}
+                      </Box>
+                    </Stack>
+                  ))}
+                </Stack>
+              ) : null}
+            </Stack>
+          ) : (
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5 }}>
+              {t("dashboard.aiDigest.empty")}
+            </Typography>
+          )}
+        </Box>
       </DashboardSection>
 
       {!loading && summary ? (
