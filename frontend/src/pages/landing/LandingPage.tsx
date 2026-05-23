@@ -253,21 +253,24 @@ export function LandingPage() {
             <Stack direction="row" alignItems="center" spacing={{ xs: 0.5, sm: 1 }} sx={{ flexShrink: 0 }}>
               <ThemeSwitcher />
               <LanguageSwitcher />
-              <Button component="a" href="#features" size="small" sx={{ display: { xs: "none", sm: "inline-flex" } }}>
-                {t("landing.navFeatures")}
-              </Button>
-              <Button component={RouterLink} to="/client/login" size="small" variant="outlined">
-                {t("landing.navClient")}
-              </Button>
               {isCoachLoggedIn ? (
-                <Button component={RouterLink} to="/desk" size="small" variant="contained">
+                <Button component={RouterLink} to="/desk" size="small" variant="contained" sx={{ ml: { sm: 0.5 } }}>
                   {t("landing.navDashboard")}
                 </Button>
               ) : (
-                <Button component={RouterLink} to="/login" size="small" variant="contained">
+                <Button component={RouterLink} to="/login" size="small" variant="contained" sx={{ ml: { sm: 0.5 } }}>
                   {t("landing.navCoach")}
                 </Button>
               )}
+              <Button
+                component={RouterLink}
+                to="/client/login"
+                size="small"
+                variant="text"
+                sx={{ display: { xs: "none", md: "inline-flex" }, minWidth: 0 }}
+              >
+                {t("landing.navClient")}
+              </Button>
             </Stack>
           </Stack>
         </Container>

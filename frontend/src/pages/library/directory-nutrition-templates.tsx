@@ -12,6 +12,7 @@ import { Link } from "react-router-dom";
 
 import { useAppMessage } from "../../lib/useAppMessage";
 import { apiPrefix, authHeaders } from "../../lib/api";
+import { LibrarySectionNav } from "../../components/layout/LibrarySectionNav";
 
 export function DirectoryNutritionTemplatesPage() {
   const { t } = useTranslation();
@@ -66,6 +67,7 @@ export function DirectoryNutritionTemplatesPage() {
   return (
     <List title={t("library.nutritionTemplatesTitle")} breadcrumb={false}>
       <Stack spacing={2} sx={{ width: "100%" }}>
+        <LibrarySectionNav />
         <Typography variant="body2" color="text.secondary">
           {t("library.nutritionCatalogIntro")}
         </Typography>

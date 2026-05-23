@@ -184,47 +184,49 @@ export function ClientHomePage() {
 
       <Card variant="outlined">
         <CardContent>
-          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
-            <Typography variant="h6">{t("clientPortal.myPlan")}</Typography>
-            <Button component={RouterLink} to="/client/plans/workout" size="small" endIcon={<ArrowForwardIcon />}>
-              {t("clientPortal.viewWorkout")}
-            </Button>
-          </Stack>
+          <Typography variant="h6" sx={{ mb: 1 }}>
+            {t("clientPortal.myPlan")}
+          </Typography>
           {!hasWorkout && !hasDiet ? (
             <Typography variant="body2" color="text.secondary">
               {t("clientPortal.noPlanYet")}
             </Typography>
           ) : (
-            <Stack spacing={1}>
-              {hasWorkout ? (
-                <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ sm: "center" }}>
-                  <Typography variant="body2">{t("clientPortal.workoutReady")}</Typography>
-                  <Button component={RouterLink} to="/client/training/log" size="small" variant="contained">
+            <Stack spacing={1.5}>
+              <Typography variant="body2" color="text.secondary">
+                {hasWorkout ? t("clientPortal.workoutReady") : t("clientPortal.mealsAssigned", { count: plan.diet_meals?.length ?? 0 })}
+              </Typography>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                <Button component={RouterLink} to="/client/plans/workout" size="small" variant="contained" endIcon={<ArrowForwardIcon />}>
+                  {t("clientPortal.openPlans")}
+                </Button>
+                {hasWorkout ? (
+                  <Button component={RouterLink} to="/client/training/log" size="small" variant="text">
                     {t("clientPortal.logWorkout")}
                   </Button>
-                </Stack>
-              ) : null}
-              {hasDiet ? (
-                <Button component={RouterLink} to="/client/plans/nutrition" size="small" sx={{ alignSelf: "flex-start" }}>
-                  {t("clientPortal.viewNutrition")}
-                </Button>
-              ) : null}
+                ) : null}
+              </Stack>
             </Stack>
           )}
         </CardContent>
       </Card>
 
-      <Card variant="outlined">
+      <Card
+        variant="outlined"
+        component={RouterLink}
+        to="/client/messages"
+        sx={{ textDecoration: "none", color: "inherit", transition: "border-color 0.2s", "&:hover": { borderColor: "primary.main" } }}
+      >
         <CardContent>
-          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
-            <Typography variant="h6">{t("clientPortal.messagesTitle")}</Typography>
-            <Button component={RouterLink} to="/client/messages" size="small" endIcon={<ArrowForwardIcon />}>
-              {t("clientPortal.openMessages")}
-            </Button>
+          <Stack direction="row" justifyContent="space-between" alignItems="center">
+            <Box>
+              <Typography variant="h6">{t("clientPortal.messagesTitle")}</Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                {t("clientPortal.messagesTeaser")}
+              </Typography>
+            </Box>
+            <ArrowForwardIcon fontSize="small" color="action" />
           </Stack>
-          <Typography variant="body2" color="text.secondary">
-            {t("clientPortal.messagesTeaser")}
-          </Typography>
         </CardContent>
       </Card>
 

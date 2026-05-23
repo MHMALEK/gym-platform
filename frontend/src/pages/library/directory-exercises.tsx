@@ -16,6 +16,7 @@ import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
 import { CopyExerciseButton, ExerciseLibraryCards } from "../../components/ExerciseLibraryCards";
+import { LibrarySectionNav } from "../../components/layout/LibrarySectionNav";
 import { useAppMessage } from "../../lib/useAppMessage";
 import { apiPrefix, authHeaders } from "../../lib/api";
 import type { ExerciseRecord } from "../../types/exercise";
@@ -87,6 +88,7 @@ export function DirectoryExercisesPage() {
   return (
     <List title={t("library.exercisesTitle")} breadcrumb={false}>
       <Stack spacing={2} sx={{ width: "100%" }}>
+        <LibrarySectionNav />
         <Alert severity="info">
           <AlertTitle>{t("library.catalogIntroTitle")}</AlertTitle>
           {t("library.catalogIntroBody")}

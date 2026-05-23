@@ -7,7 +7,7 @@ import IconButton from "@mui/material/IconButton";
 import Paper from "@mui/material/Paper";
 import Toolbar from "@mui/material/Toolbar";
 import Typography from "@mui/material/Typography";
-import { Apple, Dumbbell, FileText, Home, MessageCircle } from "lucide-react";
+import { ClipboardList, FileText, Home, MessageCircle } from "lucide-react";
 import { useLogout } from "@refinedev/core";
 import { type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
@@ -25,8 +25,7 @@ function ClientShellInner({ children }: { children?: ReactNode }) {
   const navValue = (() => {
     const p = location.pathname;
     if (p.startsWith("/client/messages")) return "messages";
-    if (p.startsWith("/client/plans/workout")) return "workout";
-    if (p.startsWith("/client/plans/nutrition")) return "nutrition";
+    if (p.startsWith("/client/plans")) return "plans";
     if (p.startsWith("/client/invoices")) return "invoices";
     return "home";
   })();
@@ -63,8 +62,7 @@ function ClientShellInner({ children }: { children?: ReactNode }) {
           onChange={(_, value: string) => {
             if (value === "home") navigate("/client");
             if (value === "messages") navigate("/client/messages");
-            if (value === "workout") navigate("/client/plans/workout");
-            if (value === "nutrition") navigate("/client/plans/nutrition");
+            if (value === "plans") navigate("/client/plans/workout");
             if (value === "invoices") navigate("/client/invoices");
           }}
         >
@@ -74,19 +72,14 @@ function ClientShellInner({ children }: { children?: ReactNode }) {
             icon={<Home size={20} strokeWidth={2} />}
           />
           <BottomNavigationAction
+            label={t("clientPortal.nav.plans")}
+            value="plans"
+            icon={<ClipboardList size={20} strokeWidth={2} />}
+          />
+          <BottomNavigationAction
             label={t("clientPortal.nav.messages")}
             value="messages"
             icon={<MessageCircle size={20} strokeWidth={2} />}
-          />
-          <BottomNavigationAction
-            label={t("clientPortal.nav.workout")}
-            value="workout"
-            icon={<Dumbbell size={20} strokeWidth={2} />}
-          />
-          <BottomNavigationAction
-            label={t("clientPortal.nav.nutrition")}
-            value="nutrition"
-            icon={<Apple size={20} strokeWidth={2} />}
           />
           <BottomNavigationAction
             label={t("clientPortal.nav.invoices")}

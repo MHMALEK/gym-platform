@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 
 import { useAppMessage } from "../../lib/useAppMessage";
 import { apiPrefix, authHeaders } from "../../lib/api";
+import { LibrarySectionNav } from "../../components/layout/LibrarySectionNav";
 
 export function DirectoryTrainingPlansPage() {
   const { t } = useTranslation();
@@ -48,6 +49,7 @@ export function DirectoryTrainingPlansPage() {
 
   return (
     <List title={t("library.plansTitle")} breadcrumb={false}>
+      <LibrarySectionNav />
       <Box sx={{ width: "100%" }}>
         <DataGrid
           {...dataGridProps}

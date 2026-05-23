@@ -183,30 +183,18 @@ export function CoachDeskPage() {
         title={t("coachDesk.title")}
         subtitle={t("coachDesk.subtitle")}
         actions={
-          <>
-            <Button
-              component={Link}
-              to="/clients"
-              size="small"
-              variant="text"
-              endIcon={<ArrowForwardIcon fontSize="small" />}
-              sx={{ color: "text.secondary" }}
-            >
-              {t("coachDesk.viewClients")}
-            </Button>
-            <Button
-              component={Link}
-              to="/clients/create"
-              size="small"
-              variant="contained"
-              startIcon={<AddIcon fontSize="small" />}
-              disableElevation
-            >
-              {t("clients.addClient") !== "clients.addClient"
-                ? t("clients.addClient")
-                : "New client"}
-            </Button>
-          </>
+          <Button
+            component={Link}
+            to="/clients/create"
+            size="small"
+            variant="contained"
+            startIcon={<AddIcon fontSize="small" />}
+            disableElevation
+          >
+            {t("clients.addClient") !== "clients.addClient"
+              ? t("clients.addClient")
+              : "New client"}
+          </Button>
         }
       />
 

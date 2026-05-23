@@ -73,6 +73,7 @@ import { ClientInvoiceShowPage } from "./pages/client/invoices/show";
 import { ClientMessagesPage } from "./pages/client/messages";
 import { ClientLoginPage } from "./pages/client/login";
 import { ClientNutritionPlanPage } from "./pages/client/plans/nutrition";
+import { ClientPlansLayout } from "./pages/client/plans/index";
 import { ClientWorkoutPlanPage } from "./pages/client/plans/workout";
 import { ClientTrainingHistoryPage } from "./pages/client/training/history";
 import { ClientTrainingLogPage } from "./pages/client/training/log";
@@ -161,8 +162,11 @@ function ClientApp() {
         >
           <Route index element={<ClientHomePage />} />
           <Route path="messages" element={<ClientMessagesPage />} />
-          <Route path="plans/workout" element={<ClientWorkoutPlanPage />} />
-          <Route path="plans/nutrition" element={<ClientNutritionPlanPage />} />
+          <Route path="plans" element={<ClientPlansLayout />}>
+            <Route index element={<Navigate to="workout" replace />} />
+            <Route path="workout" element={<ClientWorkoutPlanPage />} />
+            <Route path="nutrition" element={<ClientNutritionPlanPage />} />
+          </Route>
           <Route path="training/log" element={<ClientTrainingLogPage />} />
           <Route path="training/history" element={<ClientTrainingHistoryPage />} />
           <Route path="training/:id" element={<ClientTrainingSessionPage />} />
@@ -196,7 +200,7 @@ function CoachApp() {
       {
         name: "coach-assistant",
         list: "/assistant",
-        meta: { label: t("nav.coachAssistant"), icon: <MessageCircle size={18} strokeWidth={2} /> },
+        meta: { label: t("nav.coachAssistant"), icon: <MessageCircle size={18} strokeWidth={2} />, hide: true },
       },
       {
         name: "client-messages",
@@ -253,27 +257,27 @@ function CoachApp() {
       {
         name: "directory-exercises",
         list: "/library/exercises",
-        meta: { label: t("nav.libraryExercises"), icon: <Library size={18} strokeWidth={2} /> },
+        meta: { label: t("nav.library"), icon: <Library size={18} strokeWidth={2} /> },
       },
       {
         name: "directory-training-plans",
         list: "/library/training-plans",
-        meta: { label: t("nav.libraryPlans"), icon: <Library size={18} strokeWidth={2} /> },
+        meta: { label: t("nav.libraryPlans"), icon: <Library size={18} strokeWidth={2} />, hide: true },
       },
       {
         name: "directory-nutrition-templates",
         list: "/library/nutrition-templates",
-        meta: { label: t("nav.libraryNutritionTemplates"), icon: <Library size={18} strokeWidth={2} /> },
+        meta: { label: t("nav.libraryNutritionTemplates"), icon: <Library size={18} strokeWidth={2} />, hide: true },
       },
       {
         name: "branding",
         list: "/settings/branding",
-        meta: { label: t("nav.branding"), icon: <Palette size={18} strokeWidth={2} /> },
+        meta: { label: t("nav.settings"), icon: <Palette size={18} strokeWidth={2} /> },
       },
       {
         name: "integrations",
         list: "/settings/integrations",
-        meta: { label: t("nav.integrations"), icon: <Plug size={18} strokeWidth={2} /> },
+        meta: { label: t("nav.integrations"), icon: <Plug size={18} strokeWidth={2} />, hide: true },
       },
     ],
     [t, i18n.language],

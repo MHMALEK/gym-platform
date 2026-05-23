@@ -1,16 +1,14 @@
 import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
 import Divider from "@mui/material/Divider";
 import Drawer from "@mui/material/Drawer";
 import IconButton from "@mui/material/IconButton";
 import Stack from "@mui/material/Stack";
-import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { useTheme } from "@mui/material/styles";
 import useMediaQuery from "@mui/material/useMediaQuery";
-import { useLogout, useMenu } from "@refinedev/core";
-import { LogOut, Menu as MenuIcon } from "lucide-react";
+import { useMenu } from "@refinedev/core";
+import { Menu as MenuIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -19,8 +17,7 @@ import { Link, useLocation } from "react-router-dom";
 import { useCoachBranding } from "../../contexts/CoachBrandingContext";
 import { mediaSrc } from "../../lib/exerciseMediaApi";
 import { BrandMark } from "../BrandMark";
-import { LanguageSwitcher } from "../LanguageSwitcher";
-import { ThemeSwitcher } from "../ThemeSwitcher";
+import { SidebarPreferences } from "./SidebarPreferences";
 
 const SIDEBAR_WIDTH = 264;
 
@@ -113,9 +110,9 @@ type NavGroup = { id: string; labelKey: string; items: string[] };
 
 const NAV_GROUPS: NavGroup[] = [
   {
-    id: "workspace",
-    labelKey: "nav.groupWorkspace",
-    items: ["coach-desk", "dashboard", "coach-assistant"],
+    id: "overview",
+    labelKey: "nav.groupOverview",
+    items: ["coach-desk", "dashboard"],
   },
   {
     id: "clients",
@@ -125,21 +122,12 @@ const NAV_GROUPS: NavGroup[] = [
   {
     id: "programs",
     labelKey: "nav.groupPrograms",
-    items: ["training-plans", "plan-templates", "exercises", "nutrition-templates"],
+    items: ["training-plans", "nutrition-templates", "exercises", "plan-templates"],
   },
   {
-    id: "library",
-    labelKey: "nav.groupLibrary",
-    items: [
-      "directory-exercises",
-      "directory-training-plans",
-      "directory-nutrition-templates",
-    ],
-  },
-  {
-    id: "settings",
-    labelKey: "nav.groupSettings",
-    items: ["branding"],
+    id: "more",
+    labelKey: "nav.groupMore",
+    items: ["directory-exercises", "branding"],
   },
 ];
 
@@ -147,21 +135,23 @@ function SidebarContent() {
   const { t } = useTranslation();
   const { branding } = useCoachBranding();
   const { menuItems, selectedKey } = useMenu();
+  const location = useLocation();
 
   const displayName = branding.loading ? t("app.title") : branding.name || t("app.title");
 
-  /** Bucket menu items into known groups; unknown ones land in "Other" so nothing disappears. */
+  /** Bucket menu items into known groups; skip hidden items and unknown ones land in "Other". */
   const grouped = useMemo(() => {
+    const visible = menuItems.filter((m) => !m.meta?.hide);
     const known = new Set<string>();
     const groups = NAV_GROUPS.map((g) => {
       const items = g.items
-        .map((name) => menuItems.find((m) => m.name === name))
+        .map((name) => visible.find((m) => m.name === name))
         .filter((m): m is NonNullable<typeof m> => Boolean(m));
       items.forEach((m) => known.add(m.name));
       return { ...g, resolved: items };
     }).filter((g) => g.resolved.length > 0);
 
-    const others = menuItems.filter((m) => !known.has(m.name));
+    const others = visible.filter((m) => !known.has(m.name));
     if (others.length > 0) {
       groups.push({
         id: "other",
@@ -258,10 +248,14 @@ function SidebarContent() {
                 {group.resolved.map((item) => (
                   <NavItem
                     key={item.key ?? item.name}
-                    to={item.route ?? "/"}
+                    to={item.route ?? "/desk"}
                     label={(item.label as string) ?? item.name}
                     icon={item.icon as ReactNode}
-                    active={selectedKey === item.key}
+                    active={
+                      selectedKey === item.key ||
+                      (item.name === "directory-exercises" && location.pathname.startsWith("/library")) ||
+                      (item.name === "branding" && location.pathname.startsWith("/settings"))
+                    }
                   />
                 ))}
               </Stack>
@@ -359,40 +353,9 @@ function NavItem({
 }
 
 function SidebarFooter() {
-  const { t } = useTranslation();
-  const { mutate: logout } = useLogout();
-  const logoutLabel = t("auth.logout") !== "auth.logout" ? t("auth.logout") : "Sign out";
-
   return (
-    <Stack
-      direction="row"
-      alignItems="center"
-      spacing={1}
-      sx={{ px: 1.5, py: 1.25, minHeight: 48 }}
-    >
-      <Tooltip title={logoutLabel} placement="top">
-        <Button
-          size="small"
-          onClick={() => logout()}
-          startIcon={<LogOut size={15} strokeWidth={2} />}
-          sx={{
-            color: "text.secondary",
-            fontWeight: 500,
-            textTransform: "none",
-            minWidth: 0,
-            px: 1,
-            flex: 1,
-            justifyContent: "flex-start",
-            "&:hover": { color: "text.primary", bgcolor: "action.hover" },
-          }}
-        >
-          {logoutLabel}
-        </Button>
-      </Tooltip>
-      <Box sx={{ flexShrink: 0 }}>
-        <LanguageSwitcher />
-      </Box>
-      <ThemeSwitcher />
+    <Stack direction="row" alignItems="center" justifyContent="flex-end" sx={{ px: 1.5, py: 1.25, minHeight: 48 }}>
+      <SidebarPreferences />
     </Stack>
   );
 }
