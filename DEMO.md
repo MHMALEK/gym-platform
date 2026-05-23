@@ -23,6 +23,37 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 Confirm: `http://localhost:8000/docs` loads.
 
+### Load demo data (recommended)
+
+After coach dev login once (`POST /auth/bootstrap`), load a full demo workspace:
+
+**CLI:**
+
+```bash
+cd backend
+source .venv/bin/activate
+python scripts/seed_demo.py
+```
+
+**API** (coach auth, `DEV_BYPASS_AUTH=true`):
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/v1/demo/seed -H "Authorization: Bearer dev"
+```
+
+**Web UI:** Settings → Branding → **Load demo workspace** (dev mode only).
+
+This creates:
+
+- 3 clients (including dev client **Sara Demo** for `dev-client` login)
+- Copied starter workout + nutrition plans, assigned to Sara
+- Membership product with discount (promotions)
+- Pending + overdue invoices (reminders)
+- Coach/client chat messages
+- One completed training log session
+
+Reset without re-seeding: `python scripts/seed_demo.py --reset-only` or `POST /api/v1/demo/reset`.
+
 ### Frontend (coach + client web)
 
 ```bash
@@ -56,6 +87,7 @@ Set `EXPO_PUBLIC_API_URL` per target:
 |-------|-------------------|
 | Backend dev auth | `DEV_BYPASS_AUTH=true` in `backend/.env` |
 | Migrations applied | `alembic upgrade head` (includes `client_workout_sessions`) |
+| Demo data loaded | `python scripts/seed_demo.py` or Settings → Branding → Load demo |
 | Coach web dev auth | `VITE_DEV_AUTH=true` in `frontend/.env.development` |
 | Client mobile dev auth | `EXPO_PUBLIC_DEV_AUTH=true` in `client-mobile/.env` |
 | Client invite code | Copy from **Settings → Branding** after coach bootstrap |
@@ -75,11 +107,11 @@ Set `EXPO_PUBLIC_API_URL` per target:
 ### Act 1 — Coach bootstraps (4 min)
 
 1. Open `http://localhost:5173/login` → **Continue (dev login)**.
-2. **Settings → Branding** — set coach name/colors; **copy invite code** (needed for client login).
-3. **Library → Catalog training plans** — copy **Starter full body** to your library.
-4. **Library → Catalog nutrition templates** — copy one template.
-5. **Plan templates → Create** — add a membership (e.g. “12-week coaching”, price + optional discount). This powers **Promotions** on the client home.
-6. **Clients → Create** (wizard) — create “Demo Client”, assign copied training + nutrition plans on the last step.
+2. **Settings → Branding** → **Load demo workspace** (or run `python scripts/seed_demo.py` first).
+3. Copy **invite code** from the same page (needed for first client mobile login).
+4. Optional tweaks: branding colors, or add another client from **Clients → Create**.
+
+Skip manual library copy / client wizard if demo seed was loaded.
 
 ### Act 2 — Billing & messaging (3 min)
 

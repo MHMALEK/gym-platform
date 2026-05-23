@@ -151,7 +151,7 @@ After `alembic upgrade head`, migrations seed:
 - **Starter full body** training plan (copy from Library → Catalog training plans)
 - Nutrition templates (copy from Library → Catalog nutrition templates)
 
-Business data (clients, invoices, memberships) is **not** seeded — create manually or follow [`DEMO.md`](DEMO.md).
+Business data (clients, invoices, memberships) is **not** seeded by migrations — run **`python scripts/seed_demo.py`** or use **Settings → Branding → Load demo workspace** in dev mode.
 
 ## Docs index
 

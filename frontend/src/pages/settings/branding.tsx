@@ -1,5 +1,6 @@
 import SaveIcon from "@mui/icons-material/Save";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
+import Link from "@mui/material/Link";
 import LoadingButton from "@mui/lab/LoadingButton";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -12,12 +13,16 @@ import Typography from "@mui/material/Typography";
 import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
+import { Link as RouterLink } from "react-router-dom";
 
 import { useCoachBranding } from "../../contexts/CoachBrandingContext";
 import { apiPrefix, authHeaders } from "../../lib/api";
+import { apiDemoReset, apiDemoSeed } from "../../lib/demoApi";
 import { patchCoachProfile } from "../../lib/coachProfileApi";
 import { mediaSrc, uploadMediaFile } from "../../lib/exerciseMediaApi";
 import { useAppMessage } from "../../lib/useAppMessage";
+
+const devAuth = import.meta.env.VITE_DEV_AUTH === "true";
 
 type BrandForm = {
   name: string;
@@ -35,6 +40,7 @@ export function BrandingSettingsPage() {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [inviteCode, setInviteCode] = useState<string | null>(null);
+  const [demoBusy, setDemoBusy] = useState<"seed" | "reset" | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const primaryColor = watch("primary_color");
 
@@ -129,14 +135,86 @@ export function BrandingSettingsPage() {
 
   const colorValue = primaryColor?.startsWith("#") ? primaryColor : primaryColor ? `#${primaryColor}` : "#22c55e";
 
+  const onDemoSeed = async () => {
+    setDemoBusy("seed");
+    try {
+      const summary = await apiDemoSeed();
+      message.success(
+        t("demo.seedSuccess", {
+          clients: summary.clients,
+          invoices: summary.invoices,
+        }),
+      );
+      const res = await fetch(`${apiPrefix}/me`, { headers: authHeaders() });
+      if (res.ok) {
+        const data = (await res.json()) as { invite_code?: string | null };
+        setInviteCode(data.invite_code ?? null);
+      }
+    } catch (e: unknown) {
+      message.error(e instanceof Error ? e.message : String(e));
+    } finally {
+      setDemoBusy(null);
+    }
+  };
+
+  const onDemoReset = async () => {
+    setDemoBusy("reset");
+    try {
+      await apiDemoReset();
+      message.success(t("demo.resetSuccess"));
+    } catch (e: unknown) {
+      message.error(e instanceof Error ? e.message : String(e));
+    } finally {
+      setDemoBusy(null);
+    }
+  };
+
   return (
     <Box sx={{ maxWidth: 640, mx: "auto", py: 2, px: 3, pb: 6 }}>
-      <Typography variant="h5" sx={{ mb: 1 }}>
-        {t("branding.title")}
-      </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        {t("branding.subtitle")}
-      </Typography>
+      <Stack direction="row" justifyContent="space-between" alignItems="flex-start" sx={{ mb: 3, gap: 2 }}>
+        <Box>
+          <Typography variant="h5" sx={{ mb: 1 }}>
+            {t("branding.title")}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            {t("branding.subtitle")}
+          </Typography>
+        </Box>
+        <Link component={RouterLink} to="/settings/integrations" variant="body2" sx={{ flexShrink: 0, pt: 0.5 }}>
+          {t("nav.integrations")} →
+        </Link>
+      </Stack>
+
+      {devAuth ? (
+        <Card variant="outlined" sx={{ mb: 3, bgcolor: "action.hover" }}>
+          <CardContent>
+            <Typography variant="subtitle1" gutterBottom>
+              {t("demo.title")}
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              {t("demo.subtitle")}
+            </Typography>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+              <LoadingButton
+                variant="contained"
+                loading={demoBusy === "seed"}
+                disabled={demoBusy !== null}
+                onClick={() => void onDemoSeed()}
+              >
+                {t("demo.loadDemo")}
+              </LoadingButton>
+              <Button
+                variant="outlined"
+                color="inherit"
+                disabled={demoBusy !== null}
+                onClick={() => void onDemoReset()}
+              >
+                {demoBusy === "reset" ? t("demo.resetting") : t("demo.resetDemo")}
+              </Button>
+            </Stack>
+          </CardContent>
+        </Card>
+      ) : null}
 
       {inviteCode ? (
         <Card variant="outlined" sx={{ mb: 3 }}>
