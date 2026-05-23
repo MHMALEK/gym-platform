@@ -1,15 +1,14 @@
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { HomeHero } from "@/components/home/HomeHero";
+import { Card } from "@/components/ui/Card";
+import { LoadingState } from "@/components/ui/LoadingState";
+import { QuickActionGrid, QuickActionTile } from "@/components/ui/QuickActionTile";
+import { Screen } from "@/components/ui/Screen";
+import { SectionHeader } from "@/components/ui/SectionHeader";
+import { colors, reminderSeverityStyle, spacing, typography } from "@/constants/theme";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   apiListClientInvoices,
@@ -21,11 +20,12 @@ import {
   type ClientPromotion,
   type ClientReminder,
 } from "@/lib/api";
+import { Badge } from "@/components/ui/Badge";
 
 function fmtDate(iso: string | null | undefined) {
   if (!iso) return "—";
   const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString();
+  return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
 export default function HomeScreen() {
@@ -58,148 +58,111 @@ export default function HomeScreen() {
     void load();
   }, [load]);
 
-  const onRefresh = () => {
-    setRefreshing(true);
-    void load();
-  };
+  if (loading && !me) return <LoadingState label="Loading your dashboard…" />;
+  if (!me) return <LoadingState label="Could not load profile" />;
 
-  if (loading && !me) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color="#16a34a" />
-      </View>
-    );
-  }
-
-  const plan = me?.coaching_plan;
+  const openInv = invoices.filter((x) => x.status === "pending" || x.status === "overdue");
+  const plan = me.coaching_plan;
   const hasWorkout =
     Boolean(plan?.workout_plan?.trim()) ||
     Boolean(plan?.workout_rich_html?.trim()) ||
     (plan?.workout_items?.length ?? 0) > 0;
   const hasDiet = Boolean(plan?.diet_plan?.trim()) || (plan?.diet_meals?.length ?? 0) > 0;
-  const openInv = invoices.filter((x) => x.status === "pending" || x.status === "overdue");
 
   return (
-    <ScrollView
-      contentContainerStyle={styles.scroll}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-    >
-      <Text style={styles.greeting}>Hi, {me?.name ?? "there"}</Text>
-      <Text style={styles.coach}>Coach: {me?.coach_name ?? "—"}</Text>
-      {me?.coach_tagline ? <Text style={styles.tagline}>{me.coach_tagline}</Text> : null}
+    <Screen refreshing={refreshing} onRefresh={() => { setRefreshing(true); void load(); }}>
+      <HomeHero me={me} openInvoiceCount={openInv.length} reminderCount={reminders.length} />
+
+      <QuickActionGrid>
+        <QuickActionTile icon="barbell-outline" label="Workout" subtitle={hasWorkout ? "View plan" : "Not assigned"} onPress={() => router.push("/(tabs)/plans")} />
+        <QuickActionTile icon="restaurant-outline" label="Nutrition" subtitle={hasDiet ? "View meals" : "Not assigned"} onPress={() => router.push("/(tabs)/plans")} accent={colors.warningBg} />
+        <QuickActionTile icon="chatbubble-ellipses-outline" label="Messages" subtitle="Chat with coach" onPress={() => router.push("/(tabs)/messages")} accent={colors.infoBg} />
+        <QuickActionTile icon="receipt-outline" label="Invoices" subtitle={openInv.length ? `${openInv.length} open` : "All paid"} onPress={() => router.push("/(tabs)/invoices")} />
+      </QuickActionGrid>
 
       {reminders.length > 0 ? (
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Reminders</Text>
-          {reminders.slice(0, 4).map((r) => (
-            <Pressable key={r.id} onPress={() => router.push(reminderRoute(r) as never)} style={styles.reminderRow}>
-              <Text style={[styles.reminderTitle, r.severity === "high" && styles.reminderHigh]}>{r.title}</Text>
-              <Text style={styles.muted}>{r.body}</Text>
+        <Card style={styles.section}>
+          <SectionHeader title="Reminders" icon="notifications-outline" actionLabel="See all" onAction={() => router.push("/(tabs)/invoices")} />
+          {reminders.slice(0, 3).map((r) => (
+            <Pressable
+              key={r.id}
+              onPress={() => router.push(reminderRoute(r) as never)}
+              style={[styles.reminderRow, reminderSeverityStyle(r.severity)]}
+            >
+              <Text style={styles.reminderTitle}>{r.title}</Text>
+              <Text style={styles.reminderBody}>{r.body}</Text>
             </Pressable>
           ))}
-        </View>
+        </Card>
       ) : null}
 
       {promotions.length > 0 ? (
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Promotions</Text>
+        <Card style={styles.section}>
+          <SectionHeader title="Offers" icon="pricetag-outline" actionLabel="View all" onAction={() => router.push("/(tabs)/promotions")} />
           {promotions.slice(0, 2).map((p) => (
             <Pressable key={p.id} onPress={() => router.push("/(tabs)/promotions")} style={styles.promoRow}>
-              <Text style={styles.promoTitle}>{p.title}</Text>
+              <View style={styles.promoLeft}>
+                <Text style={styles.promoTitle}>{p.title}</Text>
+                {p.savings_pct ? <Badge label={`Save ${p.savings_pct}%`} tone="success" /> : null}
+              </View>
               {p.discount_price != null ? (
                 <Text style={styles.promoPrice}>{formatPlanMoney(p.discount_price, p.currency)}</Text>
-              ) : p.price != null ? (
-                <Text style={styles.promoPrice}>{formatPlanMoney(p.price, p.currency)}</Text>
               ) : null}
             </Pressable>
           ))}
-          <Pressable onPress={() => router.push("/(tabs)/promotions")}>
-            <Text style={styles.link}>All promotions →</Text>
-          </Pressable>
-        </View>
+        </Card>
       ) : null}
 
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Your plan</Text>
-        {!hasWorkout && !hasDiet ? (
-          <Text style={styles.muted}>No workout or nutrition plan assigned yet.</Text>
-        ) : (
-          <>
-            {hasWorkout ? (
-              <Pressable onPress={() => router.push("/(tabs)/workout")}>
-                <Text style={styles.link}>View workout →</Text>
-              </Pressable>
-            ) : null}
-            {hasDiet ? (
-              <Pressable onPress={() => router.push("/(tabs)/nutrition")}>
-                <Text style={styles.link}>View nutrition →</Text>
-              </Pressable>
-            ) : null}
-          </>
-        )}
-      </View>
-
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Invoices</Text>
-        {openInv.length > 0 ? (
-          <Text style={styles.warn}>{openInv.length} need attention</Text>
-        ) : null}
+      <Card style={styles.section}>
+        <SectionHeader title="Recent invoices" icon="wallet-outline" actionLabel="All" onAction={() => router.push("/(tabs)/invoices")} />
         {invoices.length === 0 ? (
           <Text style={styles.muted}>No invoices yet.</Text>
         ) : (
           invoices.slice(0, 3).map((inv) => (
-            <Pressable key={inv.id} onPress={() => router.push(`/(tabs)/invoices/${inv.id}`)}>
-              <Text style={styles.invRow}>
-                {inv.reference ?? `#${inv.id}`} · {inv.status} · due {fmtDate(inv.due_date)}
-              </Text>
+            <Pressable key={inv.id} onPress={() => router.push(`/(tabs)/invoices/${inv.id}`)} style={styles.invRow}>
+              <View>
+                <Text style={styles.invRef}>{inv.reference ?? `#${inv.id}`}</Text>
+                <Text style={styles.invMeta}>Due {fmtDate(inv.due_date)}</Text>
+              </View>
+              <Badge label={inv.status} tone="invoice" status={inv.status} />
             </Pressable>
           ))
         )}
-        <Pressable onPress={() => router.push("/(tabs)/invoices")}>
-          <Text style={styles.link}>All invoices →</Text>
-        </Pressable>
-      </View>
-
-      <Pressable style={styles.card} onPress={() => router.push("/(tabs)/messages")}>
-        <Text style={styles.cardTitle}>Messages</Text>
-        <Text style={styles.link}>Chat with your coach →</Text>
-      </Pressable>
-    </ScrollView>
+      </Card>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  center: { flex: 1, alignItems: "center", justifyContent: "center" },
-  scroll: { padding: 16, paddingBottom: 32 },
-  greeting: { fontSize: 24, fontWeight: "700", marginBottom: 4 },
-  coach: { fontSize: 16, color: "#374151" },
-  tagline: { fontSize: 14, color: "#6b7280", marginTop: 4, marginBottom: 16 },
-  card: {
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    padding: 16,
-    marginTop: 14,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#e5e7eb",
-  },
-  cardTitle: { fontSize: 17, fontWeight: "600", marginBottom: 8 },
-  muted: { color: "#9ca3af", fontSize: 14 },
-  link: { color: "#16a34a", fontWeight: "600", marginTop: 6, fontSize: 15 },
-  warn: { color: "#b45309", marginBottom: 6, fontSize: 14 },
-  invRow: { fontSize: 14, color: "#374151", paddingVertical: 4 },
+  section: { marginTop: spacing.md },
   reminderRow: {
-    paddingVertical: 8,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#f3f4f6",
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
   },
-  reminderTitle: { fontSize: 14, fontWeight: "600", color: "#374151" },
-  reminderHigh: { color: "#b91c1c" },
+  reminderTitle: { ...typography.subtitle, fontSize: 15 },
+  reminderBody: { ...typography.caption, marginTop: 4, lineHeight: 18, color: colors.textSecondary },
   promoRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 6,
+    justifyContent: "space-between",
+    paddingVertical: spacing.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.borderLight,
   },
-  promoTitle: { fontSize: 14, fontWeight: "600", flex: 1, marginRight: 8 },
-  promoPrice: { fontSize: 14, fontWeight: "700", color: "#16a34a" },
+  promoLeft: { flex: 1, gap: spacing.xs },
+  promoTitle: { ...typography.subtitle, fontSize: 15 },
+  promoPrice: { fontSize: 16, fontWeight: "700", color: colors.primary },
+  invRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: spacing.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.borderLight,
+  },
+  invRef: { ...typography.subtitle, fontSize: 15 },
+  invMeta: { ...typography.caption, marginTop: 2 },
+  muted: { ...typography.bodySmall, color: colors.textMuted },
 });
