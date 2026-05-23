@@ -17,7 +17,9 @@ from app.services.client_chat import (
     list_messages,
 )
 from app.services.diet_meals_json import parse_diet_meals_raw
+from app.services.client_feed import build_client_promotions, build_client_reminders
 from app.services.invoice_pdf import render_invoice_pdf
+from app.schemas.client_feed import ClientPromotionListResponse, ClientReminderListResponse
 
 router = APIRouter(prefix="/client", tags=["client-portal"])
 
@@ -144,6 +146,18 @@ async def download_client_invoice_pdf(invoice_id: int, client: CurrentClient, db
         media_type="application/pdf",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+@router.get("/reminders", response_model=ClientReminderListResponse)
+async def list_client_reminders(client: CurrentClient, db: DbSession):
+    items = await build_client_reminders(db, client)
+    return ClientReminderListResponse(items=items)
+
+
+@router.get("/promotions", response_model=ClientPromotionListResponse)
+async def list_client_promotions(client: CurrentClient, db: DbSession):
+    items = await build_client_promotions(db, client)
+    return ClientPromotionListResponse(items=items)
 
 
 @router.get("/messages", response_model=ChatMessageListResponse)
