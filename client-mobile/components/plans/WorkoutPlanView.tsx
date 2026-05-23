@@ -1,5 +1,7 @@
+import { useRouter } from "expo-router";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 
+import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { colors, radii, spacing, typography } from "@/constants/theme";
 import type { ClientCoachingPlan } from "@/lib/api";
@@ -13,6 +15,8 @@ type Props = {
 };
 
 export function WorkoutPlanView({ plan }: Props) {
+  const router = useRouter();
+
   if (!plan) {
     return <EmptyState icon="barbell-outline" title="Loading plan…" />;
   }
@@ -37,6 +41,16 @@ export function WorkoutPlanView({ plan }: Props) {
 
   return (
     <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <View style={styles.actions}>
+        <Button label="Log workout" onPress={() => router.push("/(tabs)/plans/log")} style={styles.actionBtn} />
+        <Button
+          label="History"
+          variant="secondary"
+          onPress={() => router.push("/(tabs)/plans/history")}
+          style={styles.actionBtn}
+        />
+      </View>
+
       <View style={styles.venuePill}>
         <Text style={styles.venueText}>{plan.program_venue.replace(/_/g, " ")}</Text>
       </View>
@@ -63,6 +77,8 @@ export function WorkoutPlanView({ plan }: Props) {
 
 const styles = StyleSheet.create({
   scroll: { padding: spacing.md, paddingBottom: spacing.xxl },
+  actions: { flexDirection: "row", gap: spacing.sm, marginBottom: spacing.md },
+  actionBtn: { flex: 1 },
   venuePill: {
     alignSelf: "flex-start",
     backgroundColor: colors.primaryLight,

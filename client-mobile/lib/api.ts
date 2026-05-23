@@ -56,6 +56,7 @@ export type ClientWorkoutItem = {
   exercise_name?: string | null;
   sets?: number | null;
   reps?: number | null;
+  weight_kg?: number | null;
   notes?: string | null;
 };
 
@@ -209,7 +210,7 @@ export function reminderRoute(reminder: ClientReminder): string {
   if (reminder.action === "invoices") {
     return reminder.related_id != null ? `/(tabs)/invoices/${reminder.related_id}` : "/(tabs)/invoices";
   }
-  if (reminder.action === "plans") return "/(tabs)/workout";
+  if (reminder.action === "plans") return "/(tabs)/plans";
   if (reminder.action === "messages") return "/(tabs)/messages";
   if (reminder.action === "promotions") return "/(tabs)/promotions";
   return "/(tabs)/home";
@@ -224,4 +225,37 @@ export function formatPlanMoney(amount: number | string | null | undefined, curr
   } catch {
     return `${n} ${currency}`;
   }
+}
+
+export type { ClientWorkoutSession, WorkoutEntryLog } from "@/lib/trainingLog";
+
+export async function apiListTrainingSessions(): Promise<import("@/lib/trainingLog").ClientWorkoutSession[]> {
+  const res = await apiFetch(`${apiPrefix()}/client/training/sessions?limit=50`, {
+    headers: await authHeadersJson(),
+  });
+  if (!res.ok) await parseErr(res);
+  const data = (await res.json()) as { items: import("@/lib/trainingLog").ClientWorkoutSession[] };
+  return data.items ?? [];
+}
+
+export async function apiGetTrainingSession(id: number): Promise<import("@/lib/trainingLog").ClientWorkoutSession> {
+  const res = await apiFetch(`${apiPrefix()}/client/training/sessions/${id}`, {
+    headers: await authHeadersJson(),
+  });
+  if (!res.ok) await parseErr(res);
+  return res.json();
+}
+
+export async function apiCreateTrainingSession(body: {
+  entries: import("@/lib/trainingLog").WorkoutEntryLog[];
+  notes?: string | null;
+  complete?: boolean;
+}): Promise<import("@/lib/trainingLog").ClientWorkoutSession> {
+  const res = await apiFetch(`${apiPrefix()}/client/training/sessions`, {
+    method: "POST",
+    headers: await authHeadersJson(),
+    body: JSON.stringify({ ...body, complete: body.complete ?? true }),
+  });
+  if (!res.ok) await parseErr(res);
+  return res.json();
 }

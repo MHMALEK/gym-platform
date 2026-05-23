@@ -74,7 +74,7 @@ export default function HomeScreen() {
       <HomeHero me={me} openInvoiceCount={openInv.length} reminderCount={reminders.length} />
 
       <QuickActionGrid>
-        <QuickActionTile icon="barbell-outline" label="Workout" subtitle={hasWorkout ? "View plan" : "Not assigned"} onPress={() => router.push("/(tabs)/plans")} />
+        <QuickActionTile icon="barbell-outline" label="Log workout" subtitle="Track today's session" onPress={() => router.push("/(tabs)/plans/log")} />
         <QuickActionTile icon="restaurant-outline" label="Nutrition" subtitle={hasDiet ? "View meals" : "Not assigned"} onPress={() => router.push("/(tabs)/plans")} accent={colors.warningBg} />
         <QuickActionTile icon="chatbubble-ellipses-outline" label="Messages" subtitle="Chat with coach" onPress={() => router.push("/(tabs)/messages")} accent={colors.infoBg} />
         <QuickActionTile icon="receipt-outline" label="Invoices" subtitle={openInv.length ? `${openInv.length} open` : "All paid"} onPress={() => router.push("/(tabs)/invoices")} />
