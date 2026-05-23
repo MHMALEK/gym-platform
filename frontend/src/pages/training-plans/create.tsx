@@ -10,7 +10,7 @@ import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
 import { useInvalidate } from "@refinedev/core";
 import { useForm } from "@refinedev/react-hook-form";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
@@ -18,6 +18,8 @@ import { CoachingPlanPreview } from "../../components/CoachingPlanPreview";
 import { PageHeader } from "../../components/layout/PageHeader";
 import { StickyActionBar } from "../../components/layout/StickyActionBar";
 import { TrainingPlanAiAssistant } from "../../components/TrainingPlanAiAssistant";
+import { useCoachAiPlanBuilder } from "../../hooks/useCoachAiPlanBuilder";
+import { useCoachAiPageContext } from "../../hooks/useCoachAiPageContext";
 import {
   WorkoutItemsEditor,
   normalizeWorkoutItemsForApi,
@@ -91,6 +93,35 @@ export function TrainingPlanCreate() {
     setWorkoutLines(next);
   }, []);
 
+  const onApplyPlanMeta = useCallback(
+    ({ planName, planDescription }: { planName: string; planDescription: string | null }) => {
+      const nameNow = watch("name");
+      if (!String(nameNow ?? "").trim()) {
+        setValue("name", planName, { shouldDirty: true });
+      }
+      const descNow = watch("description");
+      if (planDescription && !String(descNow ?? "").trim()) {
+        setValue("description", planDescription, { shouldDirty: true });
+      }
+    },
+    [setValue, watch],
+  );
+
+  const planBuilderHandlers = useMemo(
+    () => ({
+      venueType,
+      onApplyWorkoutLines: setWorkoutLines,
+      onApplyPlanMeta,
+    }),
+    [venueType, onApplyPlanMeta],
+  );
+  useCoachAiPlanBuilder(planBuilderHandlers);
+  useCoachAiPageContext(
+    watch("name")?.trim()
+      ? `Creating training plan: ${watch("name")}. Venue: ${venueType}.`
+      : `Creating a new training plan. Venue: ${venueType}.`,
+  );
+
   const goNext = useCallback(async () => {
     const ok = await trigger(["name", "venue_type"]);
     if (ok) setStep(1);
@@ -153,16 +184,7 @@ export function TrainingPlanCreate() {
               <TrainingPlanAiAssistant
                 venueType={venueType}
                 onApplyWorkoutLines={setWorkoutLines}
-                onApplyPlanMeta={({ planName, planDescription }) => {
-                  const nameNow = watch("name");
-                  if (!String(nameNow ?? "").trim()) {
-                    setValue("name", planName, { shouldDirty: true });
-                  }
-                  const descNow = watch("description");
-                  if (planDescription && !String(descNow ?? "").trim()) {
-                    setValue("description", planDescription, { shouldDirty: true });
-                  }
-                }}
+                onApplyPlanMeta={onApplyPlanMeta}
               />
             </Box>
             <WorkoutItemsEditor

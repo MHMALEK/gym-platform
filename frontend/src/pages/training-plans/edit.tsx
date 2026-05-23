@@ -20,6 +20,8 @@ import { CoachingPlanPreview } from "../../components/CoachingPlanPreview";
 import { PageHeader } from "../../components/layout/PageHeader";
 import { StickyActionBar } from "../../components/layout/StickyActionBar";
 import { TrainingPlanAiAssistant } from "../../components/TrainingPlanAiAssistant";
+import { useCoachAiPlanBuilder } from "../../hooks/useCoachAiPlanBuilder";
+import { useCoachAiPageContext } from "../../hooks/useCoachAiPageContext";
 import {
   type WorkoutLine,
   WorkoutItemsEditor,
@@ -110,6 +112,20 @@ export function TrainingPlanEdit() {
   );
 
   const venueLive = watch("venue_type") ?? record?.venue_type ?? "mixed";
+
+  const planBuilderHandlers = useMemo(
+    () => ({
+      venueType: venueLive,
+      workoutEditorRef: editorRef,
+    }),
+    [venueLive],
+  );
+  useCoachAiPlanBuilder(planBuilderHandlers);
+  useCoachAiPageContext(
+    record?.id
+      ? `Editing training plan #${record.id}${record?.name ? `: ${record.name}` : ""}. Venue: ${venueLive}.`
+      : null,
+  );
 
   useEffect(() => {
     setCurrentLines(initialLines);

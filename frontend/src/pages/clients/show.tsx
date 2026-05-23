@@ -27,6 +27,7 @@ import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react
 import { useTranslation } from "react-i18next";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 
+import { useCoachAiPageContext } from "../../hooks/useCoachAiPageContext";
 import { formatMoney } from "../../lib/money";
 import { ClientCoachingPlanAssignmentPanel } from "./ClientCoachingPlanAssignmentPanel";
 import { ClientMessagesPanel } from "./ClientMessagesPanel";
@@ -132,6 +133,12 @@ export function ClientShow() {
   const [activeTab, setActiveTab] = useState<ClientDetailTab>(() => tabFromHash(window.location.hash));
 
   const reg = record?.registration_date ?? record?.created_at;
+
+  useCoachAiPageContext(
+    clientId
+      ? `Client profile #${clientId}${record?.name ? `: ${String(record.name)}` : ""}${record?.email ? ` (${String(record.email)})` : ""}.`
+      : null,
+  );
 
   useEffect(() => {
     setActiveTab(tabFromHash(location.hash));
