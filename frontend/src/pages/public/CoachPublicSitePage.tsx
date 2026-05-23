@@ -1,26 +1,25 @@
-import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
-import Container from "@mui/material/Container";
-import Stack from "@mui/material/Stack";
-import Typography from "@mui/material/Typography";
-import { alpha } from "@mui/material/styles";
 import { useEffect, useMemo, useState } from "react";
 import { Link as RouterLink, useParams } from "react-router-dom";
 
-import { BrandMark } from "../../components/BrandMark";
+import { hubAsset } from "../../components/hub/hubAssets";
+import { useHubPage } from "../../components/hub/useHubPage";
 import { fetchPublicCoachSite, type CoachPublicSiteRead } from "../../lib/coachSiteApi";
 import { mediaSrc } from "../../lib/exerciseMediaApi";
 
 function accentColor(site: CoachPublicSiteRead): string {
   const c = site.primary_color?.trim();
   if (c && /^#[0-9A-Fa-f]{6}$/.test(c)) return c;
-  return "#d97706";
+  return "#374151";
 }
 
 export function CoachPublicSitePage() {
   const { slug = "" } = useParams();
   const [site, setSite] = useState<CoachPublicSiteRead | null>(null);
   const [error, setError] = useState(false);
+
+  useHubPage("modern-business", {
+    bodyClass: "lqd-pf-single lqd-pf-single-style-1 site-wide-layout hub-coach-site",
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -42,183 +41,238 @@ export function CoachPublicSitePage() {
     };
   }, [slug]);
 
-  const color = useMemo(() => (site ? accentColor(site) : "#d97706"), [site]);
+  const color = useMemo(() => (site ? accentColor(site) : "#374151"), [site]);
   const registerUrl = site ? `/client/register?invite=${encodeURIComponent(site.invite_code)}` : "/client/register";
+
+  const bannerBg = hubAsset("images/demo/modern-business/banner.jpg");
+  const dotsBg = hubAsset("images/demo/modern-business/bg-dots.png");
+  const contactBg = hubAsset("images/demo/modern-business/bg-contact.jpg");
+  const logoDark = hubAsset("images/demo/modern-business/logo-dark.svg");
+  const logoLight = hubAsset("images/demo/modern-business/logo-light.svg");
 
   if (error) {
     return (
-      <Box sx={{ minHeight: "100vh", display: "grid", placeItems: "center", p: 3 }}>
-        <Stack spacing={2} alignItems="center" textAlign="center">
-          <Typography variant="h5" fontWeight={700}>
-            Site not found
-          </Typography>
-          <Typography color="text.secondary">This coach page is not published or does not exist.</Typography>
-          <Button component={RouterLink} to="/" variant="outlined">
+      <div id="wrap" className="min-h-100vh flex items-center justify-center p-40">
+        <div className="text-center">
+          <h1 className="text-32 font-bold mb-15">Site not found</h1>
+          <p className="text-gray-600 mb-25">This coach page is not published or does not exist.</p>
+          <RouterLink to="/" className="btn btn-solid bg-gray-800 text-white rounded-100 px-2em">
             Back to Gym Coach
-          </Button>
-        </Stack>
-      </Box>
+          </RouterLink>
+        </div>
+      </div>
     );
   }
 
   if (!site) {
-    return <Box sx={{ minHeight: "100vh", bgcolor: "#0a0a0b" }} />;
+    return <div id="wrap" className="min-h-100vh bg-gray-900" />;
   }
 
   const { content: c } = site;
+  const services = c.services.length ? c.services : [{ title: "Coaching", description: "Personal training and nutrition guidance." }];
+  const heroImage = c.hero.hero_image_url ? mediaSrc(c.hero.hero_image_url) : bannerBg;
+  const aboutImage = c.about.image_url ? mediaSrc(c.about.image_url) : hubAsset("images/demo/modern-business/about-2.jpg");
+  const siteLogo = site.logo_url ? mediaSrc(site.logo_url) : logoDark;
 
   return (
-    <Box sx={{ minHeight: "100vh", bgcolor: "#fafafa", color: "#111" }}>
-      <Box
-        component="header"
-        sx={{
-          position: "sticky",
-          top: 0,
-          zIndex: 10,
-          bgcolor: alpha("#fff", 0.92),
-          backdropFilter: "blur(10px)",
-          borderBottom: "1px solid",
-          borderColor: alpha("#000", 0.08),
-        }}
-      >
-        <Container maxWidth="lg" sx={{ py: 1.5, display: "flex", alignItems: "center", gap: 1.5 }}>
-          {site.logo_url ? (
-            <Box component="img" src={mediaSrc(site.logo_url)} alt="" sx={{ width: 36, height: 36, borderRadius: 1.5, objectFit: "cover" }} />
-          ) : (
-            <BrandMark size={36} radius={8} />
-          )}
-          <Typography fontWeight={700}>{site.name}</Typography>
-          <Button
-            component={RouterLink}
-            to={registerUrl}
-            size="small"
-            variant="contained"
-            sx={{ ml: "auto", bgcolor: color, "&:hover": { bgcolor: color, filter: "brightness(0.92)" }, textTransform: "none" }}
-          >
-            {c.hero.cta_label || "Become a client"}
-          </Button>
-        </Container>
-      </Box>
-
-      <Box
-        sx={{
-          background: `linear-gradient(135deg, ${alpha(color, 0.14)} 0%, ${alpha(color, 0.03)} 55%, transparent 100%)`,
-          borderBottom: "1px solid",
-          borderColor: alpha("#000", 0.06),
-        }}
-      >
-        <Container maxWidth="lg" sx={{ py: { xs: 6, md: 9 } }}>
-          <Box sx={{ display: "grid", gap: 4, gridTemplateColumns: { xs: "1fr", md: "1.1fr 0.9fr" }, alignItems: "center" }}>
-            <Stack spacing={2}>
-              <Typography variant="h3" component="h1" sx={{ fontWeight: 800, lineHeight: 1.1, letterSpacing: "-0.03em" }}>
-                {c.hero.headline || site.name}
-              </Typography>
-              <Typography sx={{ fontSize: 18, lineHeight: 1.65, color: "text.secondary", maxWidth: 560 }}>
-                {c.hero.subheadline || site.tagline || ""}
-              </Typography>
-              <Box>
-                <Button
-                  component={RouterLink}
+    <div id="wrap">
+      <header className="main-header main-header-overlay main-header-dynamiccolors" data-sticky-header="true">
+        <section className="lqd-head-sec-wrap pos-rel pt-20 px-60 md:hidden">
+          <div className="lqd-head-sec container-fluid flex items-stretch p-0">
+            <div className="col lqd-head-col">
+              <div className="header-module module-logo no-rotate navbar-brand-plain py-30">
+                <a className="navbar-brand" href="#banner" rel="home">
+                  <span className="navbar-brand-inner">
+                    <img className="logo-default" src={siteLogo} alt={site.name} style={{ maxHeight: 40 }} />
+                  </span>
+                </a>
+              </div>
+            </div>
+            <div className="col lqd-head-col">
+              <div className="header-module module-primary-nav static flex-col">
+                <div className="navbar-collapse lqd-submenu-default-style h-auto" role="navigation">
+                  <ul className="main-nav lqd-menu-counter-right main-nav-hover-fade-inactive nav reset-ul flex items-stretch link-15 link-medium link-white-80" data-localscroll="true" data-localscroll-options='{"itemsSelector":"> li > a"}'>
+                    <li><a href="#banner">Home</a></li>
+                    <li><a href="#services">Services</a></li>
+                    <li><a href="#about">About</a></li>
+                    <li><a href="#contact">Contact</a></li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+            <div className="col lqd-head-col justify-end lg:hidden">
+              <div className="header-module module-button flex-col items-end py-10">
+                <RouterLink
                   to={registerUrl}
-                  variant="contained"
-                  size="large"
-                  sx={{ bgcolor: color, px: 3, textTransform: "none", fontWeight: 600, "&:hover": { bgcolor: color, filter: "brightness(0.92)" } }}
+                  className="btn btn-solid btn-md btn-default uppercase btn-hover-txt-liquid-y btn-bordered border-thick btn-has-label border-2 rounded-100 text-12 uppercase font-bold tracking-0/1em leading-1/5em text-white el-btn"
+                  style={{ borderColor: color, backgroundColor: color }}
                 >
-                  {c.hero.cta_label || "Become a client"}
-                </Button>
-              </Box>
-            </Stack>
-            <Box
-              sx={{
-                minHeight: 280,
-                borderRadius: 3,
-                overflow: "hidden",
-                bgcolor: alpha(color, 0.08),
-                border: "1px solid",
-                borderColor: alpha(color, 0.2),
-                backgroundImage: c.hero.hero_image_url ? `url(${mediaSrc(c.hero.hero_image_url)})` : undefined,
-                backgroundSize: "cover",
-                backgroundPosition: "center",
-              }}
-            />
-          </Box>
-        </Container>
-      </Box>
+                  <span className="btn-txt">{c.hero.cta_label || "Become a client"}</span>
+                </RouterLink>
+              </div>
+            </div>
+          </div>
+        </section>
+        <section className="lqd-mobile-sec">
+          <div className="lqd-mobile-sec-inner navbar-header flex items-stretch">
+            <button type="button" className="navbar-toggle collapsed nav-trigger style-mobile flex relative items-center justify-end p-0" data-bs-toggle="collapse" data-bs-target="#lqd-mobile-sec-nav" aria-expanded="false">
+              <span className="bars inline-block relative z-1">
+                <span className="bars-inner flex flex-col w-full h-full">
+                  <span className="bar inline-block" />
+                  <span className="bar inline-block" />
+                  <span className="bar inline-block" />
+                </span>
+              </span>
+            </button>
+            <a className="navbar-brand flex justify-start" href="#banner">
+              <span className="navbar-brand-inner">
+                <img className="logo-default" src={siteLogo} alt={site.name} style={{ maxHeight: 36 }} />
+              </span>
+            </a>
+          </div>
+          <div className="lqd-mobile-sec-nav">
+            <div className="mobile-navbar-collapse navbar-collapse collapse w-full bg-white" id="lqd-mobile-sec-nav">
+              <ul className="lqd-mobile-main-nav main-nav nav reset-ul text-black" data-localscroll="true">
+                <li><a href="#banner">Home</a></li>
+                <li><a href="#services">Services</a></li>
+                <li><a href="#about">About</a></li>
+                <li><a href="#contact">Contact</a></li>
+              </ul>
+            </div>
+          </div>
+        </section>
+      </header>
 
-      <Container maxWidth="lg" sx={{ py: { xs: 5, md: 7 } }}>
-        <Box sx={{ display: "grid", gap: 4, gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" }, alignItems: "center" }}>
-          <Box>
-            <Typography variant="h5" fontWeight={700} sx={{ mb: 1.5 }}>
-              {c.about.title}
-            </Typography>
-            <Typography sx={{ lineHeight: 1.75, color: "text.secondary", whiteSpace: "pre-wrap" }}>
-              {c.about.body}
-            </Typography>
-          </Box>
-          <Box
-            sx={{
-              minHeight: 240,
-              borderRadius: 3,
-              bgcolor: alpha("#000", 0.04),
-              backgroundImage: c.about.image_url ? `url(${mediaSrc(c.about.image_url)})` : undefined,
-              backgroundSize: "cover",
-              backgroundPosition: "center",
-            }}
-          />
-        </Box>
-      </Container>
+      <main className="content overflow-hidden bg-white" id="lqd-site-content">
+        <div id="lqd-contents-wrap">
+          <section
+            className="lqd-section banner min-h-100vh flex items-center bg-cover bg-center border-10 border-white"
+            id="banner"
+            style={{ backgroundImage: `url(${heroImage})` }}
+          >
+            <div className="container">
+              <div className="row items-center">
+                <div className="col col-12 col-xl-10 offset-xl-1 relative flex flex-col justify-center items-center text-center">
+                  <div className="ld-empty-space w-full h-210 sm:hidden" />
+                  <h1 className="ld-fh-element relative mb-0 text-74 text-white font-bold" style={{ lineHeight: 1.05 }}>
+                    {c.hero.headline || site.name}
+                  </h1>
+                  {c.hero.subheadline || site.tagline ? (
+                    <p className="ld-fh-element relative mt-25 mb-0 text-20 leading-1/6em text-white-80 max-w-700 mx-auto">
+                      {c.hero.subheadline || site.tagline}
+                    </p>
+                  ) : null}
+                  <div className="ld-empty-space w-full h-40" />
+                  <RouterLink
+                    to={registerUrl}
+                    className="btn btn-solid btn-md uppercase rounded-100 text-13 font-semibold text-white px-2em"
+                    style={{ backgroundColor: color }}
+                  >
+                    {c.hero.cta_label || "Become a client"}
+                  </RouterLink>
+                  <div className="ld-empty-space w-full h-110" />
+                </div>
+              </div>
+            </div>
+          </section>
 
-      <Box sx={{ bgcolor: "#fff", borderTop: "1px solid", borderColor: alpha("#000", 0.06) }}>
-        <Container maxWidth="lg" sx={{ py: { xs: 5, md: 6 } }}>
-          <Typography variant="h5" fontWeight={700} sx={{ mb: 3 }}>
-            Services
-          </Typography>
-          <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "repeat(3, 1fr)" } }}>
-            {(c.services.length ? c.services : [{ title: "Coaching", description: "" }]).map((s, i) => (
-              <Box
-                key={`${s.title}-${i}`}
-                sx={{
-                  p: 2.5,
-                  borderRadius: 2.5,
-                  border: "1px solid",
-                  borderColor: alpha("#000", 0.08),
-                  bgcolor: "#fafafa",
-                }}
-              >
-                <Typography fontWeight={700} sx={{ mb: 1 }}>
-                  {s.title}
-                </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.65 }}>
-                  {s.description}
-                </Typography>
-              </Box>
-            ))}
-          </Box>
-        </Container>
-      </Box>
+          <section
+            className="lqd-section services flex items-center justify-center bg-center bg-norepeat pt-90 pb-30"
+            id="services"
+            style={{ backgroundImage: `url(${dotsBg})` }}
+          >
+            <div className="container">
+              <div className="row justify-center items-center">
+                <div className="col col-12 col-lg-8 mb-60 text-center">
+                  <h2 className="ld-fh-element relative mb-0/5em">Services</h2>
+                  <p className="ld-fh-element relative mb-0/5em px-5percent md:px-0">
+                    {site.tagline || "Training, nutrition, and accountability — tailored to you."}
+                  </p>
+                </div>
+                <div className="w-full" />
+                {services.map((service, i) => (
+                  <div key={`${service.title}-${i}`} className="col col-12 col-md-6 col-lg-4">
+                    <div className="iconbox text-align-default iconbox-circle iconbox-sm mb-2em">
+                      <div className="iconbox-icon-wrap mr-30">
+                        <span className="iconbox-icon-container w-55 h-55 rounded-full text-24 text-white" style={{ backgroundColor: color }}>
+                          {String(i + 1).padStart(2, "0")}
+                        </span>
+                      </div>
+                      <div className="contents">
+                        <h3 className="mb-15 text-15 uppercase">{service.title}</h3>
+                        <p>{service.description || "—"}</p>
+                      </div>
+                    </div>
+                    <div className="w-full relative h-30" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
 
-      <Box sx={{ bgcolor: alpha(color, 0.06), borderTop: "1px solid", borderColor: alpha(color, 0.15) }}>
-        <Container maxWidth="lg" sx={{ py: { xs: 5, md: 6 } }}>
-          <Typography variant="h5" fontWeight={700} sx={{ mb: 2 }}>
-            Contact
-          </Typography>
-          <Stack spacing={0.75} sx={{ color: "text.secondary", mb: 3 }}>
-            {c.contact.email ? <Typography>{c.contact.email}</Typography> : null}
-            {c.contact.phone ? <Typography>{c.contact.phone}</Typography> : null}
-            {c.contact.instagram ? <Typography>Instagram: {c.contact.instagram}</Typography> : null}
-            {c.contact.whatsapp ? <Typography>WhatsApp: {c.contact.whatsapp}</Typography> : null}
-          </Stack>
-          <Button component={RouterLink} to={registerUrl} variant="contained" sx={{ bgcolor: color, textTransform: "none", "&:hover": { bgcolor: color, filter: "brightness(0.92)" } }}>
-            {c.hero.cta_label || "Become a client"}
-          </Button>
-        </Container>
-      </Box>
+          <section className="lqd-section about flex items-center justify-center py-70 bg-white bg-norepeat" id="about">
+            <div className="container">
+              <div className="row items-center">
+                <div className="col col-12 col-lg-5 mb-40 lg:mb-0">
+                  <figure className="inline-flex max-w-full relative vertical-top justify-center shadow-md rounded-12 overflow-hidden">
+                    <img src={aboutImage} alt={c.about.title} className="w-full" />
+                  </figure>
+                </div>
+                <div className="col col-12 col-lg-6 offset-lg-1">
+                  <h6 className="ld-fh-element mb-1em text-12 uppercase tracking-0/1em font-bold text-gray-500">About</h6>
+                  <h2 className="ld-fh-element mb-0/5em text-50">{c.about.title}</h2>
+                  <p className="ld-fh-element mb-0 text-18 leading-1/6em text-gray-600 whitespace-pre-wrap">{c.about.body}</p>
+                </div>
+              </div>
+            </div>
+          </section>
 
-      <Box sx={{ py: 2, textAlign: "center" }}>
-        <Typography variant="caption" color="text.secondary">
-          Powered by Gym Coach
-        </Typography>
-      </Box>
-    </Box>
+          <section
+            className="lqd-section contact min-h-100vh flex items-center justify-center bg-norepeat bg-center bg-cover border-20 border-white"
+            id="contact"
+            style={{ backgroundImage: `url(${contactBg})` }}
+          >
+            <div className="container">
+              <div className="row items-center justify-center">
+                <div className="col col-12 col-lg-8 text-center">
+                  <h1 className="ld-fh-element mb-0 text-74 text-white">Get in touch</h1>
+                  <div className="ld-empty-space w-full relative h-20" />
+                  <div className="ld-fh-element relative mb-0/5em text-20 leading-1/6em text-white">
+                    {c.contact.email ? <p className="mb-10">{c.contact.email}</p> : null}
+                    {c.contact.phone ? <p className="mb-10">{c.contact.phone}</p> : null}
+                    {c.contact.instagram ? <p className="mb-10">Instagram: {c.contact.instagram}</p> : null}
+                    {c.contact.whatsapp ? <p className="mb-10">WhatsApp: {c.contact.whatsapp}</p> : null}
+                  </div>
+                  <div className="ld-empty-space w-full relative h-20" />
+                  <RouterLink
+                    to={registerUrl}
+                    className="btn btn-solid btn-md uppercase btn-lg rounded-100 text-13 font-semibold bg-white text-black hover:text-white px-2em"
+                    style={{ ["--hover-bg" as string]: color }}
+                  >
+                    {c.hero.cta_label || "Become a client"}
+                  </RouterLink>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </main>
+
+      <footer className="main-footer pt-40 pb-30 bg-gray-900 text-white-50">
+        <section className="lqd-section">
+          <div className="container">
+            <div className="row items-center">
+              <div className="col col-12 col-md-6 flex items-center gap-15">
+                <img src={logoLight} alt="" style={{ height: 28, opacity: 0.7 }} />
+                <p className="mb-0 text-14">{site.name}</p>
+              </div>
+              <div className="col col-12 col-md-6 text-end md:text-start mt-15 md:mt-0">
+                <p className="mb-0 text-12 opacity-70">Powered by Gym Coach</p>
+              </div>
+            </div>
+          </div>
+        </section>
+      </footer>
+    </div>
   );
 }

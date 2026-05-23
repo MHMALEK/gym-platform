@@ -13,3 +13,9 @@ client-mobile/node_modules/
 mobile/.expo/
 frontend/dist/
 .DS_Store
+
+# Licensed ThemeForest templates — never commit (local / deploy secret only)
+.vendor/
+frontend/public/hub/
+frontend/public/porto/
+frontend/public/fuse/
