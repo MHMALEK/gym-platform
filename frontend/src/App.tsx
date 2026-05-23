@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   Library,
   MessageCircle,
+  MessagesSquare,
   Palette,
   Users,
 } from "lucide-react";
@@ -29,6 +30,7 @@ import { useTranslation } from "react-i18next";
 import { BrowserRouter, Navigate, Outlet, Route, Routes } from "react-router-dom";
 
 import { authProvider } from "./authProvider";
+import { clientAuthProvider } from "./clientAuthProvider";
 import { AppShell } from "./components/layout/AppShell";
 import {
   BrandedMuiOverride,
@@ -45,6 +47,7 @@ import { ClientPlanViewerPage } from "./pages/clients/plan-viewer";
 import { ClientWorkoutDietPlansPage } from "./pages/clients/workout-diet-plans";
 import { CoachAssistantPage } from "./pages/assistant/CoachAssistantPage";
 import { CoachDeskPage } from "./pages/coach-desk";
+import { CoachMessagesPage } from "./pages/messages/CoachMessagesPage";
 import { DashboardPage } from "./pages/dashboard";
 import { buildCoachMuiTheme } from "./theme/muiCoachTheme";
 import { ThemeModeProvider, useThemeMode } from "./theme/ThemeModeContext";
@@ -61,6 +64,16 @@ import { NutritionTemplateCreate } from "./pages/nutrition-templates/create";
 import { NutritionTemplateEdit } from "./pages/nutrition-templates/edit";
 import { NutritionTemplateList } from "./pages/nutrition-templates/list";
 import { LoginPage } from "./pages/login";
+import { RegisterPage } from "./pages/register";
+import { ClientShell } from "./components/client/ClientShell";
+import { ClientHomePage } from "./pages/client/home";
+import { ClientInvoiceListPage } from "./pages/client/invoices/list";
+import { ClientInvoiceShowPage } from "./pages/client/invoices/show";
+import { ClientMessagesPage } from "./pages/client/messages";
+import { ClientLoginPage } from "./pages/client/login";
+import { ClientNutritionPlanPage } from "./pages/client/plans/nutrition";
+import { ClientWorkoutPlanPage } from "./pages/client/plans/workout";
+import { ClientRegisterPage } from "./pages/client/register";
 import { BrandingSettingsPage } from "./pages/settings/branding";
 import { PlanTemplateCreate } from "./pages/plan-templates/create";
 import { PlanTemplateEdit } from "./pages/plan-templates/edit";
@@ -104,7 +117,56 @@ function MuiLocaleBridge({ children }: { children: ReactNode }) {
   );
 }
 
-function RefineShell() {
+function ClientApp() {
+  const notificationProvider = useNotificationProvider();
+
+  return (
+    <Refine
+      routerProvider={routerProvider}
+      dataProvider={dataProvider}
+      authProvider={clientAuthProvider}
+      notificationProvider={notificationProvider}
+      resources={[]}
+    >
+      <Routes>
+        <Route
+          path="login"
+          element={
+            <Authenticated key="client-login-gate" fallback={<ClientLoginPage />}>
+              <Navigate to="/client" replace />
+            </Authenticated>
+          }
+        />
+        <Route
+          path="register"
+          element={
+            <Authenticated key="client-register-gate" fallback={<ClientRegisterPage />}>
+              <Navigate to="/client" replace />
+            </Authenticated>
+          }
+        />
+        <Route
+          element={
+            <Authenticated key="client-app-gate" fallback={<Navigate to="/client/login" replace />}>
+              <ClientShell />
+            </Authenticated>
+          }
+        >
+          <Route index element={<ClientHomePage />} />
+          <Route path="messages" element={<ClientMessagesPage />} />
+          <Route path="plans/workout" element={<ClientWorkoutPlanPage />} />
+          <Route path="plans/nutrition" element={<ClientNutritionPlanPage />} />
+          <Route path="invoices" element={<ClientInvoiceListPage />} />
+          <Route path="invoices/:id" element={<ClientInvoiceShowPage />} />
+        </Route>
+      </Routes>
+      <UnsavedChangesNotifier />
+      <DocumentTitleHandler />
+    </Refine>
+  );
+}
+
+function CoachApp() {
   const { t, i18n } = useTranslation();
   const notificationProvider = useNotificationProvider();
 
@@ -124,6 +186,14 @@ function RefineShell() {
         name: "coach-assistant",
         list: "/assistant",
         meta: { label: t("nav.coachAssistant"), icon: <MessageCircle size={18} strokeWidth={2} /> },
+      },
+      {
+        name: "client-messages",
+        list: "/messages",
+        meta: {
+          label: t("nav.clientMessages"),
+          icon: <MessagesSquare size={18} strokeWidth={2} />,
+        },
       },
       {
         name: "clients",
@@ -211,6 +281,14 @@ function RefineShell() {
           }
         />
         <Route
+          path="/register"
+          element={
+            <Authenticated key="register-gate" fallback={<RegisterPage />}>
+              <Navigate to="/" replace />
+            </Authenticated>
+          }
+        />
+        <Route
           element={
             <Authenticated key="app-gate" fallback={<Navigate to="/login" replace />}>
               <CoachBrandingProvider>
@@ -227,6 +305,7 @@ function RefineShell() {
           <Route path="/workouts" element={<Navigate to="/training-plans" replace />} />
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/assistant" element={<CoachAssistantPage />} />
+          <Route path="/messages" element={<CoachMessagesPage />} />
           <Route path="/clients" element={<ClientList />} />
           <Route path="/clients/create" element={<ClientCreate />} />
           <Route path="/clients/edit/:id" element={<ClientEdit />} />
@@ -268,7 +347,10 @@ export default function App() {
     <BrowserRouter>
       <ThemeModeProvider>
         <MuiLocaleBridge>
-          <RefineShell />
+          <Routes>
+            <Route path="/client/*" element={<ClientApp />} />
+            <Route path="/*" element={<CoachApp />} />
+          </Routes>
         </MuiLocaleBridge>
       </ThemeModeProvider>
     </BrowserRouter>
