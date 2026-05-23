@@ -12,22 +12,44 @@ import { useTranslation } from "react-i18next";
 import { Link as RouterLink } from "react-router-dom";
 
 import { useClientMe } from "../../contexts/ClientMeContext";
-import { apiClientInvoices, type ClientPortalInvoice } from "../../lib/clientPortalApi";
+import {
+  apiClientInvoices,
+  apiClientPromotions,
+  apiClientReminders,
+  type ClientPortalInvoice,
+  type ClientPromotion,
+  type ClientReminder,
+} from "../../lib/clientPortalApi";
+import { clientReminderPath } from "../../lib/clientReminderNav";
 import { formatMoney } from "../../lib/money";
 
 export function ClientHomePage() {
   const { t, i18n } = useTranslation();
   const { me } = useClientMe();
   const [recentInvoices, setRecentInvoices] = useState<ClientPortalInvoice[]>([]);
+  const [reminders, setReminders] = useState<ClientReminder[]>([]);
+  const [promotions, setPromotions] = useState<ClientPromotion[]>([]);
 
   useEffect(() => {
     let cancelled = false;
-    apiClientInvoices({ limit: 3 })
-      .then((data) => {
-        if (!cancelled) setRecentInvoices(data.items);
+    Promise.all([
+      apiClientInvoices({ limit: 3 }),
+      apiClientReminders(),
+      apiClientPromotions(),
+    ])
+      .then(([invData, reminderData, promoData]) => {
+        if (!cancelled) {
+          setRecentInvoices(invData.items);
+          setReminders(reminderData);
+          setPromotions(promoData);
+        }
       })
       .catch(() => {
-        if (!cancelled) setRecentInvoices([]);
+        if (!cancelled) {
+          setRecentInvoices([]);
+          setReminders([]);
+          setPromotions([]);
+        }
       });
     return () => {
       cancelled = true;
@@ -70,6 +92,95 @@ export function ClientHomePage() {
           </Stack>
         </CardContent>
       </Card>
+
+      {reminders.length > 0 ? (
+        <Card variant="outlined">
+          <CardContent>
+            <Typography variant="h6" sx={{ mb: 1 }}>
+              {t("clientPortal.remindersTitle")}
+            </Typography>
+            <Stack spacing={1}>
+              {reminders.slice(0, 5).map((r) => (
+                <Box
+                  key={r.id}
+                  component={RouterLink}
+                  to={clientReminderPath(r)}
+                  sx={{
+                    display: "block",
+                    textDecoration: "none",
+                    color: "inherit",
+                    p: 1.25,
+                    borderRadius: 1,
+                    border: 1,
+                    borderColor: r.severity === "high" ? "error.light" : "divider",
+                    bgcolor: r.severity === "high" ? "error.50" : "transparent",
+                    "&:hover": { bgcolor: "action.hover" },
+                  }}
+                >
+                  <Typography variant="body2" fontWeight={600}>
+                    {r.title}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {r.body}
+                  </Typography>
+                </Box>
+              ))}
+            </Stack>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {promotions.length > 0 ? (
+        <Card variant="outlined">
+          <CardContent>
+            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
+              <Typography variant="h6">{t("clientPortal.promotionsTitle")}</Typography>
+              <Button component={RouterLink} to="/client/promotions" size="small" endIcon={<ArrowForwardIcon />}>
+                {t("clientPortal.viewAll")}
+              </Button>
+            </Stack>
+            <Stack spacing={1}>
+              {promotions.slice(0, 2).map((p) => (
+                <Box
+                  key={p.id}
+                  component={RouterLink}
+                  to="/client/promotions"
+                  sx={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    textDecoration: "none",
+                    color: "inherit",
+                    p: 1,
+                    borderRadius: 1,
+                    border: 1,
+                    borderColor: "divider",
+                    "&:hover": { bgcolor: "action.hover" },
+                  }}
+                >
+                  <Box>
+                    <Typography variant="body2" fontWeight={600}>
+                      {p.title}
+                    </Typography>
+                    {p.savings_pct ? (
+                      <Chip size="small" color="success" label={t("clientPortal.savePct", { pct: p.savings_pct })} sx={{ mt: 0.5 }} />
+                    ) : null}
+                  </Box>
+                  {p.discount_price != null ? (
+                    <Typography variant="body2" fontWeight={600} color="success.main">
+                      {formatMoney(p.discount_price, p.currency, i18n.language)}
+                    </Typography>
+                  ) : p.price != null ? (
+                    <Typography variant="body2" fontWeight={600}>
+                      {formatMoney(p.price, p.currency, i18n.language)}
+                    </Typography>
+                  ) : null}
+                </Box>
+              ))}
+            </Stack>
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Card variant="outlined">
         <CardContent>

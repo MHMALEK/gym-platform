@@ -79,4 +79,42 @@ export async function apiClientSendMessage(body: string): Promise<ClientChatMess
   return data.message;
 }
 
+export type ClientReminder = {
+  id: string;
+  kind: string;
+  title: string;
+  body: string;
+  severity: "high" | "medium" | "low";
+  action: "invoices" | "plans" | "messages" | "promotions" | null;
+  related_id: number | null;
+  due_at: string | null;
+};
+
+export type ClientPromotion = {
+  id: number;
+  title: string;
+  body: string | null;
+  price: number | string | null;
+  discount_price: number | string | null;
+  currency: string;
+  savings_pct: number | null;
+  code: string | null;
+  duration_days: number | null;
+  is_current_plan: boolean;
+};
+
+export async function apiClientReminders(): Promise<ClientReminder[]> {
+  const res = await fetch(`${apiPrefix}/client/reminders`, { headers: authHeaders() });
+  if (!res.ok) throw httpErrorFromResponse(res, await res.text());
+  const data = (await res.json()) as { items: ClientReminder[] };
+  return data.items ?? [];
+}
+
+export async function apiClientPromotions(): Promise<ClientPromotion[]> {
+  const res = await fetch(`${apiPrefix}/client/promotions`, { headers: authHeaders() });
+  if (!res.ok) throw httpErrorFromResponse(res, await res.text());
+  const data = (await res.json()) as { items: ClientPromotion[] };
+  return data.items ?? [];
+}
+
 export type { ClientMe };

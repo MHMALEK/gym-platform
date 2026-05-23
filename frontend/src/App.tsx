@@ -11,6 +11,7 @@ import {
   MessageCircle,
   MessagesSquare,
   Palette,
+  Plug,
   Users,
 } from "lucide-react";
 import { ThemeProvider } from "@mui/material/styles";
@@ -73,8 +74,10 @@ import { ClientMessagesPage } from "./pages/client/messages";
 import { ClientLoginPage } from "./pages/client/login";
 import { ClientNutritionPlanPage } from "./pages/client/plans/nutrition";
 import { ClientWorkoutPlanPage } from "./pages/client/plans/workout";
+import { ClientPromotionsPage } from "./pages/client/promotions";
 import { ClientRegisterPage } from "./pages/client/register";
 import { BrandingSettingsPage } from "./pages/settings/branding";
+import { IntegrationsSettingsPage } from "./pages/settings/integrations";
 import { PlanTemplateCreate } from "./pages/plan-templates/create";
 import { PlanTemplateEdit } from "./pages/plan-templates/edit";
 import { PlanTemplateList } from "./pages/plan-templates/list";
@@ -158,6 +161,7 @@ function ClientApp() {
           <Route path="plans/nutrition" element={<ClientNutritionPlanPage />} />
           <Route path="invoices" element={<ClientInvoiceListPage />} />
           <Route path="invoices/:id" element={<ClientInvoiceShowPage />} />
+          <Route path="promotions" element={<ClientPromotionsPage />} />
         </Route>
       </Routes>
       <UnsavedChangesNotifier />
@@ -259,6 +263,11 @@ function CoachApp() {
         list: "/settings/branding",
         meta: { label: t("nav.branding"), icon: <Palette size={18} strokeWidth={2} /> },
       },
+      {
+        name: "integrations",
+        list: "/settings/integrations",
+        meta: { label: t("nav.integrations"), icon: <Plug size={18} strokeWidth={2} /> },
+      },
     ],
     [t, i18n.language],
   );
@@ -334,6 +343,7 @@ function CoachApp() {
           <Route path="/library/training-plans" element={<DirectoryTrainingPlansPage />} />
           <Route path="/library/nutrition-templates" element={<DirectoryNutritionTemplatesPage />} />
           <Route path="/settings/branding" element={<BrandingSettingsPage />} />
+          <Route path="/settings/integrations" element={<IntegrationsSettingsPage />} />
         </Route>
       </Routes>
       <UnsavedChangesNotifier />
