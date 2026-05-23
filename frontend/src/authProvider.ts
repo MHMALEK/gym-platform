@@ -13,7 +13,7 @@ export const authProvider: AuthProvider = {
       localStorage.setItem("access_token", "dev");
       setUserRole("coach");
       await apiBootstrap();
-      return { success: true, redirectTo: "/" };
+      return { success: true, redirectTo: "/desk" };
     }
     const app = getFirebaseApp();
     if (!app) {
@@ -25,14 +25,14 @@ export const authProvider: AuthProvider = {
     localStorage.setItem("access_token", token);
     setUserRole("coach");
     await apiBootstrap();
-    return { success: true, redirectTo: "/" };
+    return { success: true, redirectTo: "/desk" };
   },
   register: async ({ email, password, name }) => {
     if (devAuth) {
       localStorage.setItem("access_token", "dev");
       setUserRole("coach");
       await apiBootstrap();
-      return { success: true, redirectTo: "/" };
+      return { success: true, redirectTo: "/desk" };
     }
     const app = getFirebaseApp();
     if (!app) {
@@ -47,7 +47,7 @@ export const authProvider: AuthProvider = {
     localStorage.setItem("access_token", token);
     setUserRole("coach");
     await apiBootstrap();
-    return { success: true, redirectTo: "/" };
+    return { success: true, redirectTo: "/desk" };
   },
   logout: async () => {
     if (!devAuth) {

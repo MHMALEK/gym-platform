@@ -79,6 +79,16 @@ export function LoginPage() {
               >
                 {t("login.devLogin")}
               </LoadingButton>
+              <Typography variant="body2" sx={{ mt: 2, textAlign: "center" }}>
+                <Link component={RouterLink} to="/">
+                  {t("landing.backHome")}
+                </Link>
+              </Typography>
+              <Typography variant="body2" sx={{ mt: 1, textAlign: "center" }}>
+                <Link component={RouterLink} to="/client/login">
+                  {t("clientAuth.clientPortal")}
+                </Link>
+              </Typography>
             </>
           ) : (
             <Box
@@ -124,6 +134,11 @@ export function LoginPage() {
                 {t("register.noAccount")}{" "}
                 <Link component={RouterLink} to="/register">
                   {t("register.signUp")}
+                </Link>
+              </Typography>
+              <Typography variant="body2" sx={{ mt: 1, textAlign: "center" }}>
+                <Link component={RouterLink} to="/">
+                  {t("landing.backHome")}
                 </Link>
               </Typography>
               <Typography variant="body2" sx={{ mt: 1, textAlign: "center" }}>

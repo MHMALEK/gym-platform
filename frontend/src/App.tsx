@@ -89,6 +89,7 @@ import { TrainingPlanEdit } from "./pages/training-plans/edit";
 import { TrainingPlanList } from "./pages/training-plans/list";
 import { TrainingPlanPreviewPage } from "./pages/training-plans/preview";
 import { TrainingPlanShow } from "./pages/training-plans/show";
+import { LandingPage } from "./pages/landing/LandingPage";
 
 function MuiLocaleBridge({ children }: { children: ReactNode }) {
   const { i18n } = useTranslation();
@@ -184,7 +185,7 @@ function CoachApp() {
     () => [
       {
         name: "coach-desk",
-        list: "/",
+        list: "/desk",
         meta: { label: t("nav.coachDesk"), icon: <Home size={18} strokeWidth={2} /> },
       },
       {
@@ -291,7 +292,7 @@ function CoachApp() {
           path="/login"
           element={
             <Authenticated key="login-gate" fallback={<LoginPage />}>
-              <Navigate to="/" replace />
+              <Navigate to="/desk" replace />
             </Authenticated>
           }
         />
@@ -299,7 +300,7 @@ function CoachApp() {
           path="/register"
           element={
             <Authenticated key="register-gate" fallback={<RegisterPage />}>
-              <Navigate to="/" replace />
+              <Navigate to="/desk" replace />
             </Authenticated>
           }
         />
@@ -316,7 +317,7 @@ function CoachApp() {
             </Authenticated>
           }
         >
-          <Route index element={<CoachDeskPage />} />
+          <Route path="/desk" element={<CoachDeskPage />} />
           <Route path="/workouts" element={<Navigate to="/training-plans" replace />} />
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/assistant" element={<CoachAssistantPage />} />
@@ -364,6 +365,7 @@ export default function App() {
       <ThemeModeProvider>
         <MuiLocaleBridge>
           <Routes>
+            <Route path="/" element={<LandingPage />} />
             <Route path="/client/*" element={<ClientApp />} />
             <Route path="/*" element={<CoachApp />} />
           </Routes>
