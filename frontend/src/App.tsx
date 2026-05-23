@@ -74,6 +74,9 @@ import { ClientMessagesPage } from "./pages/client/messages";
 import { ClientLoginPage } from "./pages/client/login";
 import { ClientNutritionPlanPage } from "./pages/client/plans/nutrition";
 import { ClientWorkoutPlanPage } from "./pages/client/plans/workout";
+import { ClientTrainingHistoryPage } from "./pages/client/training/history";
+import { ClientTrainingLogPage } from "./pages/client/training/log";
+import { ClientTrainingSessionPage } from "./pages/client/training/show";
 import { ClientPromotionsPage } from "./pages/client/promotions";
 import { ClientRegisterPage } from "./pages/client/register";
 import { BrandingSettingsPage } from "./pages/settings/branding";
@@ -159,6 +162,9 @@ function ClientApp() {
           <Route path="messages" element={<ClientMessagesPage />} />
           <Route path="plans/workout" element={<ClientWorkoutPlanPage />} />
           <Route path="plans/nutrition" element={<ClientNutritionPlanPage />} />
+          <Route path="training/log" element={<ClientTrainingLogPage />} />
+          <Route path="training/history" element={<ClientTrainingHistoryPage />} />
+          <Route path="training/:id" element={<ClientTrainingSessionPage />} />
           <Route path="invoices" element={<ClientInvoiceListPage />} />
           <Route path="invoices/:id" element={<ClientInvoiceShowPage />} />
           <Route path="promotions" element={<ClientPromotionsPage />} />

@@ -117,4 +117,83 @@ export async function apiClientPromotions(): Promise<ClientPromotion[]> {
   return data.items ?? [];
 }
 
+export type WorkoutSetLog = {
+  set_number: number;
+  reps: number | null;
+  weight_kg: number | null;
+  completed: boolean;
+};
+
+export type WorkoutEntryLog = {
+  exercise_id: number | null;
+  exercise_name: string;
+  sort_order: number;
+  prescribed_sets: number | null;
+  prescribed_reps: number | null;
+  sets: WorkoutSetLog[];
+  completed: boolean;
+  notes: string | null;
+};
+
+export type ClientWorkoutSession = {
+  id: number;
+  started_at: string;
+  completed_at: string | null;
+  notes: string | null;
+  entries: WorkoutEntryLog[];
+  exercise_count: number;
+  completed_exercise_count: number;
+  created_at: string;
+};
+
+export function buildEntriesFromPlanItems(
+  items: { exercise_id: number; exercise_name?: string | null; sets?: number | null; reps?: number | null; notes?: string | null }[],
+): WorkoutEntryLog[] {
+  return items.map((item, idx) => {
+    const prescribed_sets = item.sets ?? null;
+    const prescribed_reps = item.reps ?? null;
+    const n = prescribed_sets && prescribed_sets > 0 ? prescribed_sets : 1;
+    const sets: WorkoutSetLog[] = [];
+    for (let s = 1; s <= n; s += 1) {
+      sets.push({ set_number: s, reps: prescribed_reps, weight_kg: null, completed: false });
+    }
+    return {
+      exercise_id: item.exercise_id,
+      exercise_name: item.exercise_name ?? `Exercise #${item.exercise_id}`,
+      sort_order: idx,
+      prescribed_sets,
+      prescribed_reps,
+      sets,
+      completed: false,
+      notes: item.notes ?? null,
+    };
+  });
+}
+
+export async function apiClientTrainingSessions(): Promise<ClientWorkoutSession[]> {
+  const res = await fetch(`${apiPrefix}/client/training/sessions?limit=50`, { headers: authHeaders() });
+  if (!res.ok) throw httpErrorFromResponse(res, await res.text());
+  const data = (await res.json()) as { items: ClientWorkoutSession[] };
+  return data.items ?? [];
+}
+
+export async function apiClientCreateTrainingSession(body: {
+  entries: WorkoutEntryLog[];
+  notes?: string | null;
+}): Promise<ClientWorkoutSession> {
+  const res = await fetch(`${apiPrefix}/client/training/sessions`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({ ...body, complete: true }),
+  });
+  if (!res.ok) throw httpErrorFromResponse(res, await res.text());
+  return res.json();
+}
+
+export async function apiClientTrainingSession(id: number): Promise<ClientWorkoutSession> {
+  const res = await fetch(`${apiPrefix}/client/training/sessions/${id}`, { headers: authHeaders() });
+  if (!res.ok) throw httpErrorFromResponse(res, await res.text());
+  return res.json();
+}
+
 export type { ClientMe };
