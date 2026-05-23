@@ -694,10 +694,12 @@ async def run_coach_chat(
     last_text = ""
 
     for _ in range(max_rounds):
+        from app.services.coach_tool_registry import list_assistant_tools
+
         completion = await client.chat.completions.create(
             model=settings.openai_chat_model,
             messages=oai_messages,
-            tools=COACH_CHAT_TOOLS,
+            tools=list_assistant_tools(),
             tool_choice="auto",
             temperature=0.25,
             max_tokens=1024,
@@ -720,7 +722,14 @@ async def run_coach_chat(
                 args = {}
             fn = _TOOL_DISPATCH.get(name)
             if not fn:
-                payload = {"error": "unknown_tool", "name": name}
+                from app.services.coach_tool_registry import invoke_coach_tool
+
+                try:
+                    payload = await invoke_coach_tool(
+                        db, coach, name, args if isinstance(args, dict) else {}, allow_mutating=False
+                    )
+                except Exception as e:
+                    payload = {"error": str(e)[:500]}
             else:
                 try:
                     payload = await fn(db, coach, args if isinstance(args, dict) else {})

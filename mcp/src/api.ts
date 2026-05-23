@@ -13,7 +13,7 @@ export function getConfig(): { baseUrl: string; apiKey: string } {
   const apiKey = process.env.GYM_COACH_API_KEY ?? "";
   if (!apiKey && !devNoAuth) {
     throw new Error(
-      "GYM_COACH_API_KEY is not set. Create a key via POST /api/v1/me/api-keys (Firebase session), export it, or set GYM_COACH_DEV_NO_AUTH=true with backend DEV_BYPASS_AUTH=true."
+      "GYM_COACH_API_KEY is not set. Create a key in Settings → Integrations, export it, or set GYM_COACH_DEV_NO_AUTH=true with backend DEV_BYPASS_AUTH=true."
     );
   }
   return { baseUrl, apiKey };
@@ -47,4 +47,41 @@ export async function gymCoachApi(
   } catch {
     return text;
   }
+}
+
+export type McpToolDefinition = {
+  name: string;
+  description: string;
+  parameters: Record<string, unknown>;
+  mutating?: boolean;
+  assistant?: boolean;
+};
+
+export async function fetchMcpTools(): Promise<McpToolDefinition[]> {
+  const data = (await gymCoachApi("/mcp/tools", { method: "GET" })) as { tools: McpToolDefinition[] };
+  return data.tools ?? [];
+}
+
+export async function callMcpTool(name: string, args: Record<string, unknown>): Promise<unknown> {
+  const data = (await gymCoachApi("/mcp/tools/call", {
+    method: "POST",
+    json: { name, arguments: args },
+  })) as { result: unknown };
+  return data.result;
+}
+
+export async function askCoachAssistant(input: {
+  message: string;
+  context?: string;
+  locale?: string;
+}): Promise<string> {
+  const data = (await gymCoachApi("/mcp/assistant/chat", {
+    method: "POST",
+    json: {
+      messages: [{ role: "user", content: input.message }],
+      context: input.context ?? null,
+      locale: input.locale ?? null,
+    },
+  })) as { message: string };
+  return data.message ?? "";
 }

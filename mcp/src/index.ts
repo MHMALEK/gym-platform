@@ -2,21 +2,16 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import * as z from "zod/v4";
 
-import { gymCoachApi } from "./api.js";
-
-const flatPlanItemSchema = z.object({
-  exercise_id: z.number().int().positive(),
-  sort_order: z.number().int().min(0).optional(),
-  sets: z.number().int().min(0).nullable().optional(),
-  reps: z.number().int().min(0).nullable().optional(),
-  duration_sec: z.number().int().min(0).nullable().optional(),
-  rest_sec: z.number().int().min(0).nullable().optional(),
-  notes: z.string().nullable().optional(),
-});
+import {
+  askCoachAssistant,
+  callMcpTool,
+  fetchMcpTools,
+  type McpToolDefinition,
+} from "./api.js";
 
 const server = new McpServer({
   name: "gym-coach",
-  version: "0.1.0",
+  version: "0.2.0",
 });
 
 function toolText(data: unknown): { content: Array<{ type: "text"; text: string }> } {
@@ -24,144 +19,69 @@ function toolText(data: unknown): { content: Array<{ type: "text"; text: string 
   return { content: [{ type: "text", text }] };
 }
 
-server.registerTool(
-  "create_flat_training_plan",
-  {
-    description:
-      "Create a training plan with a flat list of exercises (sets/reps per row). No supersets or blocks — only legacy_line rows.",
-    inputSchema: {
-      name: z.string().min(1).describe("Plan name"),
-      description: z.string().nullable().optional().describe("Optional description"),
-      items: z
-        .array(flatPlanItemSchema)
-        .min(1)
-        .describe("Ordered exercises: exercise_id, optional sort_order, sets, reps, rest_sec, notes"),
-    },
-  },
-  async ({ name, description, items }) => {
-    const normalized = items.map((row, idx) => {
-      const sort_order = row.sort_order ?? idx;
-      return {
-        exercise_id: row.exercise_id,
-        sort_order,
-        sets: row.sets ?? null,
-        reps: row.reps ?? null,
-        duration_sec: row.duration_sec ?? null,
-        rest_sec: row.rest_sec ?? null,
-        notes: row.notes ?? null,
-        row_type: "legacy_line" as const,
-      };
-    });
-    const created = (await gymCoachApi("/training-plans", {
-      method: "POST",
-      json: { name, description: description ?? null, venue_type: "mixed" },
-    })) as { id: number };
-    const planId = created.id;
-    const body = await gymCoachApi(`/training-plans/${planId}/items`, {
-      method: "PUT",
-      json: normalized,
-    });
-    return toolText({ training_plan_id: planId, plan: body });
+/** Build a permissive zod object from JSON Schema properties (validated server-side). */
+function schemaFromTool(def: McpToolDefinition): Record<string, z.ZodTypeAny> {
+  const props = def.parameters?.properties;
+  if (!props || typeof props !== "object") {
+    return {};
   }
-);
-
-server.registerTool(
-  "list_clients",
-  {
-    description: "List clients for the authenticated coach.",
-    inputSchema: {
-      limit: z.number().int().min(1).max(200).optional(),
-      offset: z.number().int().min(0).optional(),
-      status: z.string().nullable().optional(),
-      q: z.string().nullable().optional().describe("Search name or email"),
-    },
-  },
-  async (args) => {
-    const sp = new URLSearchParams();
-    if (args.limit != null) sp.set("limit", String(args.limit));
-    if (args.offset != null) sp.set("offset", String(args.offset));
-    if (args.status) sp.set("status", args.status);
-    if (args.q) sp.set("q", args.q);
-    const q = sp.toString();
-    const data = await gymCoachApi(`/clients${q ? `?${q}` : ""}`, { method: "GET" });
-    return toolText(data);
+  const out: Record<string, z.ZodTypeAny> = {};
+  for (const key of Object.keys(props as Record<string, unknown>)) {
+    out[key] = z.unknown().optional().describe(`${key} (see tool description)`);
   }
-);
+  return out;
+}
 
-server.registerTool(
-  "create_client",
-  {
-    description: "Create a client. Only name is required; other fields are optional.",
-    inputSchema: {
-      name: z.string().min(1),
-      email: z.string().nullable().optional(),
-      phone: z.string().nullable().optional(),
-      notes: z.string().nullable().optional(),
-      status: z.string().nullable().optional(),
+function registerBackendTool(def: McpToolDefinition): void {
+  const inputSchema = schemaFromTool(def);
+  const mutating = Boolean(def.mutating);
+  const description = mutating
+    ? `${def.description} [WRITES DATA — confirm with the coach before calling.]`
+    : def.description;
+
+  server.registerTool(
+    def.name,
+    {
+      description,
+      inputSchema,
     },
-  },
-  async (body) => {
-    const data = await gymCoachApi("/clients", {
-      method: "POST",
-      json: {
-        name: body.name,
-        email: body.email ?? null,
-        phone: body.phone ?? null,
-        notes: body.notes ?? null,
-        status: body.status ?? "active",
+    async (args) => {
+      const payload = args as Record<string, unknown>;
+      const result = await callMcpTool(def.name, payload);
+      return toolText(result);
+    }
+  );
+}
+
+function registerCoachAssistantTool(): void {
+  server.registerTool(
+    "coach_assistant",
+    {
+      description:
+        "Ask the Gym Coach AI assistant in natural language. It queries your clients, invoices, training plans, exercises, and membership products using the same tools as the in-app assistant. Use for complex questions that need reasoning across multiple data sources. Server-side OpenAI key required.",
+      inputSchema: {
+        message: z.string().min(1).describe("Question or instruction for the assistant"),
+        context: z
+          .string()
+          .optional()
+          .describe("Optional session context (current page, client id, etc.)"),
+        locale: z.string().optional().describe("BCP-47 locale, e.g. en or fa"),
       },
-    });
-    return toolText(data);
-  }
-);
-
-server.registerTool(
-  "list_invoices",
-  {
-    description: "List invoices with optional filters.",
-    inputSchema: {
-      limit: z.number().int().min(1).max(200).optional(),
-      offset: z.number().int().min(0).optional(),
-      client_id: z.number().int().positive().optional(),
-      status: z
-        .enum(["pending", "paid", "overdue", "cancelled"])
-        .optional()
-        .describe("Invoice status filter"),
     },
-  },
-  async (args) => {
-    const sp = new URLSearchParams();
-    if (args.limit != null) sp.set("limit", String(args.limit));
-    if (args.offset != null) sp.set("offset", String(args.offset));
-    if (args.client_id != null) sp.set("client_id", String(args.client_id));
-    if (args.status) sp.set("status", args.status);
-    const q = sp.toString();
-    const data = await gymCoachApi(`/invoices${q ? `?${q}` : ""}`, { method: "GET" });
-    return toolText(data);
-  }
-);
-
-server.registerTool(
-  "search_exercises",
-  {
-    description: "Search coach exercises by name/description to resolve exercise_id for plans.",
-    inputSchema: {
-      q: z.string().describe("Search string"),
-      limit: z.number().int().min(1).max(200).optional(),
-      offset: z.number().int().min(0).optional(),
-    },
-  },
-  async (args) => {
-    const sp = new URLSearchParams();
-    sp.set("q", args.q);
-    if (args.limit != null) sp.set("limit", String(args.limit));
-    if (args.offset != null) sp.set("offset", String(args.offset));
-    const data = await gymCoachApi(`/exercises?${sp.toString()}`, { method: "GET" });
-    return toolText(data);
-  }
-);
+    async ({ message, context, locale }) => {
+      const reply = await askCoachAssistant({ message, context, locale });
+      return toolText({ message: reply });
+    }
+  );
+}
 
 async function main(): Promise<void> {
+  const tools = await fetchMcpTools();
+  for (const def of tools) {
+    registerBackendTool(def);
+  }
+  registerCoachAssistantTool();
+
   const transport = new StdioServerTransport();
   await server.connect(transport);
 }

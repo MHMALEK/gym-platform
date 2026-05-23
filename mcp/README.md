@@ -1,40 +1,96 @@
 # Gym Coach MCP server
 
-stdio-based [Model Context Protocol](https://modelcontextprotocol.io) server that calls your Gym Coach FastAPI with a **coach API key**.
+Stdio [Model Context Protocol](https://modelcontextprotocol.io) server for coaches. Tools are **loaded dynamically** from the FastAPI backend (`GET /api/v1/mcp/tools`), so the MCP package stays in sync with the same tool layer used by the in-app Assistant.
 
-## Prerequisites
+## What you get
 
-1. Backend running (e.g. `uvicorn` on `http://127.0.0.1:8000`).
-2. A key created **from the web app** while logged in with Firebase: `POST /api/v1/me/api-keys` (or the UI when you add it). You cannot create keys using `X-API-Key` itself.
-3. Set `API_KEY_PEPPER` / `api_key_pepper` in backend `.env` in production so keys are hashed consistently after restarts.
+| Tool category | Examples |
+|---------------|----------|
+| **Read** (same as in-app AI) | `get_dashboard_snapshot`, `list_clients`, `get_client`, `search_exercises`, `list_invoices`, `get_training_plan`, … |
+| **Write** (MCP / agents only) | `create_client`, `update_client`, `create_invoice`, `update_invoice`, `create_flat_training_plan` |
+| **AI** | `coach_assistant` — natural-language questions using server-side OpenAI + the read tools |
 
-## Environment
+Write tools are marked `[WRITES DATA]` in their description. The in-app Assistant stays read-only for safety; MCP agents can mutate data when the coach approves.
 
-| Variable | Description |
-|----------|-------------|
-| `GYM_COACH_API_BASE_URL` | API origin, default `http://127.0.0.1:8000` |
-| `GYM_COACH_API_KEY` | Plaintext key starting with `gck_` (from `POST /api/v1/me/api-keys`) |
-| `GYM_COACH_DEV_NO_AUTH` | If `true`, omit `X-API-Key` (requires backend `DEV_BYPASS_AUTH=true` and a bootstrapped dev coach) |
+## Setup
 
-**Local test without API keys:** set `DEV_BYPASS_AUTH=true` in the backend `.env`, run `POST /api/v1/auth/bootstrap` once, then start MCP with `GYM_COACH_DEV_NO_AUTH=true` and no `GYM_COACH_API_KEY`. Alternatively keep `DEV_BYPASS_AUTH=true` and set `GYM_COACH_API_KEY=dev` (backend accepts aliases `dev`, `test`, `bypass` per `DEV_MCP_API_KEY_ALIASES`).
+### 1. API key
 
-## Run
+In the web app: **Settings → Integrations → Generate key** (or `POST /api/v1/me/api-keys` with Firebase login).
+
+Export the key (shown once):
+
+```bash
+export GYM_COACH_API_KEY="gck_…"
+export GYM_COACH_API_BASE_URL="http://127.0.0.1:8000"
+```
+
+**Local dev without keys:** backend `DEV_BYPASS_AUTH=true`, then either `GYM_COACH_DEV_NO_AUTH=true` or `GYM_COACH_API_KEY=dev`.
+
+### 2. Backend
+
+Ensure `OPENAI_API_KEY` is set if you use `coach_assistant`.
+
+```bash
+cd backend
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+### 3. Run MCP
 
 ```bash
 cd mcp
 npm install
-export GYM_COACH_API_KEY='gck_...'   # or: GYM_COACH_DEV_NO_AUTH=true
 npm start
 ```
 
-## Tools (MVP)
+### 4. Cursor / Claude Desktop
 
-- `create_flat_training_plan` — `POST /training-plans` then `PUT .../items` (flat `legacy_line` rows only; sets/reps supported).
-- `list_clients` — `GET /clients`
-- `create_client` — `POST /clients`
-- `list_invoices` — `GET /invoices` with filters
-- `search_exercises` — `GET /exercises?q=`
+```json
+{
+  "mcpServers": {
+    "gym-coach": {
+      "command": "npx",
+      "args": ["tsx", "/absolute/path/to/gym-coach-platform/mcp/src/index.ts"],
+      "env": {
+        "GYM_COACH_API_BASE_URL": "http://127.0.0.1:8000",
+        "GYM_COACH_API_KEY": "gck_…"
+      }
+    }
+  }
+}
+```
 
-## Cursor / Claude Desktop
+## Architecture
 
-Add an MCP server entry pointing at `node` with args `path/to/mcp/node_modules/tsx/dist/cli.mjs` and `path/to/mcp/src/index.ts`, or run `npm start` under stdio with the env vars above. Exact UI depends on your client version.
+```
+Cursor / Claude Desktop
+        │ stdio MCP
+        ▼
+   mcp/src/index.ts  ──HTTP──►  FastAPI /api/v1/mcp/tools
+        │                              │
+        │                              ├── invoke_coach_tool (DB)
+        └── coach_assistant ──────────► POST /mcp/assistant/chat
+                                              └── OpenAI + tools
+```
+
+- **Single source of truth:** `backend/app/services/coach_tool_registry.py`
+- **Coach scoping:** every call uses `X-API-Key` → your coach row
+- **No duplicated business logic** in TypeScript — MCP only registers tools and proxies
+
+## Example prompts (in Cursor)
+
+- “How many overdue invoices do I have?” → `coach_assistant` or `get_dashboard_snapshot`
+- “Create a client named Sara with email sara@example.com” → `create_client`
+- “List pending invoices and summarize who owes the most” → `coach_assistant`
+- “Find hamstring exercises with dumbbells” → `search_exercises`
+
+## Environment
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `GYM_COACH_API_KEY` | Yes* | Coach API key (`gck_…`) |
+| `GYM_COACH_API_BASE_URL` | No | Default `http://127.0.0.1:8000` |
+| `GYM_COACH_DEV_NO_AUTH` | No | Skip key when backend dev bypass is on |
+
+\* Not required when `GYM_COACH_DEV_NO_AUTH=true` and backend `DEV_BYPASS_AUTH=true`.

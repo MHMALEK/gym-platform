@@ -16,6 +16,7 @@ from app.api import (
     exercise_media,
     exercises,
     invoices,
+    mcp,
     me,
     media,
     nutrition_templates,
@@ -56,6 +57,7 @@ app.include_router(media.router, prefix=v1)
 app.include_router(training_plans.router, prefix=v1)
 app.include_router(ai_workout.router, prefix=v1)
 app.include_router(ai_coach_chat.router, prefix=v1)
+app.include_router(mcp.router, prefix=v1)
 app.include_router(nutrition_templates.router, prefix=v1)
 app.include_router(clients.router, prefix=v1)
 app.include_router(invoices.router, prefix=v1)

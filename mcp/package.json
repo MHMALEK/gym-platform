@@ -1,9 +1,9 @@
 {
   "name": "gym-coach-mcp",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
-  "description": "MCP server for Gym Coach API (flat plans, clients, invoices, exercise search)",
+  "description": "MCP server for Gym Coach — dynamic tools from backend + AI coach assistant",
   "scripts": {
     "start": "tsx src/index.ts",
     "typecheck": "tsc --noEmit"
