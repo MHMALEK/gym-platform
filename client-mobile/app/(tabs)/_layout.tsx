@@ -1,38 +1,35 @@
-import FontAwesome from "@expo/vector-icons/FontAwesome";
+import { Ionicons } from "@expo/vector-icons";
 import { Redirect, Tabs } from "expo-router";
-import React from "react";
-import { ActivityIndicator, Pressable, View } from "react-native";
+import { Platform, Pressable, StyleSheet } from "react-native";
 
-import { useClientOnlyValue } from "@/components/useClientOnlyValue";
-import { useColorScheme } from "@/components/useColorScheme";
-import Colors from "@/constants/Colors";
+import { LoadingState } from "@/components/ui/LoadingState";
+import { colors, shadows } from "@/constants/theme";
 import { useAuth } from "@/contexts/AuthContext";
 
-function TabBarIcon(props: { name: React.ComponentProps<typeof FontAwesome>["name"]; color: string }) {
-  return <FontAwesome size={22} style={{ marginBottom: -2 }} {...props} />;
+function TabIcon({ name, color, focused }: { name: keyof typeof Ionicons.glyphMap; color: string; focused: boolean }) {
+  return <Ionicons name={focused ? name : (`${name}-outline` as keyof typeof Ionicons.glyphMap)} size={24} color={color} />;
 }
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
   const { ready, token, signOut } = useAuth();
 
-  if (!ready) {
-    return (
-      <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-        <ActivityIndicator size="large" color="#16a34a" />
-      </View>
-    );
-  }
+  if (!ready) return <LoadingState />;
   if (!token) return <Redirect href="/login" />;
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? "light"].tint,
-        headerShown: useClientOnlyValue(false, true),
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textMuted,
+        tabBarStyle: styles.tabBar,
+        tabBarLabelStyle: styles.tabLabel,
+        headerStyle: styles.header,
+        headerTitleStyle: styles.headerTitle,
+        headerShadowVisible: false,
+        headerTintColor: colors.text,
         headerRight: () => (
-          <Pressable onPress={() => void signOut()} style={{ marginRight: 16 }}>
-            <FontAwesome name="sign-out" size={20} color={Colors[colorScheme ?? "light"].tint} />
+          <Pressable onPress={() => void signOut()} style={styles.signOut} hitSlop={12}>
+            <Ionicons name="log-out-outline" size={22} color={colors.textSecondary} />
           </Pressable>
         ),
       }}
@@ -41,21 +38,16 @@ export default function TabLayout() {
         name="home"
         options={{
           title: "Home",
-          tabBarIcon: ({ color }) => <TabBarIcon name="home" color={color} />,
+          headerShown: false,
+          tabBarIcon: ({ color, focused }) => <TabIcon name="home" color={color} focused={focused} />,
         }}
       />
       <Tabs.Screen
-        name="workout"
+        name="plans"
         options={{
-          title: "Workout",
-          tabBarIcon: ({ color }) => <TabBarIcon name="heartbeat" color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="nutrition"
-        options={{
-          title: "Nutrition",
-          tabBarIcon: ({ color }) => <TabBarIcon name="cutlery" color={color} />,
+          title: "Plans",
+          headerShown: false,
+          tabBarIcon: ({ color, focused }) => <TabIcon name="barbell" color={color} focused={focused} />,
         }}
       />
       <Tabs.Screen
@@ -63,23 +55,53 @@ export default function TabLayout() {
         options={{
           title: "Invoices",
           headerShown: false,
-          tabBarIcon: ({ color }) => <TabBarIcon name="file-text-o" color={color} />,
+          tabBarIcon: ({ color, focused }) => <TabIcon name="receipt" color={color} focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="messages"
         options={{
           title: "Messages",
-          tabBarIcon: ({ color }) => <TabBarIcon name="comments" color={color} />,
+          tabBarIcon: ({ color, focused }) => <TabIcon name="chatbubbles" color={color} focused={focused} />,
         }}
       />
+      <Tabs.Screen name="workout" options={{ href: null }} />
+      <Tabs.Screen name="nutrition" options={{ href: null }} />
       <Tabs.Screen
         name="promotions"
         options={{
           href: null,
-          title: "Promotions",
+          title: "Offers",
+          headerShown: true,
+          headerStyle: { backgroundColor: colors.background },
+          headerShadowVisible: false,
         }}
       />
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  tabBar: {
+    backgroundColor: colors.surface,
+    borderTopColor: colors.border,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    height: Platform.OS === "ios" ? 88 : 64,
+    paddingTop: 6,
+    paddingBottom: Platform.OS === "ios" ? 24 : 8,
+    ...shadows.elevated,
+  },
+  tabLabel: {
+    fontSize: 11,
+    fontWeight: "600",
+    marginTop: 2,
+  },
+  header: {
+    backgroundColor: colors.background,
+  },
+  headerTitle: {
+    fontWeight: "700",
+    fontSize: 17,
+  },
+  signOut: { marginRight: 16 },
+});
