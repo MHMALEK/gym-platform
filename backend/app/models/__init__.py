@@ -1,4 +1,5 @@
 from app.models.base import Base
+from app.models.chat_thread import ChatMessage, ChatThread
 from app.models.client import Client
 from app.models.client_coaching_plan import ClientCoachingPlan
 from app.models.client_subscription import ClientSubscription
@@ -19,6 +20,8 @@ from app.models.training_plan_item import TrainingPlanItem
 
 __all__ = [
     "Base",
+    "ChatMessage",
+    "ChatThread",
     "Client",
     "ClientCoachingPlan",
     "ClientSubscription",
