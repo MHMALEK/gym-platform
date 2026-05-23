@@ -1,21 +1,18 @@
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  FlatList,
-  Pressable,
-  RefreshControl,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 
-import { ApiError, apiListClientInvoices, type ClientInvoice } from "@/lib/api";
+import { Badge } from "@/components/ui/Badge";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { LoadingState } from "@/components/ui/LoadingState";
+import { colors, spacing, typography } from "@/constants/theme";
+import { ApiError, apiListClientInvoices, formatPlanMoney, type ClientInvoice } from "@/lib/api";
 
 function fmtDate(iso: string | null | undefined) {
-  if (!iso) return "—";
+  if (!iso) return "No due date";
   const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString();
+  return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
 export default function InvoicesListScreen() {
@@ -41,13 +38,7 @@ export default function InvoicesListScreen() {
     void load();
   }, [load]);
 
-  if (loading && rows.length === 0) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color="#16a34a" />
-      </View>
-    );
-  }
+  if (loading && rows.length === 0) return <LoadingState label="Loading invoices…" />;
 
   return (
     <View style={styles.flex}>
@@ -55,43 +46,53 @@ export default function InvoicesListScreen() {
       <FlatList
         data={rows}
         keyExtractor={(item) => String(item.id)}
-        contentContainerStyle={{ paddingBottom: 24 }}
+        contentContainerStyle={rows.length === 0 ? styles.emptyList : styles.list}
         refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={() => {
-              setRefreshing(true);
-              void load();
-            }}
-          />
+          <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); void load(); }} tintColor={colors.primary} />
+        }
+        ListEmptyComponent={
+          !error ? <EmptyState icon="receipt-outline" title="No invoices" message="When your coach sends a bill, it will appear here." /> : null
         }
         renderItem={({ item }) => (
-          <Pressable style={styles.row} onPress={() => router.push(`/(tabs)/invoices/${item.id}`)}>
-            <Text style={styles.ref}>{item.reference || `#${item.id}`}</Text>
-            <Text style={styles.sub}>
-              {item.amount != null ? `${item.amount} ${item.currency}` : "—"} · Due {fmtDate(item.due_date)}
-            </Text>
-            <Text style={styles.status}>{item.status}</Text>
+          <Pressable
+            style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
+            onPress={() => router.push(`/(tabs)/invoices/${item.id}`)}
+          >
+            <View style={styles.rowLeft}>
+              <Text style={styles.ref}>{item.reference || `#${item.id}`}</Text>
+              <Text style={styles.sub}>
+                {item.amount != null ? formatPlanMoney(item.amount, item.currency) : "—"} · Due {fmtDate(item.due_date)}
+              </Text>
+            </View>
+            <View style={styles.rowRight}>
+              <Badge label={item.status} tone="invoice" status={item.status} />
+              <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+            </View>
           </Pressable>
         )}
-        ListEmptyComponent={!error ? <Text style={styles.empty}>No invoices yet.</Text> : null}
       />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: "#f9fafb" },
-  center: { flex: 1, alignItems: "center", justifyContent: "center" },
-  err: { color: "#b91c1c", padding: 16 },
+  flex: { flex: 1, backgroundColor: colors.background },
+  list: { padding: spacing.md, paddingBottom: spacing.xxl },
+  emptyList: { flexGrow: 1, justifyContent: "center" },
+  err: { color: colors.danger, padding: spacing.md },
   row: {
-    backgroundColor: "#fff",
-    padding: 16,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#e5e7eb",
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
   },
-  ref: { fontSize: 17, fontWeight: "600", color: "#111827" },
-  sub: { fontSize: 13, color: "#6b7280", marginTop: 4 },
-  status: { fontSize: 13, color: "#16a34a", marginTop: 4, fontWeight: "600", textTransform: "capitalize" },
-  empty: { textAlign: "center", marginTop: 48, color: "#9ca3af" },
+  rowPressed: { opacity: 0.92 },
+  rowLeft: { flex: 1 },
+  rowRight: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  ref: { ...typography.subtitle, fontSize: 16 },
+  sub: { ...typography.caption, marginTop: 4, color: colors.textSecondary },
 });

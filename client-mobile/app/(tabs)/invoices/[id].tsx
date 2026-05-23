@@ -1,26 +1,25 @@
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  Alert,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Alert, StyleSheet, Text, View } from "react-native";
 
-import { ApiError, apiGetClientInvoice, type ClientInvoice } from "@/lib/api";
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { LoadingState } from "@/components/ui/LoadingState";
+import { Screen } from "@/components/ui/Screen";
+import { colors, spacing, typography } from "@/constants/theme";
+import { ApiError, apiGetClientInvoice, formatPlanMoney, type ClientInvoice } from "@/lib/api";
 import { shareClientInvoicePdf } from "@/lib/invoicePdf";
 
 function fmtDate(iso: string | null | undefined) {
   if (!iso) return "—";
   const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString();
+  return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
 }
 
 export default function InvoiceDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const router = useRouter();
   const invoiceId = Number(id);
   const [inv, setInv] = useState<ClientInvoice | null>(null);
   const [loading, setLoading] = useState(true);
@@ -56,79 +55,67 @@ export default function InvoiceDetailScreen() {
     }
   };
 
-  if (loading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color="#16a34a" />
-      </View>
-    );
-  }
+  if (loading) return <LoadingState label="Loading invoice…" />;
 
   if (!inv) {
     return (
-      <View style={styles.center}>
-        <Text>Invoice not found.</Text>
-      </View>
+      <Screen>
+        <Text style={styles.notFound}>Invoice not found.</Text>
+        <Button label="Back to invoices" variant="secondary" onPress={() => router.back()} />
+      </Screen>
     );
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.scroll}>
-      <Text style={styles.ref}>{inv.reference ?? `#${inv.id}`}</Text>
-      <Text style={styles.status}>{inv.status}</Text>
+    <Screen>
+      <View style={styles.header}>
+        <Text style={styles.ref}>{inv.reference ?? `#${inv.id}`}</Text>
+        <Badge label={inv.status} tone="invoice" status={inv.status} />
+      </View>
 
-      <View style={styles.card}>
-        <Row label="Amount" value={inv.amount != null ? `${inv.amount} ${inv.currency}` : "—"} />
-        <Row label="Due" value={fmtDate(inv.due_date)} />
-        {inv.paid_at ? <Row label="Paid" value={fmtDate(inv.paid_at)} /> : null}
+      <Card style={styles.card}>
+        <DetailRow label="Amount" value={inv.amount != null ? formatPlanMoney(inv.amount, inv.currency) : "—"} highlight />
+        <DetailRow label="Due date" value={fmtDate(inv.due_date)} />
+        {inv.paid_at ? <DetailRow label="Paid on" value={fmtDate(inv.paid_at)} /> : null}
         {inv.notes ? (
-          <View style={{ marginTop: 12 }}>
-            <Text style={styles.label}>Notes</Text>
+          <View style={styles.notesBlock}>
+            <Text style={styles.notesLabel}>Notes</Text>
             <Text style={styles.notes}>{inv.notes}</Text>
           </View>
         ) : null}
-      </View>
+      </Card>
 
-      <Pressable style={[styles.btn, pdfBusy && styles.disabled]} onPress={() => void onPdf()} disabled={pdfBusy}>
-        <Text style={styles.btnText}>{pdfBusy ? "Preparing…" : "Download PDF"}</Text>
-      </Pressable>
-    </ScrollView>
+      <Button label={pdfBusy ? "Preparing PDF…" : "Download PDF"} onPress={() => void onPdf()} loading={pdfBusy} />
+    </Screen>
   );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+function DetailRow({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
   return (
     <View style={styles.row}>
       <Text style={styles.label}>{label}</Text>
-      <Text style={styles.value}>{value}</Text>
+      <Text style={[styles.value, highlight && styles.valueHighlight]}>{value}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  center: { flex: 1, alignItems: "center", justifyContent: "center" },
-  scroll: { padding: 16, paddingBottom: 32 },
-  ref: { fontSize: 22, fontWeight: "700" },
-  status: { fontSize: 15, color: "#16a34a", marginTop: 4, textTransform: "capitalize" },
-  card: {
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    padding: 16,
-    marginTop: 16,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#e5e7eb",
-  },
-  row: { flexDirection: "row", justifyContent: "space-between", marginBottom: 10 },
-  label: { color: "#6b7280", fontSize: 14 },
-  value: { fontWeight: "600", fontSize: 14 },
-  notes: { fontSize: 14, lineHeight: 20, marginTop: 4 },
-  btn: {
-    backgroundColor: "#16a34a",
-    borderRadius: 10,
-    paddingVertical: 14,
+  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: spacing.md },
+  ref: { ...typography.title, flex: 1, marginRight: spacing.sm },
+  card: { marginBottom: spacing.lg },
+  row: {
+    flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
-    marginTop: 20,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.borderLight,
   },
-  btnText: { color: "#fff", fontWeight: "600", fontSize: 16 },
-  disabled: { opacity: 0.6 },
+  label: { ...typography.bodySmall },
+  value: { ...typography.subtitle, fontSize: 15 },
+  valueHighlight: { color: colors.primary, fontSize: 18 },
+  notesBlock: { marginTop: spacing.md, paddingTop: spacing.sm },
+  notesLabel: { ...typography.label, marginBottom: spacing.xs },
+  notes: { ...typography.body, color: colors.textSecondary },
+  notFound: { ...typography.body, marginBottom: spacing.md, textAlign: "center" },
 });
