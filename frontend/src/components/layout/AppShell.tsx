@@ -6,7 +6,7 @@ import IconButton from "@mui/material/IconButton";
 import Stack from "@mui/material/Stack";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
-import { useTheme } from "@mui/material/styles";
+import { alpha, useTheme } from "@mui/material/styles";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import { useMenu } from "@refinedev/core";
 import { Menu as MenuIcon, Sparkles } from "lucide-react";
@@ -20,6 +20,7 @@ import { useCoachAi } from "../../contexts/CoachAiContext";
 import { useCoachBranding } from "../../contexts/CoachBrandingContext";
 import { mediaSrc } from "../../lib/exerciseMediaApi";
 import { BrandMark } from "../BrandMark";
+import { AI_ACCENT, aiSoftBg, aiSoftBorder } from "../ai/aiPanelTheme";
 import { ContextualCoachAiPanel } from "../ai/ContextualCoachAiPanel";
 import { SidebarPreferences } from "./SidebarPreferences";
 
@@ -366,6 +367,8 @@ function SidebarFooter() {
 }
 
 function Topbar({ onOpenMenu, showMenuButton }: { onOpenMenu: () => void; showMenuButton: boolean }) {
+  const theme = useTheme();
+  const isMd = useMediaQuery(theme.breakpoints.up("md"));
   const { t } = useTranslation();
   const { menuItems, selectedKey } = useMenu();
   const { openPanel } = useCoachAi();
@@ -428,19 +431,38 @@ function Topbar({ onOpenMenu, showMenuButton }: { onOpenMenu: () => void; showMe
       ) : null}
       {showAiButton ? (
         <Tooltip title={t("contextualAi.openFab")}>
-          <IconButton
-            size="small"
+          <Box
+            component="button"
+            type="button"
             onClick={openContextualAi}
             aria-label={t("contextualAi.openFab")}
             sx={{
               ml: "auto",
-              color: "primary.main",
-              bgcolor: "action.hover",
-              "&:hover": { bgcolor: "action.selected" },
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 0.75,
+              px: isMd ? 1.5 : 1,
+              py: 0.75,
+              border: "1px solid",
+              borderColor: aiSoftBorder(theme),
+              borderRadius: 999,
+              bgcolor: aiSoftBg(theme),
+              color: AI_ACCENT.main,
+              cursor: "pointer",
+              font: "inherit",
+              fontSize: 13,
+              fontWeight: 600,
+              lineHeight: 1,
+              transition: theme.transitions.create(["background-color", "border-color"]),
+              "&:hover": {
+                bgcolor: alpha(AI_ACCENT.main, theme.palette.mode === "dark" ? 0.22 : 0.14),
+                borderColor: AI_ACCENT.main,
+              },
             }}
           >
-            <Sparkles size={18} strokeWidth={2.25} />
-          </IconButton>
+            <Sparkles size={16} strokeWidth={2.25} />
+            {isMd ? t("contextualAi.openFab") : null}
+          </Box>
         </Tooltip>
       ) : (
         <Box sx={{ flex: 1 }} />

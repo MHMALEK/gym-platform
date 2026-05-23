@@ -5,9 +5,12 @@ import CircularProgress from "@mui/material/CircularProgress";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
+import { alpha } from "@mui/material/styles";
 import type { RefObject } from "react";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+
+import { AI_ACCENT } from "./aiPanelTheme";
 
 import { apiPrefix, authHeaders } from "../../lib/api";
 import type { WorkoutLine } from "../../lib/workoutLineModel";
@@ -188,15 +191,30 @@ export function TrainingPlanDraftPanel({
         </Typography>
       ) : null}
       <Stack direction="row" spacing={1} sx={{ mt: 2, justifyContent: "flex-end", flexWrap: "wrap" }}>
-        <Button variant="outlined" size="small" onClick={() => void runDraft()} disabled={loading || !input.trim()}>
-          {loading ? <CircularProgress size={18} /> : t("trainingPlans.ai.generate")}
+        <Button
+          variant="outlined"
+          size="small"
+          onClick={() => void runDraft()}
+          disabled={loading || !input.trim()}
+          sx={{
+            textTransform: "none",
+            borderColor: alpha(AI_ACCENT.main, 0.45),
+            color: AI_ACCENT.main,
+            "&:hover": { borderColor: AI_ACCENT.main, bgcolor: alpha(AI_ACCENT.main, 0.08) },
+          }}
+        >
+          {loading ? <CircularProgress size={18} sx={{ color: AI_ACCENT.main }} /> : t("trainingPlans.ai.generate")}
         </Button>
         <Button
           variant="contained"
           size="small"
           onClick={applyDraft}
           disabled={!draft?.lines?.length || loading}
-          sx={{ textTransform: "none" }}
+          sx={{
+            textTransform: "none",
+            bgcolor: AI_ACCENT.main,
+            "&:hover": { bgcolor: AI_ACCENT.dark },
+          }}
         >
           {t("trainingPlans.ai.apply")}
         </Button>
