@@ -30,7 +30,7 @@ Vite proxies `/api` to `http://127.0.0.1:8000`. With `VITE_DEV_AUTH=true` (see `
 
 Set `VITE_API_URL` only if the API is on another origin (empty uses same-origin + proxy).
 
-## Mobile app (Expo)
+## Mobile app (Expo) — coach
 
 Basic **clients** and **invoices** flows (no workout builder). Copy [`mobile/.env.example`](mobile/.env.example) to `mobile/.env` and set `EXPO_PUBLIC_API_URL` to your machine or deployed API. Start the API, then:
 
@@ -41,6 +41,20 @@ npm run start
 ```
 
 Use **Continue (dev login)** when `EXPO_PUBLIC_DEV_AUTH=true` and the backend has `DEV_BYPASS_AUTH=true`, or sign in with Firebase email/password when the `EXPO_PUBLIC_FIREBASE_*` variables are set.
+
+## Client mobile app (Expo)
+
+Client-facing app for **training**, **nutrition**, **invoices**, and **messages**. Copy [`client-mobile/.env.example`](client-mobile/.env.example) to `client-mobile/.env`.
+
+```bash
+cd client-mobile
+npm install
+npm run start
+```
+
+Dev flow: coach dev login on web → copy invite code from Settings → Branding → set `EXPO_PUBLIC_DEV_INVITE_CODE` or enter on login → **Continue (dev client login)** (`dev-client` token).
+
+Production: Firebase sign-in + register with coach invite code.
 
 ## Firebase (production)
 
@@ -54,4 +68,5 @@ Use **Continue (dev login)** when `EXPO_PUBLIC_DEV_AUTH=true` and the backend ha
 
 - `backend/app` — FastAPI, SQLAlchemy models, routers under `api/`
 - `frontend/src` — Refine resources, custom REST `dataProvider`, Firebase/dev `authProvider`
-- `mobile/` — Expo Router app for clients + invoices (REST + SecureStore token)
+- `mobile/` — Expo Router app for coaches (clients + invoices + planner)
+- `client-mobile/` — Expo Router app for clients (plans, invoices, messages)

@@ -9,6 +9,7 @@ backend/**/__pycache__/
 frontend/node_modules/
 mcp/node_modules/
 mobile/node_modules/
+client-mobile/node_modules/
 mobile/.expo/
 frontend/dist/
 .DS_Store
