@@ -37,6 +37,12 @@ def init_firebase() -> None:
 
 def verify_firebase_token(id_token: str) -> dict:
     if settings.dev_bypass_auth:
+        if id_token == "dev-client":
+            return {
+                "uid": settings.dev_client_firebase_uid,
+                "email": settings.dev_client_email,
+                "name": settings.dev_client_name,
+            }
         return {
             "uid": settings.dev_firebase_uid,
             "email": settings.dev_coach_email,

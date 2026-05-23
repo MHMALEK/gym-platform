@@ -16,8 +16,10 @@ class Coach(Base, TimestampMixin):
     logo_media_asset_id: Mapped[int | None] = mapped_column(
         ForeignKey("media_assets.id", ondelete="SET NULL"), nullable=True, index=True
     )
+    invite_code: Mapped[str | None] = mapped_column(String(32), unique=True, index=True, nullable=True)
 
     clients = relationship("Client", back_populates="coach", cascade="all, delete-orphan")
+    chat_threads = relationship("ChatThread", back_populates="coach", cascade="all, delete-orphan")
     exercises = relationship("Exercise", back_populates="coach", foreign_keys="Exercise.coach_id")
     training_plans = relationship(
         "TrainingPlan", back_populates="coach", foreign_keys="TrainingPlan.coach_id"

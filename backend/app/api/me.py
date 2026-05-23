@@ -4,6 +4,7 @@ from fastapi import APIRouter, Body, HTTPException, Query, Request, status
 from sqlalchemy import delete, select
 
 from app.api.deps import CurrentCoach, DbSession
+from app.services.invite_codes import ensure_coach_invite_code
 from app.core.config import settings
 from app.core.media_util import build_public_url
 from app.core.security import init_firebase
@@ -89,6 +90,10 @@ async def revoke_api_key(request: Request, key_id: int, coach: CurrentCoach, db:
 
 
 async def _coach_read(db: DbSession, coach: Coach, insights: DashboardSummary | None = None) -> CoachRead:
+    if not coach.invite_code:
+        await ensure_coach_invite_code(db, coach)
+        await db.commit()
+        await db.refresh(coach)
     logo_url = None
     if coach.logo_media_asset_id:
         res = await db.execute(select(MediaAsset).where(MediaAsset.id == coach.logo_media_asset_id))

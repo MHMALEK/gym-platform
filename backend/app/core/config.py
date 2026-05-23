@@ -53,6 +53,9 @@ class Settings(BaseSettings):
     dev_firebase_uid: str = "dev-coach-uid"
     dev_coach_email: str = "dev@example.com"
     dev_coach_name: str = "Dev Coach"
+    dev_client_firebase_uid: str = "dev-client-uid"
+    dev_client_email: str = "client@example.com"
+    dev_client_name: str = "Dev Client"
 
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
 

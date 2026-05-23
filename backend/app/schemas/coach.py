@@ -13,6 +13,7 @@ class CoachRead(ORMBase):
     email: str
     name: str
     firebase_uid: str
+    invite_code: str | None = None
     tagline: str | None = None
     primary_color: str | None = None
     logo_media_asset_id: int | None = None

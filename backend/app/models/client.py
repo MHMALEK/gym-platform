@@ -11,6 +11,7 @@ class Client(Base, TimestampMixin):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     coach_id: Mapped[int] = mapped_column(ForeignKey("coaches.id", ondelete="CASCADE"), index=True)
+    firebase_uid: Mapped[str | None] = mapped_column(String(128), unique=True, index=True, nullable=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     email: Mapped[str | None] = mapped_column(String(255), nullable=True)
     phone: Mapped[str | None] = mapped_column(String(64), nullable=True)
@@ -43,6 +44,12 @@ class Client(Base, TimestampMixin):
     invoices = relationship("Invoice", back_populates="client", cascade="all, delete-orphan")
     coaching_plan = relationship(
         "ClientCoachingPlan",
+        back_populates="client",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
+    chat_thread = relationship(
+        "ChatThread",
         back_populates="client",
         uselist=False,
         cascade="all, delete-orphan",
