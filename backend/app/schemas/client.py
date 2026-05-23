@@ -157,6 +157,42 @@ class ClientCoachingPlanUpsert(BaseModel):
     assigned_nutrition_template_id: int | None = None
 
 
+def _optional_fk_int(v: object) -> int | None:
+    """MUI / Refine often send '' for cleared selects; coerce to None."""
+    if v is None or v == "":
+        return None
+    if isinstance(v, str):
+        s = v.strip()
+        if not s:
+            return None
+        try:
+            return int(s)
+        except ValueError as e:
+            raise ValueError("expected integer id or empty") from e
+    if isinstance(v, bool):
+        raise ValueError("expected integer id or empty")
+    if isinstance(v, int):
+        return v
+    if isinstance(v, float):
+        return int(v)
+    raise ValueError("expected integer id or empty")
+
+
+def _optional_metric_decimal(v: object) -> Decimal | None:
+    if v is None or v == "":
+        return None
+    if isinstance(v, Decimal):
+        return v
+    if isinstance(v, (int, float)):
+        return Decimal(str(v))
+    if isinstance(v, str):
+        s = v.strip()
+        if not s:
+            return None
+        return Decimal(s)
+    raise ValueError("expected number or empty")
+
+
 class ClientCreate(BaseModel):
     name: str
     email: str | None = None
@@ -174,6 +210,16 @@ class ClientCreate(BaseModel):
     )
     status: str | None = "active"
     account_status: str | None = "good_standing"
+
+    @field_validator("subscription_plan_template_id", "goal_type_id", mode="before")
+    @classmethod
+    def coerce_optional_fk_create(cls, v: object) -> int | None:
+        return _optional_fk_int(v)
+
+    @field_validator("weight_kg", "height_cm", mode="before")
+    @classmethod
+    def coerce_optional_metrics_create(cls, v: object) -> Decimal | None:
+        return _optional_metric_decimal(v)
 
     @field_validator("billing_preference", mode="before")
     @classmethod
@@ -204,6 +250,16 @@ class ClientUpdate(BaseModel):
     status: str | None = None
     account_status: str | None = None
 
+    @field_validator("subscription_plan_template_id", "goal_type_id", mode="before")
+    @classmethod
+    def coerce_optional_fk_update(cls, v: object) -> int | None:
+        return _optional_fk_int(v)
+
+    @field_validator("weight_kg", "height_cm", mode="before")
+    @classmethod
+    def coerce_optional_metrics_update(cls, v: object) -> Decimal | None:
+        return _optional_metric_decimal(v)
+
     @field_validator("billing_preference", mode="before")
     @classmethod
     def normalize_billing_preference_update(cls, v: object) -> str | None:
@@ -222,6 +278,7 @@ class ClientUpdate(BaseModel):
 class ClientRead(ORMBase):
     id: int
     coach_id: int
+    has_account: bool = False
     name: str
     email: str | None
     phone: str | None

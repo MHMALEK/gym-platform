@@ -33,7 +33,21 @@ from app.schemas.client import (
     MembershipListSummary,
     SubscriptionPlanSummary,
 )
+from app.schemas.client_chat import (
+    ChatMessageCreate,
+    ChatMessageListResponse,
+    ChatMessagePostResponse,
+    ChatMessageRead,
+)
 from app.schemas.exercise import exercise_to_read
+from app.services.client_chat import (
+    CHAT_MESSAGE_MAX_LEN,
+    append_coach_message,
+    ensure_thread,
+    fetch_client_for_coach,
+    get_thread_for_coach_client,
+    list_messages,
+)
 from app.services.diet_meals_json import diet_meals_to_json_column, parse_diet_meals_raw
 from app.services.exercise_access import exercise_ids_allowed_for_coach
 from app.services.exercise_muscles import EXERCISE_DETAIL_LOADERS
@@ -222,6 +236,7 @@ def _client_read(c: Client, *, last_invoice: Invoice | None = None) -> ClientRea
     return ClientRead(
         id=c.id,
         coach_id=c.coach_id,
+        has_account=bool(c.firebase_uid),
         name=c.name,
         email=c.email,
         phone=c.phone,
@@ -635,3 +650,48 @@ async def update_subscription(
     return ClientSubscriptionRead.model_validate(sub).model_copy(
         update={"plan_template": PlanTemplateRead.model_validate(sub.plan_template)}
     )
+
+
+@router.get("/{client_id}/messages", response_model=ChatMessageListResponse)
+async def list_client_chat_messages(
+    client_id: int,
+    coach: CurrentCoach,
+    db: DbSession,
+    limit: int = Query(100, ge=1, le=200),
+    after_id: int | None = Query(None, ge=1),
+):
+    """Coach reads chat transcript for a roster client.
+
+    - Without ``after_id``: returns up to ``limit`` most recent messages (oldest first).
+    - With ``after_id``: returns messages with id greater than ``after_id`` (polling).
+    """
+    client_row = await fetch_client_for_coach(db, coach_id=coach.id, client_id=client_id)
+    if not client_row:
+        raise HTTPException(status_code=404, detail="Client not found")
+    thread = await get_thread_for_coach_client(db, coach_id=coach.id, client_id=client_id)
+    if not thread:
+        return ChatMessageListResponse(items=[])
+    rows = await list_messages(db, thread_id=thread.id, limit=limit, after_id=after_id)
+    return ChatMessageListResponse(items=[ChatMessageRead.model_validate(m) for m in rows])
+
+
+@router.post("/{client_id}/messages", response_model=ChatMessagePostResponse, status_code=201)
+async def post_client_chat_message(
+    client_id: int,
+    coach: CurrentCoach,
+    db: DbSession,
+    body: ChatMessageCreate,
+):
+    """Coach sends a message in the thread (creates thread on first send)."""
+    client_row = await fetch_client_for_coach(db, coach_id=coach.id, client_id=client_id)
+    if not client_row:
+        raise HTTPException(status_code=404, detail="Client not found")
+    if len(body.body) > CHAT_MESSAGE_MAX_LEN:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Message too long (max {CHAT_MESSAGE_MAX_LEN} characters).",
+        )
+    thread = await ensure_thread(db, coach_id=coach.id, client_id=client_id)
+    msg = await append_coach_message(db, thread_id=thread.id, body=body.body)
+    await db.commit()
+    return ChatMessagePostResponse(message=ChatMessageRead.model_validate(msg))
