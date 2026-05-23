@@ -1,7 +1,11 @@
+import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { Link as RouterLink } from "react-router-dom";
 
 import { CoachingPlanPreview } from "../../../components/CoachingPlanPreview";
 import { useClientMe } from "../../../contexts/ClientMeContext";
@@ -42,16 +46,26 @@ export function ClientWorkoutPlanPage() {
   }
 
   return (
-    <CoachingPlanPreview
-      clientName={me.name}
-      title={t("clientPortal.workoutPlanTitle")}
-      eyebrow={me.coach_name}
-      programVenue={plan.program_venue ?? "mixed"}
-      workoutRichHtml={plan.workout_rich_html}
-      workoutNotes={plan.workout_plan}
-      workoutLines={lines}
-      dietMeals={[]}
-      showDiet={false}
-    />
+    <Stack spacing={2}>
+      <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+        <Button component={RouterLink} to="/client/training/log" variant="contained" endIcon={<ArrowForwardIcon />}>
+          {t("clientPortal.logWorkout")}
+        </Button>
+        <Button component={RouterLink} to="/client/training/history" variant="outlined">
+          {t("clientPortal.trainingHistory")}
+        </Button>
+      </Stack>
+      <CoachingPlanPreview
+        clientName={me.name}
+        title={t("clientPortal.workoutPlanTitle")}
+        eyebrow={me.coach_name}
+        programVenue={plan.program_venue ?? "mixed"}
+        workoutRichHtml={plan.workout_rich_html}
+        workoutNotes={plan.workout_plan}
+        workoutLines={lines}
+        dietMeals={[]}
+        showDiet={false}
+      />
+    </Stack>
   );
 }

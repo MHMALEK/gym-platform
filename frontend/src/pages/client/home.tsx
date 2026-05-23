@@ -197,9 +197,12 @@ export function ClientHomePage() {
           ) : (
             <Stack spacing={1}>
               {hasWorkout ? (
-                <Typography variant="body2">
-                  {t("clientPortal.workoutReady")}
-                </Typography>
+                <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ sm: "center" }}>
+                  <Typography variant="body2">{t("clientPortal.workoutReady")}</Typography>
+                  <Button component={RouterLink} to="/client/training/log" size="small" variant="contained">
+                    {t("clientPortal.logWorkout")}
+                  </Button>
+                </Stack>
               ) : null}
               {hasDiet ? (
                 <Button component={RouterLink} to="/client/plans/nutrition" size="small" sx={{ alignSelf: "flex-start" }}>
