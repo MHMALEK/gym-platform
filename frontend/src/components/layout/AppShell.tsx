@@ -4,19 +4,23 @@ import Divider from "@mui/material/Divider";
 import Drawer from "@mui/material/Drawer";
 import IconButton from "@mui/material/IconButton";
 import Stack from "@mui/material/Stack";
+import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { useTheme } from "@mui/material/styles";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import { useMenu } from "@refinedev/core";
-import { Menu as MenuIcon } from "lucide-react";
+import { Menu as MenuIcon, Sparkles } from "lucide-react";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useLocation } from "react-router-dom";
 
+import { useCoachAi } from "../../contexts/CoachAiContext";
+
 import { useCoachBranding } from "../../contexts/CoachBrandingContext";
 import { mediaSrc } from "../../lib/exerciseMediaApi";
 import { BrandMark } from "../BrandMark";
+import { ContextualCoachAiPanel } from "../ai/ContextualCoachAiPanel";
 import { SidebarPreferences } from "./SidebarPreferences";
 
 const SIDEBAR_WIDTH = 264;
@@ -96,6 +100,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         >
           {children}
         </Box>
+        <ContextualCoachAiPanel />
       </Box>
     </Box>
   );
@@ -361,12 +366,22 @@ function SidebarFooter() {
 }
 
 function Topbar({ onOpenMenu, showMenuButton }: { onOpenMenu: () => void; showMenuButton: boolean }) {
+  const { t } = useTranslation();
   const { menuItems, selectedKey } = useMenu();
+  const { openPanel } = useCoachAi();
+  const location = useLocation();
   const current = useMemo(
     () => menuItems.find((m) => m.key === selectedKey),
     [menuItems, selectedKey],
   );
   const title = (current?.label as string) ?? "";
+  const showAiButton = location.pathname !== "/assistant";
+  const openContextualAi = () => {
+    const onPlanEditor =
+      location.pathname.includes("/training-plans/create") ||
+      location.pathname.includes("/training-plans/edit/");
+    openPanel({ tab: onPlanEditor ? "build" : "ask" });
+  };
 
   return (
     <Box
@@ -411,6 +426,25 @@ function Topbar({ onOpenMenu, showMenuButton }: { onOpenMenu: () => void; showMe
           sx={{ height: 22, fontSize: 10, fontWeight: 700, flexShrink: 0 }}
         />
       ) : null}
+      {showAiButton ? (
+        <Tooltip title={t("contextualAi.openFab")}>
+          <IconButton
+            size="small"
+            onClick={openContextualAi}
+            aria-label={t("contextualAi.openFab")}
+            sx={{
+              ml: "auto",
+              color: "primary.main",
+              bgcolor: "action.hover",
+              "&:hover": { bgcolor: "action.selected" },
+            }}
+          >
+            <Sparkles size={18} strokeWidth={2.25} />
+          </IconButton>
+        </Tooltip>
+      ) : (
+        <Box sx={{ flex: 1 }} />
+      )}
     </Box>
   );
 }

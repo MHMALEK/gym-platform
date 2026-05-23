@@ -38,6 +38,7 @@ import {
   CoachBrandingProvider,
   EmotionDirectionBridge,
 } from "./contexts/CoachBrandingContext";
+import { CoachAiProvider } from "./contexts/CoachAiContext";
 import { dataProvider } from "./dataProvider";
 import { ClientCreate } from "./pages/clients/create";
 import { ClientEdit } from "./pages/clients/edit";
@@ -312,11 +313,13 @@ function CoachApp() {
           element={
             <Authenticated key="app-gate" fallback={<Navigate to="/login" replace />}>
               <CoachBrandingProvider>
-                <BrandedMuiOverride>
-                  <AppShell>
-                    <Outlet />
-                  </AppShell>
-                </BrandedMuiOverride>
+                <CoachAiProvider>
+                  <BrandedMuiOverride>
+                    <AppShell>
+                      <Outlet />
+                    </AppShell>
+                  </BrandedMuiOverride>
+                </CoachAiProvider>
               </CoachBrandingProvider>
             </Authenticated>
           }
