@@ -1,4 +1,5 @@
 import ArticleOutlinedIcon from "@mui/icons-material/ArticleOutlined";
+import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
 import CreditCardOutlinedIcon from "@mui/icons-material/CreditCardOutlined";
 import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
 import PersonOutlinedIcon from "@mui/icons-material/PersonOutlined";
@@ -7,6 +8,9 @@ import Alert from "@mui/material/Alert";
 import AlertTitle from "@mui/material/AlertTitle";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
+import Card from "@mui/material/Card";
+import CardContent from "@mui/material/CardContent";
+import CardHeader from "@mui/material/CardHeader";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
 import Tab from "@mui/material/Tab";
@@ -20,6 +24,7 @@ import { useTranslation } from "react-i18next";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 
 import { ClientCoachingPlanAssignmentPanel } from "./ClientCoachingPlanAssignmentPanel";
+import { ClientMessagesPanel } from "./ClientMessagesPanel";
 import { ClientPlansCta, clientWorkoutDietPath } from "./ClientPlansCta";
 import {
   type ClientDetailTab,
@@ -71,13 +76,16 @@ export function ClientEdit() {
 
   useEffect(() => {
     const h = location.hash.replace(/^#/, "");
-    if (h !== "invoices" && h !== "membership" && h !== "financial" && h !== "workout") return;
+    if (h !== "invoices" && h !== "membership" && h !== "financial" && h !== "workout" && h !== "messages")
+      return;
     const id =
       h === "membership"
         ? clientTabScrollIds.membership
         : h === "workout"
           ? clientTabScrollIds.workout
-          : clientTabScrollIds.invoices;
+          : h === "messages"
+            ? clientTabScrollIds.messages
+            : clientTabScrollIds.invoices;
     requestAnimationFrame(() => {
       document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
@@ -156,6 +164,14 @@ export function ClientEdit() {
           />
           {validId ? (
             <Tab
+              icon={<ChatBubbleOutlineIcon fontSize="small" />}
+              iconPosition="start"
+              label={t("clients.show.tabMessages")}
+              value="messages"
+            />
+          ) : null}
+          {validId ? (
+            <Tab
               icon={<DescriptionOutlinedIcon fontSize="small" />}
               iconPosition="start"
               label={t("clients.show.tabWorkout")}
@@ -205,6 +221,24 @@ export function ClientEdit() {
           />
           {validId ? <ClientPlansCta clientId={clientId} compact /> : null}
         </Box>
+
+        {validId ? (
+          <Box
+            id={clientTabScrollIds.messages}
+            sx={{ display: activeTab === "messages" ? "block" : "none", pt: 0.5 }}
+          >
+            <Card variant="outlined" sx={{ borderRadius: 2 }}>
+              <CardHeader
+                avatar={<ChatBubbleOutlineIcon />}
+                title={t("clients.show.messagesTitle")}
+                sx={{ pb: 0 }}
+              />
+              <CardContent sx={{ pt: 2 }}>
+                <ClientMessagesPanel clientId={clientId} />
+              </CardContent>
+            </Card>
+          </Box>
+        ) : null}
 
         {validId ? (
           <Box id={clientTabScrollIds.workout} sx={{ display: activeTab === "workout" ? "block" : "none", pt: 0.5 }}>

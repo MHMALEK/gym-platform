@@ -1,4 +1,5 @@
 import ArticleOutlinedIcon from "@mui/icons-material/ArticleOutlined";
+import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
 import ContactsOutlinedIcon from "@mui/icons-material/ContactsOutlined";
 import CreditCardOutlinedIcon from "@mui/icons-material/CreditCardOutlined";
 import DashboardOutlinedIcon from "@mui/icons-material/DashboardOutlined";
@@ -28,6 +29,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import { formatMoney } from "../../lib/money";
 import { ClientCoachingPlanAssignmentPanel } from "./ClientCoachingPlanAssignmentPanel";
+import { ClientMessagesPanel } from "./ClientMessagesPanel";
 import { ClientPlansCta, clientPlanViewerPath, clientWorkoutDietPath } from "./ClientPlansCta";
 import {
   type ClientDetailTab,
@@ -143,13 +145,16 @@ export function ClientShow() {
   useEffect(() => {
     if (query?.isLoading) return;
     const h = location.hash.replace(/^#/, "");
-    if (h !== "invoices" && h !== "membership" && h !== "financial" && h !== "workout") return;
+    if (h !== "invoices" && h !== "membership" && h !== "financial" && h !== "workout" && h !== "messages")
+      return;
     const id =
       h === "membership"
         ? clientTabScrollIds.membership
         : h === "workout"
           ? clientTabScrollIds.workout
-          : clientTabScrollIds.invoices;
+          : h === "messages"
+            ? clientTabScrollIds.messages
+            : clientTabScrollIds.invoices;
     requestAnimationFrame(() => {
       document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
@@ -367,6 +372,14 @@ export function ClientShow() {
           />
           {clientId != null ? (
             <Tab
+              icon={<ChatBubbleOutlineIcon fontSize="small" />}
+              iconPosition="start"
+              label={t("clients.show.tabMessages")}
+              value="messages"
+            />
+          ) : null}
+          {clientId != null ? (
+            <Tab
               icon={<DescriptionOutlinedIcon fontSize="small" />}
               iconPosition="start"
               label={t("clients.show.tabWorkout")}
@@ -392,6 +405,23 @@ export function ClientShow() {
         </Tabs>
 
         <Box sx={{ display: activeTab === "profile" ? "block" : "none" }}>{profileTab}</Box>
+        {clientId != null ? (
+          <Box
+            id={clientTabScrollIds.messages}
+            sx={{ display: activeTab === "messages" ? "block" : "none", pt: 0.5 }}
+          >
+            <Card variant="outlined" className={readonlyCard}>
+              <CardHeader
+                avatar={<ChatBubbleOutlineIcon />}
+                title={t("clients.show.messagesTitle")}
+                sx={{ pb: 0 }}
+              />
+              <CardContent sx={{ pt: 2 }}>
+                <ClientMessagesPanel clientId={clientId} />
+              </CardContent>
+            </Card>
+          </Box>
+        ) : null}
         {clientId != null ? (
           <Box id={clientTabScrollIds.workout} sx={{ display: activeTab === "workout" ? "block" : "none", pt: 0.5 }}>
             <ClientCoachingPlanAssignmentPanel

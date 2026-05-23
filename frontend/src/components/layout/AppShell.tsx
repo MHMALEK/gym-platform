@@ -120,7 +120,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     id: "clients",
     labelKey: "nav.groupClients",
-    items: ["clients", "invoices"],
+    items: ["clients", "client-messages", "invoices"],
   },
   {
     id: "programs",
