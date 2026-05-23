@@ -1,6 +1,10 @@
 import AddIcon from "@mui/icons-material/AddRounded";
+import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForwardRounded";
+import BookIcon from "@mui/icons-material/Book";
+import FitnessCenterIcon from "@mui/icons-material/FitnessCenter";
+import FormatListBulletedIcon from "@mui/icons-material/FormatListBulleted";
 import GroupsIcon from "@mui/icons-material/GroupsRounded";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLongRounded";
@@ -28,8 +32,29 @@ import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
 import { PageHeader } from "../../components/layout/PageHeader";
+import {
+  DashboardSection,
+  DashboardStatTile,
+  DashboardStatTileSkeleton,
+} from "../../components/dashboard/DashboardStatTile";
 import { apiPrefix, authHeaders } from "../../lib/api";
 import { formatMoney } from "../../lib/money";
+
+type InsightsSummary = {
+  clients_total: number;
+  clients_active: number;
+  clients_inactive: number;
+  clients_archived: number;
+  invoices_pending: number;
+  invoices_overdue: number;
+  invoices_pending_amount: string | number;
+  invoices_paid_amount_month?: string | number;
+  active_memberships: number;
+  training_plans: number;
+  exercises: number;
+  finance_overdue?: Array<{ client_name: string; amount: string | number | null; currency: string }>;
+  finance_due_soon?: Array<{ client_name: string; amount: string | number | null; currency: string }>;
+};
 
 type MembershipSummary = {
   plan_name: string;
@@ -117,6 +142,8 @@ export function CoachDeskPage() {
   const [digest, setDigest] = useState<DashboardDigest | null>(null);
   const [digestLoading, setDigestLoading] = useState(false);
   const [digestError, setDigestError] = useState(false);
+  const [summary, setSummary] = useState<InsightsSummary | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(true);
 
   const clients = clientsData?.data ?? [];
 
@@ -169,6 +196,15 @@ export function CoachDeskPage() {
 
   useEffect(() => {
     void loadDigest();
+    setSummaryLoading(true);
+    void fetch(`${apiPrefix}/me?insights=true`, { headers: authHeaders() })
+      .then(async (r) => {
+        if (!r.ok) throw new Error(await r.text());
+        return r.json() as Promise<{ insights?: InsightsSummary }>;
+      })
+      .then((data) => setSummary(data.insights ?? null))
+      .catch(() => setSummary(null))
+      .finally(() => setSummaryLoading(false));
   }, []);
 
   function invoiceStatusLabel(status: string): string {
@@ -229,6 +265,42 @@ export function CoachDeskPage() {
           value={stats.overdue}
           tone="error"
         />
+      </Box>
+
+      <Box sx={{ mb: { xs: 2, md: 3 } }}>
+        <DashboardSection title={t("coachDesk.metricsSection")}>
+          {summaryLoading ? (
+            <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr", lg: "repeat(4, 1fr)" } }}>
+              {[1, 2, 3, 4].map((k) => (
+                <DashboardStatTileSkeleton key={k} />
+              ))}
+            </Box>
+          ) : summary ? (
+            <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr", lg: "repeat(4, 1fr)" } }}>
+              <DashboardStatTile
+                icon={<AttachMoneyIcon fontSize="small" />}
+                label={t("dashboard.pendingInvoiceTotal")}
+                value={formatMoney(summary.invoices_pending_amount, "USD", loc)}
+                footer={`${summary.invoices_pending} ${t("dashboard.open")} · ${summary.invoices_overdue} ${t("dashboard.overdue")}`}
+              />
+              <DashboardStatTile
+                icon={<BookIcon fontSize="small" />}
+                label={t("dashboard.activeMemberships")}
+                value={summary.active_memberships}
+              />
+              <DashboardStatTile
+                icon={<FitnessCenterIcon fontSize="small" />}
+                label={t("nav.trainingPlans")}
+                value={summary.training_plans}
+              />
+              <DashboardStatTile
+                icon={<FormatListBulletedIcon fontSize="small" />}
+                label={t("nav.exercises")}
+                value={summary.exercises}
+              />
+            </Box>
+          ) : null}
+        </DashboardSection>
       </Box>
 
       <Card
@@ -519,13 +591,12 @@ export function CoachDeskPage() {
         </TableContainer>
       </Card>
 
-      <Stack direction="row" spacing={2} alignItems="center" sx={{ mt: 2 }}>
+      <Stack direction="row" spacing={2} alignItems="center" sx={{ mt: 2, flexWrap: "wrap" }}>
         <Button component={Link} to="/invoices" size="small" variant="text" sx={{ color: "text.secondary" }}>
           {t("coachDesk.viewInvoices")}
         </Button>
-        <Box sx={{ width: 1, height: 14, bgcolor: "divider" }} />
-        <Button component={Link} to="/dashboard" size="small" variant="text" sx={{ color: "text.secondary" }}>
-          {t("coachDesk.openDashboard")}
+        <Button component={Link} to="/settings/site" size="small" variant="text" sx={{ color: "text.secondary" }}>
+          {t("coachDesk.editWebsite")}
         </Button>
       </Stack>
     </Box>
