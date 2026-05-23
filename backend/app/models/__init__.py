@@ -3,6 +3,7 @@ from app.models.chat_thread import ChatMessage, ChatThread
 from app.models.client import Client
 from app.models.client_coaching_plan import ClientCoachingPlan
 from app.models.client_subscription import ClientSubscription
+from app.models.client_workout_session import ClientWorkoutSession
 from app.models.coach import Coach
 from app.models.coach_api_key import CoachApiKey
 from app.models.coach_device_token import CoachDeviceToken
@@ -25,6 +26,7 @@ __all__ = [
     "Client",
     "ClientCoachingPlan",
     "ClientSubscription",
+    "ClientWorkoutSession",
     "Coach",
     "CoachApiKey",
     "CoachDeviceToken",

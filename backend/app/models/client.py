@@ -54,3 +54,8 @@ class Client(Base, TimestampMixin):
         uselist=False,
         cascade="all, delete-orphan",
     )
+    workout_sessions = relationship(
+        "ClientWorkoutSession",
+        back_populates="client",
+        cascade="all, delete-orphan",
+    )
