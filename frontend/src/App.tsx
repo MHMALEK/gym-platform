@@ -5,6 +5,7 @@ import {
   Dumbbell,
   FileText,
   Flame,
+  Globe,
   Home,
   LayoutDashboard,
   Library,
@@ -50,7 +51,6 @@ import { ClientWorkoutDietPlansPage } from "./pages/clients/workout-diet-plans";
 import { CoachAssistantPage } from "./pages/assistant/CoachAssistantPage";
 import { CoachDeskPage } from "./pages/coach-desk";
 import { CoachMessagesPage } from "./pages/messages/CoachMessagesPage";
-import { DashboardPage } from "./pages/dashboard";
 import { buildCoachMuiTheme } from "./theme/muiCoachTheme";
 import { ThemeModeProvider, useThemeMode } from "./theme/ThemeModeContext";
 import { ExerciseCreate } from "./pages/exercises/create";
@@ -82,6 +82,7 @@ import { ClientTrainingSessionPage } from "./pages/client/training/show";
 import { ClientPromotionsPage } from "./pages/client/promotions";
 import { ClientRegisterPage } from "./pages/client/register";
 import { BrandingSettingsPage } from "./pages/settings/branding";
+import { CoachSiteSettingsPage } from "./pages/settings/coach-site";
 import { IntegrationsSettingsPage } from "./pages/settings/integrations";
 import { PlanTemplateCreate } from "./pages/plan-templates/create";
 import { PlanTemplateEdit } from "./pages/plan-templates/edit";
@@ -92,6 +93,7 @@ import { TrainingPlanList } from "./pages/training-plans/list";
 import { TrainingPlanPreviewPage } from "./pages/training-plans/preview";
 import { TrainingPlanShow } from "./pages/training-plans/show";
 import { LandingPage } from "./pages/landing/LandingPage";
+import { CoachPublicSitePage } from "./pages/public/CoachPublicSitePage";
 
 function MuiLocaleBridge({ children }: { children: ReactNode }) {
   const { i18n } = useTranslation();
@@ -196,7 +198,7 @@ function CoachApp() {
       {
         name: "dashboard",
         list: "/dashboard",
-        meta: { label: t("nav.dashboard"), icon: <LayoutDashboard size={18} strokeWidth={2} /> },
+        meta: { label: t("nav.dashboard"), icon: <LayoutDashboard size={18} strokeWidth={2} />, hide: true },
       },
       {
         name: "coach-assistant",
@@ -271,6 +273,11 @@ function CoachApp() {
         meta: { label: t("nav.libraryNutritionTemplates"), icon: <Library size={18} strokeWidth={2} />, hide: true },
       },
       {
+        name: "coach-site",
+        list: "/settings/site",
+        meta: { label: t("nav.coachSite"), icon: <Globe size={18} strokeWidth={2} /> },
+      },
+      {
         name: "branding",
         list: "/settings/branding",
         meta: { label: t("nav.settings"), icon: <Palette size={18} strokeWidth={2} /> },
@@ -325,8 +332,8 @@ function CoachApp() {
           }
         >
           <Route path="/desk" element={<CoachDeskPage />} />
+          <Route path="/dashboard" element={<Navigate to="/desk" replace />} />
           <Route path="/workouts" element={<Navigate to="/training-plans" replace />} />
-          <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/assistant" element={<CoachAssistantPage />} />
           <Route path="/messages" element={<CoachMessagesPage />} />
           <Route path="/clients" element={<ClientList />} />
@@ -357,6 +364,7 @@ function CoachApp() {
           <Route path="/library/training-plans" element={<DirectoryTrainingPlansPage />} />
           <Route path="/library/nutrition-templates" element={<DirectoryNutritionTemplatesPage />} />
           <Route path="/settings/branding" element={<BrandingSettingsPage />} />
+          <Route path="/settings/site" element={<CoachSiteSettingsPage />} />
           <Route path="/settings/integrations" element={<IntegrationsSettingsPage />} />
         </Route>
       </Routes>
@@ -373,6 +381,7 @@ export default function App() {
         <MuiLocaleBridge>
           <Routes>
             <Route path="/" element={<LandingPage />} />
+            <Route path="/c/:slug" element={<CoachPublicSitePage />} />
             <Route path="/client/*" element={<ClientApp />} />
             <Route path="/*" element={<CoachApp />} />
           </Routes>

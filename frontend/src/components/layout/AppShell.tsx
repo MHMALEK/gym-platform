@@ -133,7 +133,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     id: "more",
     labelKey: "nav.groupMore",
-    items: ["directory-exercises", "branding"],
+    items: ["directory-exercises", "coach-site", "branding"],
   },
 ];
 
@@ -260,7 +260,10 @@ function SidebarContent() {
                     active={
                       selectedKey === item.key ||
                       (item.name === "directory-exercises" && location.pathname.startsWith("/library")) ||
-                      (item.name === "branding" && location.pathname.startsWith("/settings"))
+                      (item.name === "coach-site" && location.pathname.startsWith("/settings/site")) ||
+                      (item.name === "branding" &&
+                        location.pathname.startsWith("/settings") &&
+                        !location.pathname.startsWith("/settings/site"))
                     }
                   />
                 ))}
