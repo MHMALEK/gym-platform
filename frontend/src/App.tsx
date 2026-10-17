@@ -93,6 +93,7 @@ import { TrainingPlanList } from "./pages/training-plans/list";
 import { TrainingPlanPreviewPage } from "./pages/training-plans/preview";
 import { TrainingPlanShow } from "./pages/training-plans/show";
 import { HubLandingPage } from "./pages/landing/HubLandingPage";
+import { LandingPage } from "./pages/landing/LandingPage";
 import { CoachPublicSitePage } from "./pages/public/CoachPublicSitePage";
 
 function MuiLocaleBridge({ children }: { children: ReactNode }) {
@@ -380,7 +381,16 @@ export default function App() {
       <ThemeModeProvider>
         <MuiLocaleBridge>
           <Routes>
-            <Route path="/" element={<HubLandingPage />} />
+            <Route
+              path="/"
+              element={
+                import.meta.env.VITE_USE_HUB_LANDING === "true" ? (
+                  <HubLandingPage />
+                ) : (
+                  <LandingPage />
+                )
+              }
+            />
             <Route path="/c/:slug" element={<CoachPublicSitePage />} />
             <Route path="/client/*" element={<ClientApp />} />
             <Route path="/*" element={<CoachApp />} />

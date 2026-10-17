@@ -4,6 +4,14 @@ All-in-one coaching platform: **coach dashboard** (web + mobile), **client porta
 
 Auth is **Firebase** in production. Local development uses **dev bypass** (no Firebase required).
 
+## Live demo
+
+[https://gym-platform-zeta-flax.vercel.app](https://gym-platform-zeta-flax.vercel.app)
+
+The public site is a shared demo on Vercel’s free plan, with Postgres on Supabase’s free plan. Open **Coach login** and choose **Continue (dev login)**. There is no Firebase project on this deployment, so email/password sign-up is not wired up. Anyone using that button shares the same demo workspace.
+
+The licensed Hub landing assets are not in git, so the public homepage is the built-in landing page. Local `npm run dev` still uses the Hub landing when those assets are on your machine.
+
 ## What's included
 
 | Surface | Path | Highlights |

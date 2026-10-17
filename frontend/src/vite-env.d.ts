@@ -3,6 +3,8 @@
 interface ImportMetaEnv {
   readonly VITE_API_URL: string;
   readonly VITE_DEV_AUTH: string;
+  /** Local only: hub landing needs licensed assets that are not in git. */
+  readonly VITE_USE_HUB_LANDING: string;
   readonly VITE_FIREBASE_API_KEY: string;
   readonly VITE_FIREBASE_AUTH_DOMAIN: string;
   readonly VITE_FIREBASE_PROJECT_ID: string;

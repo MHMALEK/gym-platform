@@ -12,6 +12,8 @@ mobile/node_modules/
 client-mobile/node_modules/
 mobile/.expo/
 frontend/dist/
+backend/spa/
+.vercel
 .DS_Store
 
 # Licensed ThemeForest templates — never commit (local / deploy secret only)

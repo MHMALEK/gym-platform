@@ -1,0 +1,9 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "npm ci --prefix frontend && VITE_DEV_AUTH=true npm run build --prefix frontend && rm -rf backend/spa && cp -R frontend/dist backend/spa",
+  "functions": {
+    "index.py": {
+      "maxDuration": 60
+    }
+  }
+}

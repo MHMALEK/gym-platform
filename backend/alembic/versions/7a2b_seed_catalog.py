@@ -19,7 +19,7 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    now = datetime.utcnow().isoformat(sep=" ", timespec="seconds")
+    now = datetime.utcnow()
     conn = op.get_bind()
 
     exercises = [
@@ -36,22 +36,24 @@ def upgrade() -> None:
                 """
                 INSERT INTO exercises (coach_id, name, description, category, muscle_groups, equipment, created_at, updated_at)
                 VALUES (NULL, :name, :desc, :cat, :mg, :eq, :ts, :ts)
+                RETURNING id
                 """
             ),
             {"name": name, "desc": desc, "cat": cat, "mg": mg, "eq": eq, "ts": now},
         )
-        ex_ids.append(int(r.lastrowid))
+        ex_ids.append(int(r.scalar_one()))
 
     r = conn.execute(
         sa.text(
             """
             INSERT INTO training_plans (coach_id, name, description, source_catalog_plan_id, created_at, updated_at)
             VALUES (NULL, 'Starter full body', 'Simple 3-day introduction', NULL, :ts, :ts)
+            RETURNING id
             """
         ),
         {"ts": now},
     )
-    plan_id = int(r.lastrowid)
+    plan_id = int(r.scalar_one())
 
     rows = [
         {"so": 0, "eid": ex_ids[0], "sets": 3, "reps": 8, "dur": None, "rest": 90, "notes": None},
