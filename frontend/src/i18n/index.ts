@@ -4,7 +4,7 @@ import { initReactI18next } from "react-i18next";
 import en from "../locales/en/translation";
 import fa from "../locales/fa/translation";
 
-const STORAGE_KEY = "gym-coach-locale";
+const STORAGE_KEY = "gym-coach-lang";
 
 function getInitialLng(): string {
   try {
@@ -13,7 +13,7 @@ function getInitialLng(): string {
   } catch {
     /* ignore */
   }
-  return "fa";
+  return "en";
 }
 
 void i18n.use(initReactI18next).init({
@@ -22,7 +22,7 @@ void i18n.use(initReactI18next).init({
     fa: { translation: fa },
   },
   lng: getInitialLng(),
-  fallbackLng: ["fa", "en"],
+  fallbackLng: ["en", "fa"],
   interpolation: { escapeValue: false },
   react: { useSuspense: false },
 });
